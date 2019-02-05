@@ -4,6 +4,12 @@
 #include <cassert>
 #include "FullMatrixView.h"
 
+/*
+    "Gaussian Elimination is not Optimal"
+    Volker Strassen
+    https://link.springer.com/article/10.1007%2FBF02165411
+*/
+
 namespace details {
     template <typename T, std::size_t...Is>
     std::array<T, sizeof...(Is)> make_array(const T& value, std::index_sequence<Is...>) {
