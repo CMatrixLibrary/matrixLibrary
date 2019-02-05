@@ -7,6 +7,13 @@
 #include "operators.h"
 #include "matrixDivision.h"
 
+/*
+    "Gaussian Elimination is not Optimal"
+    Volker Strassen
+    https://link.springer.com/article/10.1007%2FBF02165411
+*/
+
+
 namespace details {
     template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB>
     FullMatrix<T> strassenMulRecursive(const MatrixA<T>& a, const MatrixB<T>& b) {
