@@ -27,7 +27,6 @@ void strassenVsNaiveMulSpeedTest() {
     std::cout << "naiveTime    = " << naiveTime << '\n';
 }
 
-
 int main() {
     strassenVsNaiveMulSpeedTest();
 
