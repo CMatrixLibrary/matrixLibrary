@@ -76,8 +76,8 @@ namespace details {
                 c.at(x,       y + n)   = c21.at(x, y);
                 c.at(x + n,   y + n)   = c22.at(x, y);
                 c.at(x + 2*n, y + n)   = c23.at(x, y);
-                c.at(x + 2*n, y + 2*n) = c31.at(x, y);
-                c.at(x + 2*n, y + 2*n) = c32.at(x, y);
+                c.at(x,       y + 2*n) = c31.at(x, y);
+                c.at(x + n,   y + 2*n) = c32.at(x, y);
                 c.at(x + 2*n, y + 2*n) = c33.at(x, y);
             }
         }
