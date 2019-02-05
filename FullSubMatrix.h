@@ -26,17 +26,17 @@ public:
     {}
 
     T& operator[](int i) {
-        return ref.data()[startCol_ + startRow_ * ref.columnsCount() + i + (i / columnsCount_) * (ref.columnsCount() - columnsCount_)];
+        return ref.get().data()[startCol_ + startRow_ * ref.get().columnsCount() + i + (i / columnsCount_) * (ref.get().columnsCount() - columnsCount_)];
     }
     const T& operator[](int i) const {
-        return ref.data()[startCol_ + startRow_ * ref.columnsCount() + i + (i / columnsCount_) * (ref.columnsCount() - columnsCount_)];
+        return ref.get().data()[startCol_ + startRow_ * ref.get().columnsCount() + i + (i / columnsCount_) * (ref.get().columnsCount() - columnsCount_)];
     }
 
     T& at(int x, int y) {
-        return ref.data()[startCol_ + startRow_ * ref.columnsCount() + x + y * ref.columnsCount()];
+        return ref.get().data()[startCol_ + startRow_ * ref.get().columnsCount() + x + y * ref.get().columnsCount()];
     }
     const T& at(int x, int y) const {
-        return ref.data()[startCol_ + startRow_ * ref.columnsCount() + x + y * ref.columnsCount()];
+        return ref.get().data()[startCol_ + startRow_ * ref.get().columnsCount() + x + y * ref.get().columnsCount()];
     }
 
     int rowsCount() const {
@@ -56,7 +56,7 @@ public:
     }
 
 private:
-    FullMatrix<T>& ref;
+    std::reference_wrapper<FullMatrix<T>> ref;
     int startRow_;
     int startCol_;
     int rowsCount_;
