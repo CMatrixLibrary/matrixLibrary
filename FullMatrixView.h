@@ -4,15 +4,16 @@
 
 template<typename T> class FullMatrixView {
 public:
+    FullMatrixView() {}
     FullMatrixView(const FullMatrix<T>& ref) :
-        ref(ref),
+        ref(&ref),
         startRow_(0),
         startCol_(0),
         rowsCount_(ref.rowsCount()),
         columnsCount_(ref.columnsCount())
     {}
     FullMatrixView(const FullMatrix<T>& ref, int startRow, int startCol, int rowsCount, int colsCount) :
-        ref(ref),
+        ref(&ref),
         startRow_(startRow),
         startCol_(startCol),
         rowsCount_(rowsCount),
@@ -34,11 +35,11 @@ public:
     {}
 
     const T& operator[](int i) const {
-        return ref.get().data()[startCol_ + startRow_ * ref.get().columnsCount() + i + (i / columnsCount_) * (ref.get().columnsCount() - columnsCount_)];
+        return ref->data()[startCol_ + startRow_ * ref->columnsCount() + i + (i / columnsCount_) * (ref->columnsCount() - columnsCount_)];
     }
 
     const T& at(int x, int y) const {
-        return ref.get().data()[startCol_ + startRow_ * ref.get().columnsCount() + x + y * ref.get().columnsCount()];
+        return ref->data()[startCol_ + startRow_ * ref->columnsCount() + x + y * ref->columnsCount()];
     }
 
     int rowsCount() const {
@@ -52,7 +53,7 @@ public:
     }
 
 private:
-    std::reference_wrapper<const FullMatrix<T>> ref;
+    const FullMatrix<T>* ref;
     int startRow_;
     int startCol_;
     int rowsCount_;

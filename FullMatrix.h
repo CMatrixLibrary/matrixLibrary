@@ -7,6 +7,7 @@ template<typename T> class FullMatrixView;
 
 template<typename T> class FullMatrix {
 public:
+    FullMatrix() {}
     FullMatrix(int rowsCount, int colsCount) :
         rowsCount_(rowsCount),
         columnsCount_(colsCount),

@@ -6,6 +6,7 @@
 #include "FullMatrixView.h"
 #include "strassenMultiply.h"
 #include "fastMultiply3x3.h"
+#include "FastMatrixMultiplyGenerator.h"
 
 void strassenVsNaiveMulSpeedTest() {
     constexpr int N = 1024;
@@ -23,9 +24,13 @@ void strassenVsNaiveMulSpeedTest() {
     auto[d, naiveTime] = benchmark<FullMatrix<int>>([&]() -> auto {
         return naiveMul(a, b);
     });
+    auto[e, genStrassenTime] = benchmark<FullMatrix<int>>([&]() -> auto {
+        return generatedStrassen(a, b);
+    });
 
-    std::cout << "strassenTime = " << strassenTime << '\n';
-    std::cout << "naiveTime    = " << naiveTime << '\n';
+    std::cout << "strassenTime    = " << strassenTime << '\n';
+    std::cout << "genStrassenTime = " << genStrassenTime << '\n';
+    std::cout << "naiveTime       = " << naiveTime << '\n';
 }
 
 void fast3x3VsNaiveMulSpeedTest() {
@@ -49,11 +54,10 @@ void fast3x3VsNaiveMulSpeedTest() {
     std::cout << "naiveTime    = " << naiveTime << '\n';
 }
 
-
 int main() {
     strassenVsNaiveMulSpeedTest();
     fast3x3VsNaiveMulSpeedTest();
-
+        
     std::cin.get();
     return 0;
 }

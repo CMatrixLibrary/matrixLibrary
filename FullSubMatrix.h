@@ -3,15 +3,16 @@
 
 template<typename T> class FullSubMatrix {
 public:
+    FullSubMatrix() {}
     FullSubMatrix(FullMatrix<T>& ref) :
-        ref(ref),
+        ref(&ref),
         startRow_(0),
         startCol_(0),
         rowsCount_(ref.rowsCount()),
         columnsCount_(ref.columnsCount())
     {}
     FullSubMatrix(FullMatrix<T>& ref, int startRow, int startCol, int rowsCount, int colsCount) :
-        ref(ref),
+        ref(&ref),
         startRow_(startRow),
         startCol_(startCol),
         rowsCount_(rowsCount),
@@ -26,17 +27,23 @@ public:
     {}
 
     T& operator[](int i) {
-        return ref.get().data()[startCol_ + startRow_ * ref.get().columnsCount() + i + (i / columnsCount_) * (ref.get().columnsCount() - columnsCount_)];
+        return ref->data()[startCol_ + startRow_ * ref->columnsCount() + i + (i / columnsCount_) * (ref->columnsCount() - columnsCount_)];
     }
     const T& operator[](int i) const {
-        return ref.get().data()[startCol_ + startRow_ * ref.get().columnsCount() + i + (i / columnsCount_) * (ref.get().columnsCount() - columnsCount_)];
+        return ref->data()[startCol_ + startRow_ * ref->columnsCount() + i + (i / columnsCount_) * (ref->columnsCount() - columnsCount_)];
     }
 
     T& at(int x, int y) {
-        return ref.get().data()[startCol_ + startRow_ * ref.get().columnsCount() + x + y * ref.get().columnsCount()];
+        return ref->data()[startCol_ + startRow_ * ref->columnsCount() + x + y * ref->columnsCount()];
     }
     const T& at(int x, int y) const {
-        return ref.get().data()[startCol_ + startRow_ * ref.get().columnsCount() + x + y * ref.get().columnsCount()];
+        return ref->data()[startCol_ + startRow_ * ref->columnsCount() + x + y * ref->columnsCount()];
+    }
+
+    void operator+=(const FullMatrix<T>& m) {
+        for (int i = 0; i < size(); ++i) {
+            operator[](i) += m[i];
+        }
     }
 
     int rowsCount() const {
@@ -56,7 +63,7 @@ public:
     }
 
 private:
-    std::reference_wrapper<FullMatrix<T>> ref;
+    FullMatrix<T>* ref;
     int startRow_;
     int startCol_;
     int rowsCount_;
