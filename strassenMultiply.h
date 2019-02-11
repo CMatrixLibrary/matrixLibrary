@@ -1,8 +1,9 @@
 #pragma once
 #include <tuple>
 #include "FullMatrix.h"
-#include "FullSubMatrix.h"
 #include "FullMatrixView.h"
+#include "FullMatrixConstView.h"
+#include "utilityDetails.h"
 #include "naiveOperations.h"
 #include "operators.h"
 #include "matrixDivision.h"
@@ -17,7 +18,7 @@
 namespace details {
     template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB>
     FullMatrix<T> strassenMulRecursive(const MatrixA<T>& a, const MatrixB<T>& b) {
-        if (a.rowsCount() <= 32) {
+        if (a.rowCount() <= 32) {
             return naiveMul(a, b);
         }
 
@@ -32,35 +33,27 @@ namespace details {
         auto m6 = strassenMulRecursive(dA[1][0] - dA[0][0], dB[0][0] + dB[0][1]);
         auto m7 = strassenMulRecursive(dA[0][1] - dA[1][1], dB[1][0] + dB[1][1]);
 
-        auto c11 = m1 + m4 - m5 + m7;
-        auto c12 = m3 + m5;
-        auto c21 = m2 + m4;
-        auto c22 = m1 + m3 - m2 + m6;
+        FullMatrix<T> c(a.rowCount(), b.columnCount());
+        auto dC = matrixDivide<2, 2>(c);
+        dC[0][0].copy(m1 + m4 - m5 + m7);
+        dC[0][1].copy(m3 + m5);
+        dC[1][0].copy(m2 + m4);
+        dC[1][1].copy(m1 + m3 - m2 + m6);
 
-        auto n = c11.rowsCount();
-        FullMatrix<T> c(n * 2, n * 2);
-        for (int y = 0; y < n; y++) {
-            for (int x = 0; x < n; x++) {
-                c.at(x, y) = c11.at(x, y);
-                c.at(x + n, y) = c12.at(x, y);
-                c.at(x, y + n) = c21.at(x, y);
-                c.at(x + n, y + n) = c22.at(x, y);
-            }
-        }
         return c;
     }
 }
 
 template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB> 
 FullMatrix<T> strassenMul(MatrixA<T> a, MatrixB<T> b) {
-    if (!details::isPowerOf2(a.rowsCount())) {
-        auto newSize = details::nextPowerOf2(a.rowsCount());
+    if (!details::isPowerOf2(a.rowCount())) {
+        auto newSize = details::nextPowerOf2(a.rowCount());
         FullMatrix<T> newA(newSize, newSize);
         FullMatrix<T> newB(newSize, newSize);
-        newA.insert(a);
-        newB.insert(b);
+        newA.copy(a);
+        newB.copy(b);
         auto result = details::strassenMulRecursive(newA, newB);
-        result.shrink(a.rowsCount(), a.rowsCount());
+        result.shrink(a.rowCount(), a.rowCount());
         return result;
     } else {
         return details::strassenMulRecursive(a, b);

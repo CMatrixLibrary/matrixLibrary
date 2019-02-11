@@ -11,49 +11,39 @@ template <int... Ints> struct Values {};
 template <typename... Ts> struct Types {};
 
 template<int Rows, int Columns, typename T, template<typename> typename Matrix>
-std::array<FullMatrixView<T>, Columns * Rows> matrixDivide2View(const Matrix<T>& m) {
-    assert(m.rowsCount() % Rows == 0);
-    assert(m.columnsCount() % Columns == 0);
+std::array<FullMatrixConstView<T>, Columns * Rows> matrixDivideToConstView(const Matrix<T>& m) {
+    assert(m.rowCount() % Rows == 0);
+    assert(m.columnCount() % Columns == 0);
 
-    std::array<FullMatrixView<T>, Columns * Rows> result;
-    auto rowSize = m.rowsCount() / Rows;
-    auto columnSize = m.columnsCount() / Columns;
+    std::array<FullMatrixConstView<T>, Columns * Rows> result;
+    auto rowSize = m.rowCount() / Rows;
+    auto columnSize = m.columnCount() / Columns;
     for (int y = 0; y < Rows; ++y) {
         for (int x = 0; x < Columns; ++x) {
-            result[x + y*Columns] = FullMatrixView(m, y*rowSize, x*columnSize, rowSize, columnSize);
+            result[x + y * Columns] = FullMatrixConstView<T>(m, y*rowSize, x*columnSize, rowSize, columnSize);
         }
     }
     return result;
 }
 template<int Rows, int Columns, typename T, template<typename> typename Matrix>
-std::array<FullSubMatrix<T>, Columns * Rows> matrixDivide2Sub(Matrix<T>& m) {
-    assert(m.rowsCount() % Rows == 0);
-    assert(m.columnsCount() % Columns == 0);
+std::array<FullMatrixView<T>, Columns * Rows> matrixDivideToView(Matrix<T>& m) {
+    assert(m.rowCount() % Rows == 0);
+    assert(m.columnCount() % Columns == 0);
 
-    std::array<FullSubMatrix<T>, Columns * Rows> result;
-    auto rowSize = m.rowsCount() / Rows;
-    auto columnSize = m.columnsCount() / Columns;
+    std::array<FullMatrixView<T>, Columns * Rows> result;
+    auto rowSize = m.rowCount() / Rows;
+    auto columnSize = m.columnCount() / Columns;
     for (int y = 0; y < Rows; ++y) {
         for (int x = 0; x < Columns; ++x) {
-            result[x + y * Columns] = FullSubMatrix(m, y*rowSize, x*columnSize, rowSize, columnSize);
+            result[x + y * Columns] = FullMatrixView<T>(m, y*rowSize, x*columnSize, rowSize, columnSize);
         }
-    }
-    return result;
-}
-
-
-template<typename T, template<typename> typename Matrix>
-FullMatrix<T> operator*(const T& scalar, const Matrix<T>& m) {
-    FullMatrix<T> result(m.rowsCount(), m.columnsCount());
-    for (int i = 0; i < result.data().size(); ++i) {
-        result[i] = scalar * m[i];
     }
     return result;
 }
 
 template<int Index, int SizeX, int SizeY, typename T, int coff, int... CoffInts>
 FullMatrix<T> apply(
-    const std::array<FullMatrixView<T>, SizeX * SizeY>& dA,
+    const std::array<FullMatrixConstView<T>, SizeX * SizeY>& dA,
     Values<coff, CoffInts...> coffs
 ) {
     if constexpr (Index == SizeX * SizeY - 1) {
@@ -106,8 +96,8 @@ template<
 >
 void createMArray(
     std::array<FullMatrix<T>, MulCount>& matrix,
-    std::array<FullMatrixView<T>, SizeX * SizeY>& dA,
-    std::array<FullMatrixView<T>, SizeY * SizeZ>& dB,
+    std::array<FullMatrixConstView<T>, SizeX * SizeY>& dA,
+    std::array<FullMatrixConstView<T>, SizeY * SizeZ>& dB,
     Types<Values<ACoffInts...>, ACoffs...> aCoffIter,
     Types<Values<BCoffInts...>, BCoffs...> bCoffIter,
     Types<ACoffTypes...> aCoff,
@@ -127,7 +117,7 @@ void createMArray(
 
 template<int Index, int MulCount, typename T, int coff, int... CoffInts>
 void applyC(
-    FullSubMatrix<T>& dC,
+    FullMatrixView<T>& dC,
     const std::array<FullMatrix<T>, MulCount>& m,
     Values<coff, CoffInts...> coffs
 ) {
@@ -149,7 +139,7 @@ template<
     typename... Coffs
 >
 void createCArray(
-    std::array<FullSubMatrix<T>, SizeX * SizeY>& dC,
+    std::array<FullMatrixView<T>, SizeX * SizeY>& dC,
     const std::array<FullMatrix<T>, MulCount>& m,
     Types<Values<CCoffInts...>, Coffs...> cCoff
 ) {
@@ -183,17 +173,17 @@ FullMatrix<T> multiplyRecursive(
     Types<Values<BCoffInt, BCoffInts...>, BCoffs...> bCoff,
     Types<Values<CCoffInt, CCoffInts...>, CCoffs...> cCoff
 ) {
-    if (a.rowsCount() <= 32) {
+    if (a.rowCount() <= 32) {
         return naiveMul(a, b);
     }
-    auto dA = matrixDivide2View<SizeX, SizeY>(a);
-    auto dB = matrixDivide2View<SizeY, SizeZ>(b);
+    auto dA = matrixDivideToConstView<SizeX, SizeY>(a);
+    auto dB = matrixDivideToConstView<SizeY, SizeZ>(b);
 
     std::array<FullMatrix<T>, MulCount> m;
     createMArray<0, SizeX, SizeY, SizeZ, MulCount, T>(m, dA, dB, aCoff, bCoff, aCoff, bCoff, cCoff);
 
-    FullMatrix<T> c(a.rowsCount(), b.columnsCount());
-    auto dC = matrixDivide2Sub<SizeX, SizeZ>(c);
+    FullMatrix<T> c(a.rowCount(), b.columnCount());
+    auto dC = matrixDivideToView<SizeX, SizeZ>(c);
     createCArray<0, SizeX, SizeY>(dC, m, cCoff);
 
     return c;
