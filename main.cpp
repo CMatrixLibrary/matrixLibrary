@@ -2,8 +2,8 @@
 #include <iostream>
 #include "benchmark.h"
 #include "FullMatrix.h"
-#include "FullSubMatrix.h"
 #include "FullMatrixView.h"
+#include "FullMatrixConstView.h"
 #include "strassenMultiply.h"
 #include "fastMultiply3x3.h"
 #include "FastMatrixMultiplyGenerator.h"

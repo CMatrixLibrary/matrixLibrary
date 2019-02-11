@@ -15,7 +15,7 @@
 namespace details {
     template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB>
     FullMatrix<T> fastMul3x3Recursive(const MatrixA<T>& a, const MatrixB<T>& b) {
-        if (a.rowsCount() <= 27) {
+        if (a.rowCount() <= 27) {
             return naiveMul(a, b);
         }
 
@@ -56,31 +56,17 @@ namespace details {
         auto m22 = fastMul3x3Recursive(a31, b12);
         auto m23 = fastMul3x3Recursive(a33, b33);
 
-        auto c11 = m6 + m14 + m19;
-        auto c12 = m1 + m4 + m5 + m6 + m12 + m14 + m15;
-        auto c13 = m6 + m7 + m9 + m10 + m14 + m16 + m18;
-        auto c21 = m2 + m3 + m4 + m6 + m14 + m16 + m17;
-        auto c22 = m2 + m4 + m5 + m6 + m20;
-        auto c23 = m14 + m16 + m17 + m18 + m21;
-        auto c31 = m6 + m7 + m8 + m11 + m12 + m13 + m14;
-        auto c32 = m12 + m13 + m14 + m15 + m22;
-        auto c33 = m6 + m7 + m8 + m9 + m23;
-
-        auto n = c11.rowsCount();
-        FullMatrix<T> c(n * 3, n * 3);
-        for (int y = 0; y < n; y++) {
-            for (int x = 0; x < n; x++) {
-                c.at(x,       y)       = c11.at(x, y);
-                c.at(x + n,   y)       = c12.at(x, y);
-                c.at(x + 2*n, y)       = c13.at(x, y);
-                c.at(x,       y + n)   = c21.at(x, y);
-                c.at(x + n,   y + n)   = c22.at(x, y);
-                c.at(x + 2*n, y + n)   = c23.at(x, y);
-                c.at(x,       y + 2*n) = c31.at(x, y);
-                c.at(x + n,   y + 2*n) = c32.at(x, y);
-                c.at(x + 2*n, y + 2*n) = c33.at(x, y);
-            }
-        }
+        FullMatrix<T> c(a.rowCount(), b.columnCount());
+        auto dC = matrixDivide<3, 3>(c);
+        dC[0][0].copy(m6 + m14 + m19);
+        dC[0][1].copy(m1 + m4 + m5 + m6 + m12 + m14 + m15);
+        dC[0][2].copy(m6 + m7 + m9 + m10 + m14 + m16 + m18);
+        dC[1][0].copy(m2 + m3 + m4 + m6 + m14 + m16 + m17);
+        dC[1][1].copy(m2 + m4 + m5 + m6 + m20);
+        dC[1][2].copy(m14 + m16 + m17 + m18 + m21);
+        dC[2][0].copy(m6 + m7 + m8 + m11 + m12 + m13 + m14);
+        dC[2][1].copy(m12 + m13 + m14 + m15 + m22);
+        dC[2][2].copy(m6 + m7 + m8 + m9 + m23);
 
         return c;
     }
@@ -88,14 +74,14 @@ namespace details {
 
 template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB> 
 FullMatrix<T> fastMul3x3(MatrixA<T> a, MatrixB<T> b) {
-    if (!details::isPowerOf(a.rowsCount(), 3)) {
-        auto newSize = details::nextPowerOf(a.rowsCount(), 3);
+    if (!details::isPowerOf(a.rowCount(), 3)) {
+        auto newSize = details::nextPowerOf(a.rowCount(), 3);
         FullMatrix<T> newA(newSize, newSize);
         FullMatrix<T> newB(newSize, newSize);
-        newA.insert(a);
-        newB.insert(b);
+        newA.copy(a);
+        newB.copy(b);
         auto result = details::fastMul3x3Recursive(newA, newB);
-        result.shrink(a.rowsCount(), a.rowsCount());
+        result.shrink(a.rowCount(), a.rowCount());
         return result;
     } else {
         return details::fastMul3x3Recursive(a, b);
