@@ -1,5 +1,6 @@
 #pragma once
 #include <tuple>
+#include <array>
 #include "FullMatrix.h"
 #include "FullMatrixView.h"
 #include "naiveOperations.h"
@@ -14,8 +15,8 @@
 
 namespace details {
     template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB>
-    FullMatrix<T> fastMul3x3Recursive(const MatrixA<T>& a, const MatrixB<T>& b) {
-        if (a.rowCount() <= 27) {
+    FullMatrix<T> fastMul3x3Recursive(const MatrixA<T>& a, const MatrixB<T>& b, int steps) {
+        if (steps <= 0) {
             return naiveMul(a, b);
         }
 
@@ -32,29 +33,29 @@ namespace details {
             dB[2][0], dB[2][1], dB[2][2]
         );
 
-        auto m1  = fastMul3x3Recursive(a11 + a12 + a13 - a21 - a22 - a32 - a33, b22);
-        auto m2  = fastMul3x3Recursive(a11 - a21, b22 - b12);
-        auto m3  = fastMul3x3Recursive(a22, b12 - b11 + b21 - b22 - b23 - b31 + b33);
-        auto m4  = fastMul3x3Recursive(a21 - a11 + a22, b11 - b12 + b22);
-        auto m5  = fastMul3x3Recursive(a21 + a22, b12 - b11);
-        auto m6  = fastMul3x3Recursive(a11, b11);
-        auto m7  = fastMul3x3Recursive(a31 - a11 + a32, b11 - b13 + b23);
-        auto m8  = fastMul3x3Recursive(a31 - a11, b13 - b23);
-        auto m9  = fastMul3x3Recursive(a31 + a32, b13 - b11);
-        auto m10 = fastMul3x3Recursive(a11 + a12 + a13 - a22 - a23 - a31 - a32, b23);
-        auto m11 = fastMul3x3Recursive(a32, b13 - b11 + b21 - b22 - b23 - b31 + b32);
-        auto m12 = fastMul3x3Recursive(a32 - a13 + a33, b22 + b31 - b32);
-        auto m13 = fastMul3x3Recursive(a13 - a33, b22 - b32);
-        auto m14 = fastMul3x3Recursive(a13, b31);
-        auto m15 = fastMul3x3Recursive(a32 + a33, b32 - b31);
-        auto m16 = fastMul3x3Recursive(a22 - a13 + a23, b23 + b31 - b33);
-        auto m17 = fastMul3x3Recursive(a13 - a23, b23 - b33);
-        auto m18 = fastMul3x3Recursive(a22 + a23, b33 - b31);
-        auto m19 = fastMul3x3Recursive(a12, b21);
-        auto m20 = fastMul3x3Recursive(a23, b32);
-        auto m21 = fastMul3x3Recursive(a21, b13);
-        auto m22 = fastMul3x3Recursive(a31, b12);
-        auto m23 = fastMul3x3Recursive(a33, b33);
+        auto m1  = fastMul3x3Recursive(a11 + a12 + a13 - a21 - a22 - a32 - a33, b22, steps - 1);
+        auto m2  = fastMul3x3Recursive(a11 - a21, b22 - b12, steps - 1);
+        auto m3  = fastMul3x3Recursive(a22, b12 - b11 + b21 - b22 - b23 - b31 + b33, steps - 1);
+        auto m4  = fastMul3x3Recursive(a21 - a11 + a22, b11 - b12 + b22, steps - 1);
+        auto m5  = fastMul3x3Recursive(a21 + a22, b12 - b11, steps - 1);
+        auto m6  = fastMul3x3Recursive(a11, b11, steps - 1);
+        auto m7  = fastMul3x3Recursive(a31 - a11 + a32, b11 - b13 + b23, steps - 1);
+        auto m8  = fastMul3x3Recursive(a31 - a11, b13 - b23, steps - 1);
+        auto m9  = fastMul3x3Recursive(a31 + a32, b13 - b11, steps - 1);
+        auto m10 = fastMul3x3Recursive(a11 + a12 + a13 - a22 - a23 - a31 - a32, b23, steps - 1);
+        auto m11 = fastMul3x3Recursive(a32, b13 - b11 + b21 - b22 - b23 - b31 + b32, steps - 1);
+        auto m12 = fastMul3x3Recursive(a32 - a13 + a33, b22 + b31 - b32, steps - 1);
+        auto m13 = fastMul3x3Recursive(a13 - a33, b22 - b32, steps - 1);
+        auto m14 = fastMul3x3Recursive(a13, b31, steps - 1);
+        auto m15 = fastMul3x3Recursive(a32 + a33, b32 - b31, steps - 1);
+        auto m16 = fastMul3x3Recursive(a22 - a13 + a23, b23 + b31 - b33, steps - 1);
+        auto m17 = fastMul3x3Recursive(a13 - a23, b23 - b33, steps - 1);
+        auto m18 = fastMul3x3Recursive(a22 + a23, b33 - b31, steps - 1);
+        auto m19 = fastMul3x3Recursive(a12, b21, steps - 1);
+        auto m20 = fastMul3x3Recursive(a23, b32, steps - 1);
+        auto m21 = fastMul3x3Recursive(a21, b13, steps - 1);
+        auto m22 = fastMul3x3Recursive(a31, b12, steps - 1);
+        auto m23 = fastMul3x3Recursive(a33, b33, steps - 1);
 
         FullMatrix<T> c(a.rowCount(), b.columnCount());
         auto dC = matrixDivide<3, 3>(c);
@@ -73,17 +74,6 @@ namespace details {
 }
 
 template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB> 
-FullMatrix<T> fastMul3x3(MatrixA<T> a, MatrixB<T> b) {
-    if (!details::isPowerOf(a.rowCount(), 3)) {
-        auto newSize = details::nextPowerOf(a.rowCount(), 3);
-        FullMatrix<T> newA(newSize, newSize);
-        FullMatrix<T> newB(newSize, newSize);
-        newA.copy(a);
-        newB.copy(b);
-        auto result = details::fastMul3x3Recursive(newA, newB);
-        result.shrink(a.rowCount(), a.rowCount());
-        return result;
-    } else {
-        return details::fastMul3x3Recursive(a, b);
-    }
+FullMatrix<T> fastMul3x3(const MatrixA<T>& a, const MatrixB<T>& b) {
+    return details::fastMul<3, 3, 3>(a, b, 50, details::fastMul3x3Recursive<T, MatrixA, MatrixB>);
 }
