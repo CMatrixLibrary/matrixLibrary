@@ -17,21 +17,21 @@
 
 namespace details {
     template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB>
-    FullMatrix<T> strassenMulRecursive(const MatrixA<T>& a, const MatrixB<T>& b) {
-        if (a.rowCount() <= 32) {
+    FullMatrix<T> strassenMulRecursive(const MatrixA<T>& a, const MatrixB<T>& b, int steps) {
+        if (steps <= 0) {
             return naiveMul(a, b);
         }
 
         auto dA = matrixDivide<2, 2>(a);
         auto dB = matrixDivide<2, 2>(b);
 
-        auto m1 = strassenMulRecursive(dA[0][0] + dA[1][1], dB[0][0] + dB[1][1]);
-        auto m2 = strassenMulRecursive(dA[1][0] + dA[1][1], dB[0][0]);
-        auto m3 = strassenMulRecursive(dA[0][0], dB[0][1] - dB[1][1]);
-        auto m4 = strassenMulRecursive(dA[1][1], dB[1][0] - dB[0][0]);
-        auto m5 = strassenMulRecursive(dA[0][0] + dA[0][1], dB[1][1]);
-        auto m6 = strassenMulRecursive(dA[1][0] - dA[0][0], dB[0][0] + dB[0][1]);
-        auto m7 = strassenMulRecursive(dA[0][1] - dA[1][1], dB[1][0] + dB[1][1]);
+        auto m1 = strassenMulRecursive(dA[0][0] + dA[1][1], dB[0][0] + dB[1][1], steps - 1);
+        auto m2 = strassenMulRecursive(dA[1][0] + dA[1][1], dB[0][0], steps - 1);
+        auto m3 = strassenMulRecursive(dA[0][0], dB[0][1] - dB[1][1], steps - 1);
+        auto m4 = strassenMulRecursive(dA[1][1], dB[1][0] - dB[0][0], steps - 1);
+        auto m5 = strassenMulRecursive(dA[0][0] + dA[0][1], dB[1][1], steps - 1);
+        auto m6 = strassenMulRecursive(dA[1][0] - dA[0][0], dB[0][0] + dB[0][1], steps - 1);
+        auto m7 = strassenMulRecursive(dA[0][1] - dA[1][1], dB[1][0] + dB[1][1], steps - 1);
 
         FullMatrix<T> c(a.rowCount(), b.columnCount());
         auto dC = matrixDivide<2, 2>(c);
@@ -44,18 +44,7 @@ namespace details {
     }
 }
 
-template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB> 
-FullMatrix<T> strassenMul(MatrixA<T> a, MatrixB<T> b) {
-    if (!details::isPowerOf2(a.rowCount())) {
-        auto newSize = details::nextPowerOf2(a.rowCount());
-        FullMatrix<T> newA(newSize, newSize);
-        FullMatrix<T> newB(newSize, newSize);
-        newA.copy(a);
-        newB.copy(b);
-        auto result = details::strassenMulRecursive(newA, newB);
-        result.shrink(a.rowCount(), a.rowCount());
-        return result;
-    } else {
-        return details::strassenMulRecursive(a, b);
-    }
+template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB>
+FullMatrix<T> strassenMul(const MatrixA<T>& a, const MatrixB<T>& b) {
+    return details::fastMul<2, 2, 2>(a, b, 50, details::strassenMulRecursive<T, MatrixA, MatrixB>);
 }

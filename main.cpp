@@ -21,16 +21,16 @@ void strassenVsNaiveMulSpeedTest() {
     auto[c, strassenTime] = benchmark<FullMatrix<int>>([&]() -> auto {
         return strassenMul(a, b);
     });
-    auto[d, naiveTime] = benchmark<FullMatrix<int>>([&]() -> auto {
+    /*auto[d, naiveTime] = benchmark<FullMatrix<int>>([&]() -> auto {
         return naiveMul(a, b);
     });
     auto[e, genStrassenTime] = benchmark<FullMatrix<int>>([&]() -> auto {
         return generatedStrassen(a, b);
-    });
+    });*/
 
     std::cout << "strassenTime    = " << strassenTime << '\n';
-    std::cout << "genStrassenTime = " << genStrassenTime << '\n';
-    std::cout << "naiveTime       = " << naiveTime << '\n';
+    /*std::cout << "genStrassenTime = " << genStrassenTime << '\n';
+    std::cout << "naiveTime       = " << naiveTime << '\n';*/
 }
 
 void fast3x3VsNaiveMulSpeedTest() {
