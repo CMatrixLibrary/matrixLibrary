@@ -1,0 +1,22 @@
+# <2, 2, 2> : 7
+#
+# "Gaussian Elimination is not Optimal"
+# Volker Strassen
+# https://link.springer.com/article/10.1007%2FBF02165411
+
+2 2 2 7
+
+1 0 1 0 1 -1 0
+0 0 0 0 1 0 1
+0 1 0 0 0 1 0
+1 1 0 1 0 0 -1
+
+1 1 0 -1 0 1 0
+0 0 1 0 0 1 0
+0 0 0 1 0 0 1
+1 0 -1 0 1 0 1
+
+1 0 0 1 -1 0 1
+0 0 1 0 1 0 0
+0 1 0 1 0 0 0
+1 -1 1 0 0 1 0
