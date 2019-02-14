@@ -32,13 +32,23 @@ public:
         rowCount_(rowCount),
         columnCount_(columnCount),
         effectiveColumnCount_(matrix.columnCount())
-    {}
+    {
+        debugAssertOp(startRow, < , matrix.rowCount());
+        debugAssertOp(startColumn, < , matrix.columnCount());
+        debugAssert(rowCount <= matrix.rowCount() - startRow, rowCount, " <= ", matrix.rowCount(), " - ", startRow);
+        debugAssert(columnCount <= matrix.columnCount() - startColumn, columnCount, " <= ", matrix.columnCount(), " - ", startColumn);
+    }
     FullMatrixView(FullMatrixView<T>& matrix, int startRow, int startColumn, int rowCount, int columnCount) :
         data_(matrix.data() + startColumn + startRow * matrix.effectiveColumnCount()),
         rowCount_(rowCount),
         columnCount_(columnCount),
         effectiveColumnCount_(matrix.effectiveColumnCount())
-    {}
+    {
+        debugAssertOp(startRow, < , matrix.rowCount());
+        debugAssertOp(startColumn, < , matrix.columnCount());
+        debugAssert(rowCount <= matrix.rowCount() - startRow, rowCount, " <= ", matrix.rowCount(), " - ", startRow);
+        debugAssert(columnCount <= matrix.columnCount() - startColumn, columnCount, " <= ", matrix.columnCount(), " - ", startColumn);
+    }
     FullMatrixView<T>& operator=(FullMatrixView<T>& matrix) {
         data_ = matrix.data();
         rowCount_ = matrix.rowCount();
@@ -55,16 +65,22 @@ public:
     }
 
     T& at(int column, int row) {
+        debugAssertOp(column, < , columnCount_);
+        debugAssertOp(row, < , rowCount_);
         return data_[column + row * effectiveColumnCount_];
     }
     const T& at(int column, int row) const {
+        debugAssertOp(column, < , columnCount_);
+        debugAssertOp(row, < , rowCount_);
         return data_[column + row * effectiveColumnCount_];
     }
 
     T& operator[](int ind) {
+        debugAssertOp(ind, <, size());
         return data_[ind + (ind / columnCount_) * (effectiveColumnCount_ - columnCount_)];
     }
     const T& operator[](int ind) const {
+        debugAssertOp(ind, <, size());
         return data_[ind + (ind / columnCount_) * (effectiveColumnCount_ - columnCount_)];
     }
 
@@ -97,6 +113,8 @@ public:
     }
 
     template<template<typename> typename Matrix> void copy(const Matrix<T>& matrix) {
+        debugAssertOp(rowCount_, >=, matrix.rowCount());
+        debugAssertOp(columnCount_, >=, matrix.columnCount());
         for (int row = 0; row < matrix.rowCount(); ++row) {
             for (int column = 0; column < matrix.columnCount(); ++column) {
                 at(column, row) = matrix.at(column, row);

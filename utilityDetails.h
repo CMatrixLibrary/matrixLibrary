@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <cmath>
 #include <array>
-#include <cassert>
+#include "debugAssert.h"
 
 namespace details {
     double log(double base, double value) {
@@ -30,7 +30,7 @@ namespace details {
         typename Function
     >
     FullMatrix<T> fastMul(const MatrixA<T>& a, const MatrixB<T>& b, int cutOffPoint, Function recursiveFunction) {
-        assert(a.columnCount() == b.rowCount());
+        debugAssertOp(a.columnCount(), ==, b.rowCount());
 
         int steps = details::numberOfSteps(a.columnCount(), BaseSize2, cutOffPoint);
 
