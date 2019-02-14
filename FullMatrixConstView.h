@@ -1,6 +1,7 @@
 #pragma once
 #include "FullMatrix.h"
 #include "FullMatrixView.h"
+#include "debugAssert.h"
 
 template<typename T> class FullMatrixConstView {
 public:
@@ -34,25 +35,43 @@ public:
         rowCount_(rowCount),
         columnCount_(columnCount),
         effectiveColumnCount_(matrix.columnCount())
-    {}
+    {
+        debugAssertOp(startRow, < , matrix.rowCount());
+        debugAssertOp(startColumn, < , matrix.columnCount());
+        debugAssert(rowCount <= matrix.rowCount() - startRow, rowCount, " <= ", matrix.rowCount(), " - ", startRow);
+        debugAssert(columnCount <= matrix.columnCount() - startColumn, columnCount, " <= ", matrix.columnCount(), " - ", startColumn);
+    }
     FullMatrixConstView(const FullMatrixView<T>& matrix, int startRow, int startColumn, int rowCount, int columnCount) :
         data_(matrix.data() + startColumn + startRow * matrix.effectiveColumnCount()),
         rowCount_(rowCount),
         columnCount_(columnCount),
         effectiveColumnCount_(matrix.effectiveColumnCount())
-    {}
+    {
+        debugAssertOp(startRow, < , matrix.rowCount());
+        debugAssertOp(startColumn, < , matrix.columnCount());
+        debugAssert(rowCount <= matrix.rowCount() - startRow, rowCount, " <= ", matrix.rowCount(), " - ", startRow);
+        debugAssert(columnCount <= matrix.columnCount() - startColumn, columnCount, " <= ", matrix.columnCount(), " - ", startColumn);
+    }
     FullMatrixConstView(const FullMatrixConstView<T>& matrix, int startRow, int startColumn, int rowCount, int columnCount) :
         data_(matrix.data() + startColumn + startRow * matrix.effectiveColumnCount()),
         rowCount_(rowCount),
         columnCount_(columnCount),
         effectiveColumnCount_(matrix.effectiveColumnCount())
-    {}
+    {
+        debugAssertOp(startRow, < , matrix.rowCount());
+        debugAssertOp(startColumn, < , matrix.columnCount());
+        debugAssert(rowCount <= matrix.rowCount() - startRow, rowCount, " <= ", matrix.rowCount(), " - ", startRow);
+        debugAssert(columnCount <= matrix.columnCount() - startColumn, columnCount, " <= ", matrix.columnCount(), " - ", startColumn);
+    }
 
     const T& at(int column, int row) const {
+        debugAssertOp(column, < , columnCount_);
+        debugAssertOp(row, < , rowCount_);
         return data_[column + row * effectiveColumnCount_];
     }
 
     const T& operator[](int ind) const {
+        debugAssertOp(ind, <, size());
         return data_[ind + (ind / columnCount_) * (effectiveColumnCount_ - columnCount_)];
     }
 

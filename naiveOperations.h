@@ -1,10 +1,13 @@
 #pragma once
 #include "FullMatrix.h"
+#include "debugAssert.h"
 
 template<typename T> class FullMatrix;
 
 template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB>
 FullMatrix<T> naiveMul(const MatrixA<T>& a, const MatrixB<T>& b) {
+    debugAssertOp(a.columnCount(), == , b.rowCount());
+
     FullMatrix<T> result(a.rowCount(), b.columnCount());
     for (int i = 0; i < a.rowCount(); ++i) {
         for (int j = 0; j < b.columnCount(); ++j) {
@@ -33,6 +36,9 @@ FullMatrix<T> naiveMul(T scalar, const Matrix<T>& m) {
 
 template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB>
 FullMatrix<T> naiveAdd(const MatrixA<T>& a, const MatrixB<T>& b) {
+    debugAssertOp(a.rowCount(), ==, b.rowCount());
+    debugAssertOp(a.columnCount(), ==, b.columnCount());
+
     FullMatrix<T> result(a.rowCount(), a.columnCount());
     for (int row = 0; row < result.rowCount(); ++row) {
         for (int column = 0; column < result.columnCount(); ++column) {
@@ -44,6 +50,9 @@ FullMatrix<T> naiveAdd(const MatrixA<T>& a, const MatrixB<T>& b) {
 
 template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB>
 FullMatrix<T> naiveSub(const MatrixA<T>& a, const MatrixB<T>& b) {
+    debugAssertOp(a.rowCount(), ==, b.rowCount());
+    debugAssertOp(a.columnCount(), ==, b.columnCount());
+
     FullMatrix<T> result(a.rowCount(), a.columnCount());
     for (int row = 0; row < result.rowCount(); ++row) {
         for (int column = 0; column < result.columnCount(); ++column) {
@@ -55,6 +64,9 @@ FullMatrix<T> naiveSub(const MatrixA<T>& a, const MatrixB<T>& b) {
 
 template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB>
 void naiveAddAssign(MatrixA<T>& a, const MatrixB<T>& b) {
+    debugAssertOp(a.rowCount(), ==, b.rowCount());
+    debugAssertOp(a.columnCount(), ==, b.columnCount());
+
     for (int row = 0; row < a.rowCount(); ++row) {
         for (int column = 0; column < a.columnCount(); ++column) {
             a.at(column, row) += b.at(column, row);
@@ -63,6 +75,9 @@ void naiveAddAssign(MatrixA<T>& a, const MatrixB<T>& b) {
 }
 template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB>
 void naiveSubAssign(MatrixA<T>& a, const MatrixB<T>& b) {
+    debugAssertOp(a.rowCount(), ==, b.rowCount());
+    debugAssertOp(a.columnCount(), ==, b.columnCount());
+
     for (int row = 0; row < a.rowCount(); ++row) {
         for (int column = 0; column < a.columnCount(); ++column) {
             a.at(column, row) -= b.at(column, row);

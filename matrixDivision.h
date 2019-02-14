@@ -1,9 +1,9 @@
 #pragma once
 #include <tuple>
 #include <array>
-#include <cassert>
 #include "FullMatrixView.h"
 #include "FullMatrixConstView.h"
+#include "debugAssert.h"
 
 /*
     Evenly divide matrix and save as std::array[Rows][Columns] of FullMatrixView
@@ -11,8 +11,8 @@
 */
 template<int Rows, int Columns, typename T, template<typename> typename Matrix>
 std::array<std::array<FullMatrixConstView<T>, Columns>, Rows> matrixDivide(const Matrix<T>& m) {
-    assert(m.rowCount() % Rows == 0);
-    assert(m.columnCount() % Columns == 0);
+    debugAssert(m.rowCount() % Rows == 0,       m.rowCount(), " % ", Rows, " == ", 0);
+    debugAssert(m.columnCount() % Columns == 0, m.columnCount(), " % ", Columns, " == ", 0);
 
     std::array<std::array<FullMatrixConstView<T>, Columns>, Rows> result;
     auto rowSize = m.rowCount() / Rows;
@@ -27,8 +27,8 @@ std::array<std::array<FullMatrixConstView<T>, Columns>, Rows> matrixDivide(const
 }
 template<int Rows, int Columns, typename T>
 std::array<std::array<FullMatrixView<T>, Columns>, Rows> matrixDivide(FullMatrix<T>& m) {
-    assert(m.rowCount() % Rows == 0);
-    assert(m.columnCount() % Columns == 0);
+    debugAssert(m.rowCount() % Rows == 0, m.rowCount(), " % ", Rows, " == ", 0);
+    debugAssert(m.columnCount() % Columns == 0, m.columnCount(), " % ", Columns, " == ", 0);
 
     std::array<std::array<FullMatrixView<T>, Columns>, Rows> result;
     auto rowSize = m.rowCount() / Rows;

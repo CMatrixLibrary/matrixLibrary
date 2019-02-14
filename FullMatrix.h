@@ -1,4 +1,5 @@
 #pragma once
+#include "debugAssert.h"
 
 template<typename T> class FullMatrixView;
 template<typename T> class FullMatrixConstView;
@@ -59,16 +60,22 @@ public:
     }
 
     T& at(int column, int row) {
+        debugAssertOp(column, <, columnCount_);
+        debugAssertOp(row, <, rowCount_);
         return data_[column + row * columnCount_];
     }
     const T& at(int column, int row) const {
+        debugAssertOp(column, <, columnCount_);
+        debugAssertOp(row, <, rowCount_);
         return data_[column + row * columnCount_];
     }
 
     T& operator[](int i) {
+        debugAssertOp(i, <, size());
         return data_[i];
     }
     const T& operator[](int i) const {
+        debugAssertOp(i, <, size());
         return data_[i];
     }
 
@@ -90,14 +97,16 @@ public:
         return rowCount_ * columnCount_;
     }
 
-    FullMatrixView<T> subMatrixView(int startRow, int startCol, int rowsCount, int columnsCount) {
-        return FullMatrixView<T>(*this, startRow, startCol, rowsCount, columnsCount);
+    FullMatrixView<T> subMatrixView(int startRow, int startColumn, int rowCount, int columnCount) {
+        return FullMatrixView<T>(*this, startRow, startColumn, rowCount, columnCount);
     }
-    FullMatrixConstView<T> subMatrixView(int startRow, int startCol, int rowsCount, int columnsCount) const {
-        return FullMatrixConstView<T>(*this, startRow, startCol, rowsCount, columnsCount);
+    FullMatrixConstView<T> subMatrixView(int startRow, int startColumn, int rowCount, int columnCount) const {
+        return FullMatrixConstView<T>(*this, startRow, startColumn, rowCount, columnCount);
     }
 
     template<template<typename> typename Matrix> void copy(const Matrix<T>& matrix) {
+        debugAssertOp(rowCount_, >=, matrix.rowCount());
+        debugAssertOp(columnCount_, >=, matrix.columnCount());
         for (int row = 0; row < matrix.rowCount(); ++row) {
             for (int column = 0; column < matrix.columnCount(); ++column) {
                 at(column, row) = matrix.at(column, row);
@@ -106,6 +115,8 @@ public:
     }
 
     void shrink(int newRowCount, int newColumnCount) {
+        debugAssertOp(rowCount_, >=, newRowCount);
+        debugAssertOp(columnCount_, >=, newColumnCount);
         auto newData = new T[newRowCount * newColumnCount]();
         for (int row = 0; row < newRowCount; ++row) {
             for (int column = 0; column < newColumnCount; ++column) {
