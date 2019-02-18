@@ -22,9 +22,9 @@ namespace details {
         m[0] = genStrassen(a[0][0] + a[1][1], b[0][0] + b[1][1], steps - 1);
         m[1] = genStrassen(a[1][0] + a[1][1], b[0][0], steps - 1);
         m[2] = genStrassen(a[0][0], b[0][1] - b[1][1], steps - 1);
-        m[3] = genStrassen(a[1][1], -1*b[0][0] + b[1][0], steps - 1);
+        m[3] = genStrassen(a[1][1], -b[0][0] + b[1][0], steps - 1);
         m[4] = genStrassen(a[0][0] + a[0][1], b[1][1], steps - 1);
-        m[5] = genStrassen(-1*a[0][0] + a[1][0], b[0][0] + b[0][1], steps - 1);
+        m[5] = genStrassen(-a[0][0] + a[1][0], b[0][0] + b[0][1], steps - 1);
         m[6] = genStrassen(a[0][1] - a[1][1], b[1][0] + b[1][1], steps - 1);
 
         FullMatrix<T> C(A.rowCount(), B.columnCount());

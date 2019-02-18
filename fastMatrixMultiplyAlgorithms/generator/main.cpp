@@ -5,15 +5,18 @@
 #include <vector>
 #include <tuple>
 #include <optional>
+#include <map>
+#include <numeric>
 
 namespace fs = std::filesystem;
 
 template<typename T> struct Matrix {
     Matrix() {}
-    Matrix(int rowCount, int colCount) :
+    Matrix(int rowCount, int colCount, int mulCount) :
         rowCount(rowCount),
         colCount(colCount),
-        data(rowCount * colCount)
+        mulCount(mulCount),
+        data(rowCount * colCount * mulCount)
     {}
 
     T& operator[](int index) {
@@ -23,15 +26,16 @@ template<typename T> struct Matrix {
         return data[index];
     }
 
-    T& at(int column, int row) {
-        return data[column + row * colCount];
+    T& at(int column, int row, int mul) {
+        return data[column + row * colCount + mul * rowCount * colCount];
     }
-    const T& at(int column, int row) const {
-        return data[column + row * colCount];
+    const T& at(int column, int row, int mul) const {
+        return data[column + row * colCount + mul * rowCount * colCount];
     }
 
     int rowCount;
     int colCount;
+    int mulCount;
     std::vector<T> data;
 };
 
@@ -68,14 +72,18 @@ template<> std::optional<double> read(std::istream& in) {
         return std::nullopt;
     }
 }
-template<typename T> std::optional<Matrix<T>> readMatrix(std::istream& in, int rowCount, int colCount) {
-    Matrix<T> matrix(rowCount, colCount);
-    for (int i = 0; i < rowCount*colCount; ++i) {
-        auto value = read<T>(in);
-        if (!value) {
-            return std::nullopt;
+template<typename T> std::optional<Matrix<T>> readMatrix(std::istream& in, int rowCount, int colCount, int mulCount) {
+    Matrix<T> matrix(rowCount, colCount, mulCount);
+    for (int row = 0; row < rowCount; ++row) {
+        for (int col = 0; col < colCount; ++col) {
+            for (int mul = 0; mul < mulCount; ++mul) {
+                auto value = read<T>(in);
+                if (!value) {
+                    return std::nullopt;
+                }
+                matrix.at(col, row, mul) = *value;
+            }
         }
-        matrix[i] = *value;
     }
     return matrix;
 }
@@ -106,9 +114,9 @@ std::optional<Input> parseInputFile(std::ifstream& inputFile) {
     input.zSize = *zOpt;
     input.mulCount = *mOpt;
 
-    auto a = readMatrix<double>(inputFile, input.xSize * input.ySize, input.mulCount);
-    auto b = readMatrix<double>(inputFile, input.ySize * input.zSize, input.mulCount);
-    auto c = readMatrix<double>(inputFile, input.xSize * input.zSize, input.mulCount);
+    auto a = readMatrix<double>(inputFile, input.xSize, input.ySize, input.mulCount);
+    auto b = readMatrix<double>(inputFile, input.ySize, input.zSize, input.mulCount);
+    auto c = readMatrix<double>(inputFile, input.xSize, input.zSize, input.mulCount);
 
     if (a && b && c) {
         input.a = *a;
@@ -120,42 +128,175 @@ std::optional<Input> parseInputFile(std::ifstream& inputFile) {
     }
 }
 
-void printRecursiveCallMultiplyFactor(std::ofstream& out, int column, int matrixColSize, const std::string& matrixName, const Matrix<double>& m) {
-    bool isFirstElement = true;
-    for (int row = 0; row < m.rowCount; ++row) {
-        if (m.at(column, row) != 0) {
-            if (isFirstElement && m.at(column, row) < 0) {
-                out << "-1*";
-            } else if (!isFirstElement) {
-                out << " " << (m.at(column, row) > 0 ? '+' : '-') << " ";
-            }
-            isFirstElement = false;
+struct MatrixValue {
+    MatrixValue(int firstIndex, int secondIndex, double coeff) :
+        firstIndex(firstIndex),
+        secondIndex(secondIndex),
+        coeff(coeff)
+    {}
+    MatrixValue(int firstIndex, int secondIndex) :
+        firstIndex(firstIndex),
+        secondIndex(secondIndex),
+        coeff(0)
+    {}
 
-            if (abs(m.at(column, row)) != 1) {
-                out << abs(m.at(column, row)) << "*";
-            }
-            out << matrixName << "[" << row / matrixColSize << "][" << row % matrixColSize << "]";
+    std::string getName(const std::string& matrixName) {
+        if (coeff == 0) {
+            return matrixName + "_" + std::to_string(firstIndex) + "_" + std::to_string(secondIndex);
+        } else {
+            return matrixName + "[" + std::to_string(firstIndex) + "][" + std::to_string(secondIndex) + "]";
         }
     }
+
+    bool isBaseValue() {
+        return coeff != 0;
+    }
+
+    int firstIndex;
+    int secondIndex;
+    double coeff;
+};
+
+void printRecursiveCallMultiplyFactor(
+    std::ofstream& out, 
+    int mul, 
+    const std::string& matrixName, 
+    const Matrix<double>& m,
+    std::vector<MatrixValue> matrixValues,
+    std::vector<std::vector<int>> matrixIndexes
+) {
+    bool isFirstElement = true;
+    for (int index : matrixIndexes[mul]) {
+        if (isFirstElement && matrixValues[index].coeff < 0) {
+            out << "-";
+        } else if (!isFirstElement) {
+            out << " " << (matrixValues[index].coeff > 0 ? '+' : '-') << " ";
+        }
+        isFirstElement = false;
+        if (abs(matrixValues[index].coeff) != 1 && matrixValues[index].coeff != 0) {
+            out << abs(matrixValues[index].coeff) << "*";
+        }
+        out << matrixValues[index].getName(matrixName);
+    }
+}
+std::pair<std::vector<MatrixValue>, std::vector<std::vector<int>>> createMatrixIndexes(std::ofstream& out, const std::string& matrixName, const Matrix<double>& m) {
+    std::vector<MatrixValue> matrixValues;
+    std::vector<std::vector<int>> matrixIndexes(m.mulCount);
+    
+    for (int mul = 0; mul < m.mulCount; ++mul) {
+        for (int row = 0; row < m.rowCount; ++row) {
+            for (int col = 0; col < m.colCount; ++col) {
+                auto coeff = m.at(col, row, mul);
+                if (coeff != 0) {
+                    auto foundValue = std::find_if(matrixValues.begin(), matrixValues.end(), [&](auto& value) {
+                        return value.firstIndex == row && value.secondIndex == col && value.coeff == coeff;
+                    });
+                    if (foundValue == matrixValues.end()) {
+                        matrixValues.emplace_back(row, col, coeff);
+                        matrixIndexes[mul].emplace_back(matrixValues.size() - 1);
+                    } else {
+                        matrixIndexes[mul].emplace_back(std::distance(matrixValues.begin(), foundValue));
+                    }
+                }
+            }
+        }
+    }
+
+    while (true) {
+        std::vector<int> indexCounts(matrixValues.size() * matrixValues.size(), 0);
+        for (int i = 0; i < matrixIndexes.size(); ++i) {
+            for (int j = 0; j < matrixIndexes[i].size(); ++j) {
+                for (int k = j + 1; k < matrixIndexes[i].size(); ++k) {
+                    indexCounts[matrixIndexes[i][j] + matrixIndexes[i][k] * matrixValues.size()] += 1;
+                }
+            }
+        }
+        std::vector<int> indexCountsIndexes(indexCounts.size());
+        std::iota(indexCountsIndexes.begin(), indexCountsIndexes.end(), 0);
+        std::sort(indexCountsIndexes.begin(), indexCountsIndexes.end(), [&indexCounts](auto i1, auto i2) {
+            return indexCounts[i1] < indexCounts[i2];
+        });
+        auto maxCount = indexCounts[indexCountsIndexes.back()];
+        if (maxCount > 1) {
+            int firstValueIndex = indexCountsIndexes.back() % matrixValues.size();
+            int secondValueIndex = indexCountsIndexes.back() / matrixValues.size();
+            matrixValues.emplace_back(firstValueIndex, secondValueIndex);
+            for (int i = 0; i < matrixIndexes.size(); ++i) {
+                for (int j = 0; j < matrixIndexes[i].size(); ++j) {
+                    for (int k = j + 1; k < matrixIndexes[i].size(); ++k) {
+                        if (firstValueIndex == matrixIndexes[i][j] && secondValueIndex == matrixIndexes[i][k]) {
+                            matrixIndexes[i].erase(matrixIndexes[i].begin() + k);
+                            matrixIndexes[i].erase(matrixIndexes[i].begin() + j);
+                            matrixIndexes[i].emplace_back(matrixValues.size() - 1);
+                        }
+                    }
+                }
+            }
+        } else {
+            break;
+        }
+    }
+
+    for (auto& value : matrixValues) {
+        if (!value.isBaseValue()) {
+            out << "        auto ";
+            out << value.getName(matrixName);
+            out << " = ";
+            if (matrixValues[value.firstIndex].coeff > 0) {
+                out << matrixValues[value.firstIndex].getName(matrixName);
+                out << (matrixValues[value.secondIndex].coeff > 0 ? " + " : " - ");
+                if (abs(matrixValues[value.secondIndex].coeff) != 1 && matrixValues[value.secondIndex].coeff != 0) {
+                    out << abs(matrixValues[value.secondIndex].coeff) << "*";
+                }
+                out << matrixValues[value.secondIndex].getName(matrixName);
+            } else if (matrixValues[value.secondIndex].coeff > 0) {
+                out << matrixValues[value.secondIndex].getName(matrixName);
+                out << (matrixValues[value.firstIndex].coeff > 0 ? " + " : " - ");
+                if (abs(matrixValues[value.firstIndex].coeff) != 1 && matrixValues[value.firstIndex].coeff != 0) {
+                    out << abs(matrixValues[value.firstIndex].coeff) << "*";
+                }
+                out << matrixValues[value.firstIndex].getName(matrixName);
+            } else {
+                out << "-";
+                if (abs(matrixValues[value.firstIndex].coeff) != 1 && matrixValues[value.firstIndex].coeff != 0) {
+                    out << abs(matrixValues[value.firstIndex].coeff) << "*";
+                }
+                out << matrixValues[value.firstIndex].getName(matrixName);
+                out << " - ";
+                if (abs(matrixValues[value.secondIndex].coeff) != 1 && matrixValues[value.secondIndex].coeff != 0) {
+                    out << abs(matrixValues[value.secondIndex].coeff) << "*";
+                }
+                out << matrixValues[value.secondIndex].getName(matrixName);
+            }
+            
+            out << ";\n";
+        }
+    }
+
+    return std::pair(matrixValues, matrixIndexes);
 }
 void printRecursiveCalls(std::ofstream& out, const Input& input, const std::string& algorithmName) {
     out << "        std::array<FullMatrix<T>, " << input.mulCount << "> m;\n";
+    auto[aMatrixValues, aMatrixIndexes] = createMatrixIndexes(out, "a", input.a);
+    auto[bMatrixValues, bMatrixIndexes] = createMatrixIndexes(out, "b", input.b);
+
     for (int i = 0; i < input.mulCount; ++i) {
         out << "        m[" << i << "] = " << algorithmName << "("; 
-        printRecursiveCallMultiplyFactor(out, i, input.ySize, "a", input.a);
+        printRecursiveCallMultiplyFactor(out, i, "a", input.a, aMatrixValues, aMatrixIndexes);
         out << ", ";
-        printRecursiveCallMultiplyFactor(out, i, input.zSize, "b", input.b);
+        printRecursiveCallMultiplyFactor(out, i, "b", input.b, bMatrixValues, bMatrixIndexes);
         out << ", steps - 1);\n";
     }
 }
 
 void printCMatrixConstruction(std::ofstream& out, const Input& input) {
-    for (int row = 0; row < input.xSize; ++row) {
-        for (int column = 0; column < input.zSize; ++column) {
-            out << "        c[" << row << "][" << column << "].copy(";
+    auto& c = input.c;
+    for (int row = 0; row < c.rowCount; ++row) {
+        for (int col = 0; col < c.colCount; ++col) {
+            out << "        c[" << row << "][" << col << "].copy(";
             bool isFirstElement = true;
-            for (int i = 0; i < input.mulCount; ++i) {
-                auto elementValue = input.c.at(i, column + row * input.zSize);
+            for (int mul = 0; mul < c.mulCount; ++mul) {
+                auto elementValue = c.at(col, row, mul);
                 if (elementValue != 0) {
                     if (isFirstElement && elementValue < 0) {
                         out << "-1*";
@@ -168,7 +309,7 @@ void printCMatrixConstruction(std::ofstream& out, const Input& input) {
                     if (abs(elementValue) != 1) {
                         out << abs(elementValue) << "*";
                     }
-                    out << "m[" << i << "]";
+                    out << "m[" << mul << "]";
                 }
             }
             out << ");\n";
