@@ -16,6 +16,10 @@ template<typename T, template<typename> typename MatrixA, template<typename> typ
 FullMatrix<T> operator*(const MatrixA<T>& a, const MatrixB<T>& b) {
     return strassenMul(a, b);
 }
+template<typename T, template<typename> typename Matrix>
+FullMatrix<T> operator-(const Matrix<T>& m) {
+    return naiveNeg(m);
+}
 template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB>
 void operator+=(MatrixA<T>& a, const MatrixB<T>& b) {
     return naiveAddAssign(a, b);
