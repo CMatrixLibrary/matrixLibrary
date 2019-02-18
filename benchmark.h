@@ -39,3 +39,13 @@ template<typename Function, typename... Args> double benchmark(int repetitions, 
     }
     return time / repetitions;
 }
+
+// run "repetitions" times, return pair { functionReturnValue, time }
+template<typename ReturnType, typename Function, typename... Args>
+std::pair<ReturnType, double> benchmark(int repetitions, Function function, Args... args) {
+    double time = 0;
+    for (int i = 0; i < repetitions; ++i) {
+        time += benchmark(function, args...);
+    }
+    return { function(args...), time / repetitions };
+}
