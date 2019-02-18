@@ -62,6 +62,17 @@ FullMatrix<T> naiveSub(const MatrixA<T>& a, const MatrixB<T>& b) {
     return result;
 }
 
+template<typename T, template<typename> typename Matrix>
+FullMatrix<T> naiveNeg(const Matrix<T>& m) {
+    FullMatrix<T> result(m.rowCount(), m.columnCount());
+    for (int row = 0; row < result.rowCount(); ++row) {
+        for (int column = 0; column < result.columnCount(); ++column) {
+            result.at(column, row) = -m.at(column, row);
+        }
+    }
+    return result;
+}
+
 template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB>
 void naiveAddAssign(MatrixA<T>& a, const MatrixB<T>& b) {
     debugAssertOp(a.rowCount(), ==, b.rowCount());
