@@ -15,8 +15,8 @@ void strassenVsNaiveMulSpeedTest() {
     FullMatrix<int> a(N, N);
     FullMatrix<int> b(N, N);
     for (int i = 0; i < N*N; ++i) {
-        a[i] = i;
-        b[i] = i * i;
+        a.data()[i] = i;
+        b.data()[i] = i * i;
     }
 
     auto[c, strassenTime] = benchmark<FullMatrix<int>>([&]() -> auto {
@@ -40,8 +40,8 @@ void fast3x3VsNaiveMulSpeedTest() {
     FullMatrix<int> a(N, N);
     FullMatrix<int> b(N, N);
     for (int i = 0; i < N*N; ++i) {
-        a[i] = i;
-        b[i] = i * i;
+        a.data()[i] = i;
+        b.data()[i] = i * i;
     }
 
     auto[c, fast3x3Time] = benchmark<FullMatrix<int>>([&]() -> auto {

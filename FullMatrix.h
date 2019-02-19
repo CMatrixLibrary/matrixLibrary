@@ -1,5 +1,7 @@
 #pragma once
 #include "debugAssert.h"
+#include "VectorView.h"
+#include "VectorConstView.h"
 
 template<typename T> class FullMatrixView;
 template<typename T> class FullMatrixConstView;
@@ -70,13 +72,13 @@ public:
         return data_[column + row * columnCount_];
     }
 
-    T& operator[](int i) {
-        debugAssertOp(i, <, size());
-        return data_[i];
+    VectorView<T> operator[](int i) {
+        debugAssertOp(i, <, rowCount_);
+        return VectorView<T>(data_ + i * columnCount_, columnCount_);
     }
-    const T& operator[](int i) const {
-        debugAssertOp(i, <, size());
-        return data_[i];
+    VectorConstView<T> operator[](int i) const {
+        debugAssertOp(i, < , rowCount_);
+        return VectorConstView<T>(data_ + i * columnCount_, columnCount_);
     }
 
     int rowCount() const {
