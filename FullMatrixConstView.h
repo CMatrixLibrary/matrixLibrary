@@ -3,6 +3,7 @@
 #include "FullMatrixView.h"
 #include "VectorConstView.h"
 #include "debugAssert.h"
+#include "FullMatrixConstRowIterator.h"
 
 template<typename T> class FullMatrixConstView {
 public:
@@ -96,6 +97,13 @@ public:
 
     FullMatrixConstView<T> subMatrixView(int startRow, int startCol, int rowsCount, int columnsCount) const {
         return FullMatrixConstView<T>(*this, startRow, startCol, rowsCount, columnsCount);
+    }
+
+    FullMatrixConstRowIterator<T> begin() const {
+        return FullMatrixConstRowIterator<T>(data_, columnCount_, effectiveColumnCount_);
+    }
+    FullMatrixConstRowIterator<T> end() const {
+        return FullMatrixConstRowIterator<T>(data_ + effectiveColumnCount_ * rowCount_, columnCount_, effectiveColumnCount_);
     }
 
 private:

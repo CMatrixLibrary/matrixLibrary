@@ -28,6 +28,13 @@ public:
         return size_;
     }
 
+    const T* begin() const {
+        return data_;
+    }
+    const T* end() const {
+        return data_ + size_;
+    }
+
 private:
     const T* data_;
     int size_;
