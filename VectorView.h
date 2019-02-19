@@ -29,6 +29,19 @@ public:
         return size_;
     }
 
+    T* begin() {
+        return data_;
+    }
+    T* end() {
+        return data_ + size_;
+    }
+    const T* begin() const {
+        return data_;
+    }
+    const T* end() const {
+        return data_ + size_;
+    }
+
 private:
     T* data_;
     int size_;
