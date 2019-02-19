@@ -1,5 +1,7 @@
 #pragma once
 #include "debugAssert.h"
+#include "VectorView.h"
+#include "VectorConstView.h"
 
 template<typename T> class FullMatrixView;
 template<typename T> class FullMatrixConstView;
@@ -59,24 +61,24 @@ public:
         return *this;
     }
 
-    T& at(int column, int row) {
+    T& at(int row, int column) {
+        debugAssertOp(row, < , rowCount_);
         debugAssertOp(column, <, columnCount_);
-        debugAssertOp(row, <, rowCount_);
         return data_[column + row * columnCount_];
     }
-    const T& at(int column, int row) const {
+    const T& at(int row, int column) const {
+        debugAssertOp(row, < , rowCount_);
         debugAssertOp(column, <, columnCount_);
-        debugAssertOp(row, <, rowCount_);
         return data_[column + row * columnCount_];
     }
 
-    T& operator[](int i) {
-        debugAssertOp(i, <, size());
-        return data_[i];
+    VectorView<T> operator[](int i) {
+        debugAssertOp(i, <, rowCount_);
+        return VectorView<T>(data_ + i * columnCount_, columnCount_);
     }
-    const T& operator[](int i) const {
-        debugAssertOp(i, <, size());
-        return data_[i];
+    VectorConstView<T> operator[](int i) const {
+        debugAssertOp(i, < , rowCount_);
+        return VectorConstView<T>(data_ + i * columnCount_, columnCount_);
     }
 
     int rowCount() const {
@@ -109,7 +111,7 @@ public:
         debugAssertOp(columnCount_, >=, matrix.columnCount());
         for (int row = 0; row < matrix.rowCount(); ++row) {
             for (int column = 0; column < matrix.columnCount(); ++column) {
-                at(column, row) = matrix.at(column, row);
+                at(row, column) = matrix.at(row, column);
             }
         }
     }
@@ -120,7 +122,7 @@ public:
         auto newData = new T[newRowCount * newColumnCount]();
         for (int row = 0; row < newRowCount; ++row) {
             for (int column = 0; column < newColumnCount; ++column) {
-                newData[column + row * newColumnCount] = at(column, row);
+                newData[column + row * newColumnCount] = at(row, column);
             }
         }
         delete[] data_;
