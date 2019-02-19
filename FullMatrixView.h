@@ -66,14 +66,14 @@ public:
         return *this;
     }
 
-    T& at(int column, int row) {
-        debugAssertOp(column, < , columnCount_);
+    T& at(int row, int column) {
         debugAssertOp(row, < , rowCount_);
+        debugAssertOp(column, < , columnCount_);
         return data_[column + row * effectiveColumnCount_];
     }
-    const T& at(int column, int row) const {
-        debugAssertOp(column, < , columnCount_);
+    const T& at(int row, int column) const {
         debugAssertOp(row, < , rowCount_);
+        debugAssertOp(column, < , columnCount_);
         return data_[column + row * effectiveColumnCount_];
     }
 
@@ -119,7 +119,7 @@ public:
         debugAssertOp(columnCount_, >=, matrix.columnCount());
         for (int row = 0; row < matrix.rowCount(); ++row) {
             for (int column = 0; column < matrix.columnCount(); ++column) {
-                at(column, row) = matrix.at(column, row);
+                at(row, column) = matrix.at(row, column);
             }
         }
     }

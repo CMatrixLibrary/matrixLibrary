@@ -65,9 +65,9 @@ public:
         debugAssert(columnCount <= matrix.columnCount() - startColumn, columnCount, " <= ", matrix.columnCount(), " - ", startColumn);
     }
 
-    const T& at(int column, int row) const {
-        debugAssertOp(column, < , columnCount_);
+    const T& at(int row, int column) const {
         debugAssertOp(row, < , rowCount_);
+        debugAssertOp(column, < , columnCount_);
         return data_[column + row * effectiveColumnCount_];
     }
 

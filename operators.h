@@ -42,7 +42,7 @@ template<typename T, template<typename> typename Matrix>
 std::ostream& operator<<(std::ostream& out, Matrix<T>& m) {
     for (int i = 0; i < m.rowCount(); ++i) {
         for (int j = 0; j < m.columnCount(); ++j) {
-            out << std::setw(5) << m.at(j, i);
+            out << std::setw(5) << m.at(i, j);
         }
         out << '\n';
     }

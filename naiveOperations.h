@@ -12,7 +12,7 @@ FullMatrix<T> naiveMul(const MatrixA<T>& a, const MatrixB<T>& b) {
     for (int i = 0; i < a.rowCount(); ++i) {
         for (int j = 0; j < b.columnCount(); ++j) {
             for (int k = 0; k < a.columnCount(); ++k) {
-                result.at(j, i) += a.at(k, i) * b.at(j, k);
+                result.at(i, j) += a.at(i, k) * b.at(k, j);
             }
         }
     }
@@ -24,7 +24,7 @@ FullMatrix<T> naiveMul(const Matrix<T>& m, T scalar) {
     FullMatrix<T> result(m.rowCount(), m.columnCount());
     for (int row = 0; row < result.rowCount(); ++row) {
         for (int column = 0; column < result.columnCount(); ++column) {
-            result.at(column, row) += scalar * m.at(column, row);
+            result.at(row, column) += scalar * m.at(row, column);
         }
     }
     return result;
@@ -42,7 +42,7 @@ FullMatrix<T> naiveAdd(const MatrixA<T>& a, const MatrixB<T>& b) {
     FullMatrix<T> result(a.rowCount(), a.columnCount());
     for (int row = 0; row < result.rowCount(); ++row) {
         for (int column = 0; column < result.columnCount(); ++column) {
-            result.at(column, row) = a.at(column, row) + b.at(column, row);
+            result.at(row, column) = a.at(row, column) + b.at(row, column);
         }
     }
     return result;
@@ -56,7 +56,7 @@ FullMatrix<T> naiveSub(const MatrixA<T>& a, const MatrixB<T>& b) {
     FullMatrix<T> result(a.rowCount(), a.columnCount());
     for (int row = 0; row < result.rowCount(); ++row) {
         for (int column = 0; column < result.columnCount(); ++column) {
-            result.at(column, row) = a.at(column, row) - b.at(column, row);
+            result.at(row, column) = a.at(row, column) - b.at(row, column);
         }
     }
     return result;
@@ -67,7 +67,7 @@ FullMatrix<T> naiveNeg(const Matrix<T>& m) {
     FullMatrix<T> result(m.rowCount(), m.columnCount());
     for (int row = 0; row < result.rowCount(); ++row) {
         for (int column = 0; column < result.columnCount(); ++column) {
-            result.at(column, row) = -m.at(column, row);
+            result.at(row, column) = -m.at(row, column);
         }
     }
     return result;
@@ -80,7 +80,7 @@ void naiveAddAssign(MatrixA<T>& a, const MatrixB<T>& b) {
 
     for (int row = 0; row < a.rowCount(); ++row) {
         for (int column = 0; column < a.columnCount(); ++column) {
-            a.at(column, row) += b.at(column, row);
+            a.at(row, column) += b.at(row, column);
         }
     }
 }
@@ -91,7 +91,7 @@ void naiveSubAssign(MatrixA<T>& a, const MatrixB<T>& b) {
 
     for (int row = 0; row < a.rowCount(); ++row) {
         for (int column = 0; column < a.columnCount(); ++column) {
-            a.at(column, row) -= b.at(column, row);
+            a.at(row, column) -= b.at(row, column);
         }
     }
 }
