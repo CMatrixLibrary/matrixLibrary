@@ -2,6 +2,8 @@
 #include "FullMatrix.h"
 #include "VectorView.h"
 #include "VectorConstView.h"
+#include "FullMatrixRowIterator.h"
+#include "FullMatrixConstRowIterator.h"
 
 template<typename T> class FullMatrixView {
 public:
@@ -122,6 +124,19 @@ public:
                 at(row, column) = matrix.at(row, column);
             }
         }
+    }
+
+    FullMatrixRowIterator<T> begin() {
+        return FullMatrixRowIterator<T>(data_, columnCount_, effectiveColumnCount_);
+    }
+    FullMatrixRowIterator<T> end() {
+        return FullMatrixRowIterator<T>(data_ + effectiveColumnCount_ * rowCount_, columnCount_, effectiveColumnCount_);
+    }
+    FullMatrixConstRowIterator<T> begin() const {
+        return FullMatrixConstRowIterator<T>(data_, columnCount_, effectiveColumnCount_);
+    }
+    FullMatrixConstRowIterator<T> end() const {
+        return FullMatrixConstRowIterator<T>(data_ + effectiveColumnCount_ * rowCount_, columnCount_, effectiveColumnCount_);
     }
 
 private:

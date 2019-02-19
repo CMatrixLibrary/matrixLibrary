@@ -2,6 +2,8 @@
 #include "debugAssert.h"
 #include "VectorView.h"
 #include "VectorConstView.h"
+#include "FullMatrixRowIterator.h"
+#include "FullMatrixConstRowIterator.h"
 
 template<typename T> class FullMatrixView;
 template<typename T> class FullMatrixConstView;
@@ -129,6 +131,19 @@ public:
         data_ = newData;
         rowCount_ = newRowCount;
         columnCount_ = newColumnCount;
+    }
+
+    FullMatrixRowIterator<T> begin() {
+        return FullMatrixRowIterator<T>(data_, columnCount_);
+    }
+    FullMatrixRowIterator<T> end() {
+        return FullMatrixRowIterator<T>(data_ + columnCount_ * rowCount_, columnCount_);
+    }
+    FullMatrixConstRowIterator<T> begin() const {
+        return FullMatrixConstRowIterator<T>(data_, columnCount_);
+    }
+    FullMatrixConstRowIterator<T> end() const {
+        return FullMatrixConstRowIterator<T>(data_ + columnCount_ * rowCount_, columnCount_);
     }
 
 private:
