@@ -9,6 +9,7 @@
 #include "FastMatrixMultiplyGenerator.h"
 #include "fastMatrixMultiplyAlgorithms/genStrassen.h"
 #include "RangeZip.h"
+#include "Range.h"
 
 void strassenVsNaiveMulSpeedTest() {
     constexpr int N = 1024;
@@ -184,6 +185,15 @@ template<typename T> FullMatrix<T> matrixAddHybrid(FullMatrixConstView<T> a, Ful
     }
     return result;
 }
+template<typename T> FullMatrix<T> matrixAddHybridRange(FullMatrixConstView<T> a, FullMatrixConstView<T> b) {
+    FullMatrix<T> result(a.rowCount(), a.columnCount());
+    for (auto[rowResult, rowA, rowB] : RangeZip(result, a, b)) {
+        for (auto i : indicies(rowResult)) {
+            rowResult[i] = rowA[i] + rowB[i];
+        }
+    }
+    return result;
+}
 template<typename T> void matrixAddIterationMethodsTest() {
     int n = 1000;
     int m = 1000;
@@ -191,17 +201,20 @@ template<typename T> void matrixAddIterationMethodsTest() {
     FullMatrix<T> a(n, m);
     FullMatrix<T> b(n, m);
 
-    auto matrixIndexTime     = benchmark(times, matrixAddIndex<T>, a, b);
-    auto matrxRangeZipTime   = benchmark(times, matrixAddZip<T>, a, b);
-    auto matrixAddHybridTime = benchmark(times, matrixAddHybrid<T>, a, b);
+    auto matrixIndexTime          = benchmark(times, matrixAddIndex<T>, a, b);
+    auto matrxRangeZipTime        = benchmark(times, matrixAddZip<T>, a, b);
+    auto matrixAddHybridTime      = benchmark(times, matrixAddHybrid<T>, a, b);
+    auto matrixAddHybridRangeTime = benchmark(times, matrixAddHybridRange<T>, a, b);
 
-    matrixIndexTime     = benchmark(times, matrixAddIndex<T>, a, b);
-    matrxRangeZipTime   = benchmark(times, matrixAddZip<T>, a, b);
-    matrixAddHybridTime = benchmark(times, matrixAddHybrid<T>, a, b);
+    matrixIndexTime          = benchmark(times, matrixAddIndex<T>, a, b);
+    matrxRangeZipTime        = benchmark(times, matrixAddZip<T>, a, b);
+    matrixAddHybridTime      = benchmark(times, matrixAddHybrid<T>, a, b);
+    matrixAddHybridRangeTime = benchmark(times, matrixAddHybridRange<T>, a, b);
 
-    std::cout << "matrixIndexTime     : " << matrixIndexTime << '\n';
-    std::cout << "matrxRangeZipTime   : " << matrxRangeZipTime << '\n';
-    std::cout << "matrixAddHybridTime : " << matrixAddHybridTime << '\n';
+    std::cout << "matrixIndexTime          : " << matrixIndexTime << '\n';
+    std::cout << "matrxRangeZipTime        : " << matrxRangeZipTime << '\n';
+    std::cout << "matrixAddHybridTime      : " << matrixAddHybridTime << '\n';
+    std::cout << "matrixAddHybridRangeTime : " << matrixAddHybridRangeTime << '\n';
 }
 
 int main() {
