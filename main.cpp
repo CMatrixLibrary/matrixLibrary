@@ -8,6 +8,7 @@
 #include "fastMultiply3x3.h"
 #include "FastMatrixMultiplyGenerator.h"
 #include "fastMatrixMultiplyAlgorithms/genStrassen.h"
+#include "RangeZip.h"
 
 void strassenVsNaiveMulSpeedTest() {
     constexpr int N = 1024;
@@ -155,10 +156,59 @@ template<typename T> void matrixIterationMethodsTest() {
     std::cout << "matrixIndexIteratorHybridLoopTime : " << matrixIndexIteratorHybridLoopTime << '\n';
 }
 
+
+template<typename T> FullMatrix<T> matrixAddIndex(FullMatrixConstView<T> a, FullMatrixConstView<T> b) {
+    FullMatrix<T> result(a.rowCount(), a.columnCount());
+    for (int row = 0; row < result.rowCount(); ++row) {
+        for (int col = 0; col < result.columnCount(); ++col) {
+            result.at(row, col) = a.at(row, col) + b.at(row, col);
+        }
+    }
+    return result;
+}
+template<typename T> FullMatrix<T> matrixAddZip(FullMatrixConstView<T> a, FullMatrixConstView<T> b) {
+    FullMatrix<T> result(a.rowCount(), a.columnCount());
+    for (auto[rowResult, rowA, rowB] : RangeZip(result, a, b)) {
+        for (auto[valueResult, valueA, valueB] : RangeZip(rowResult, rowA, rowB)) {
+            valueResult = valueA + valueB;
+        }
+    }
+    return result;
+}
+template<typename T> FullMatrix<T> matrixAddHybrid(FullMatrixConstView<T> a, FullMatrixConstView<T> b) {
+    FullMatrix<T> result(a.rowCount(), a.columnCount());
+    for (auto[rowResult, rowA, rowB] : RangeZip(result, a, b)) {
+        for (int i = 0; i < rowResult.size(); ++i) {
+            rowResult[i] = rowA[i] + rowB[i];
+        }
+    }
+    return result;
+}
+template<typename T> void matrixAddIterationMethodsTest() {
+    int n = 1000;
+    int m = 1000;
+    int times = 100;
+    FullMatrix<T> a(n, m);
+    FullMatrix<T> b(n, m);
+
+    auto matrixIndexTime     = benchmark(times, matrixAddIndex<T>, a, b);
+    auto matrxRangeZipTime   = benchmark(times, matrixAddZip<T>, a, b);
+    auto matrixAddHybridTime = benchmark(times, matrixAddHybrid<T>, a, b);
+
+    matrixIndexTime     = benchmark(times, matrixAddIndex<T>, a, b);
+    matrxRangeZipTime   = benchmark(times, matrixAddZip<T>, a, b);
+    matrixAddHybridTime = benchmark(times, matrixAddHybrid<T>, a, b);
+
+    std::cout << "matrixIndexTime     : " << matrixIndexTime << '\n';
+    std::cout << "matrxRangeZipTime   : " << matrxRangeZipTime << '\n';
+    std::cout << "matrixAddHybridTime : " << matrixAddHybridTime << '\n';
+}
+
 int main() {
     strassenVsNaiveMulSpeedTest();
     fast3x3VsNaiveMulSpeedTest();
     matrixIterationMethodsTest<int>();
+    matrixAddIterationMethodsTest<int>();
 
     std::cin.get();
     return 0;
