@@ -151,3 +151,14 @@ private:
     int rowCount_;
     int columnCount_;
 };
+
+template<typename T, std::size_t RowCount, std::size_t ColumnCount> 
+FullMatrix<T> CreateFullMatrix(const T(&arr)[RowCount][ColumnCount]) {
+    FullMatrix<T> result(RowCount, ColumnCount);
+    for (int i = 0; i < RowCount; ++i) {
+        for (int j = 0; j < ColumnCount; ++j) {
+            result.at(i, j) = arr[i][j];
+        }
+    }
+    return result;
+}

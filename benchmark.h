@@ -1,14 +1,16 @@
 #pragma once
 #include <tuple>
 #include <chrono>
+#include <vector>
+#include <numeric>
 
 struct MyTime {
-    MyTime() : time(std::chrono::high_resolution_clock::now()) {}
+    MyTime() : time(std::chrono::steady_clock::now()) {}
     double operator-(const MyTime& other) {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(time - other.time).count() / 1000.0;
+        return std::chrono::duration<double>(time - other.time).count();
     }
 private:
-    std::chrono::high_resolution_clock::time_point time;
+    std::chrono::steady_clock::time_point time;
 };
 MyTime getTime() {
     return MyTime();
@@ -31,21 +33,26 @@ template<typename Function, typename... Args> double benchmark(Function function
     return end - start;
 }
 
-// run "repetitions" times, return avarage time
-template<typename Function, typename... Args> double benchmark(int repetitions, Function function, Args... args) {
-    double time = 0;
-    for (int i = 0; i < repetitions; ++i) {
-        time += benchmark(function, args...);
+
+namespace details {
+    template<typename Function, typename... Args> std::vector<double> runMultipleTimes(int repetitions, Function function, Args... args) {
+        std::vector<double> times(repetitions);
+        for (int i = 0; i < repetitions; ++i) {
+            times[i] = benchmark(function, args...);
+        }
+        return times;
     }
-    return time / repetitions;
 }
 
-// run "repetitions" times, return pair { functionReturnValue, time }
+// run "repetitions" times, return avarage time
+template<typename Function, typename... Args> double benchmark(int repetitions, Function function, Args... args) {
+    auto times = details::runMultipleTimes(repetitions, function, args...);
+    auto value = std::accumulate(times.begin(), times.end(), 0.0);
+    return value / repetitions;
+}
+
+// run "repetitions" times, return pair { functionReturnValue, avarage time }
 template<typename ReturnType, typename Function, typename... Args>
 std::pair<ReturnType, double> benchmark(int repetitions, Function function, Args... args) {
-    double time = 0;
-    for (int i = 0; i < repetitions; ++i) {
-        time += benchmark(function, args...);
-    }
-    return { function(args...), time / repetitions };
+    return { function(args...), benchmark(repetitions, function, args...)};
 }
