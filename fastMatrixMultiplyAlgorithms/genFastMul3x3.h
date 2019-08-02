@@ -1,5 +1,5 @@
 // this file was generated using fastMatrixMultiplyAlgorithms/generator
-#pragma once
+/*#pragma once
 #include <array>
 #include "../FullMatrix.h"
 #include "../FullMatrixView.h"
@@ -78,3 +78,4 @@ template<typename T, template<typename> typename MatrixA, template<typename> typ
 FullMatrix<T> genFastMul3x3(const MatrixA<T>& A, const MatrixB<T>& B) {
     return details::fastMul<3, 3, 3>(A, B, 50, details::genFastMul3x3<T, MatrixA, MatrixB>);
 }
+*/

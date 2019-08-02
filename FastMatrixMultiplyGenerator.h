@@ -1,4 +1,4 @@
-#pragma once
+/*#pragma once
 #include <array>
 #include <tuple>
 #include "FullMatrix.h"
@@ -221,3 +221,4 @@ FullMatrix<T> generatedStrassen(const MatrixA<T>& a, const MatrixB<T>& b) {
     > cCoff;
     return multiplyRecursive<2, 2, 2, 7>(a, b, aCoff, bCoff, cCoff);
 }
+*/

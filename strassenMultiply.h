@@ -1,4 +1,4 @@
-#pragma once
+/*#pragma once
 #include <tuple>
 #include "FullMatrix.h"
 #include "FullMatrixView.h"
@@ -6,7 +6,7 @@
 #include "utilityDetails.h"
 #include "naiveOperations.h"
 #include "operators.h"
-#include "matrixDivision.h"
+#include "matrixDivision.h"*/
 
 /*
     "Gaussian Elimination is not Optimal"
@@ -15,7 +15,7 @@
 */
 
 
-namespace details {
+/*namespace details {
     template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB>
     FullMatrix<T> strassenMulRecursive(const MatrixA<T>& a, const MatrixB<T>& b, int steps) {
         if (steps <= 0) {
@@ -47,4 +47,4 @@ namespace details {
 template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB>
 FullMatrix<T> strassenMul(const MatrixA<T>& a, const MatrixB<T>& b) {
     return details::fastMul<2, 2, 2>(a, b, 50, details::strassenMulRecursive<T, MatrixA, MatrixB>);
-}
+}*/

@@ -1,22 +1,25 @@
 #pragma once
-#include "VectorView.h"
+#include "types.h"
+#include "debugAssert.h"
+#include "ArrayView.h"
 
-template<typename T> class VectorConstView {
+template<typename T> class ArrayConstView {
 public:
-    VectorConstView(const VectorView<T>& view) :
+    ArrayConstView(const ArrayView<T>& view) :
         data_(view.data()),
         size_(view.size())
     {}
-    VectorConstView(const T* data, int size) :
+    ArrayConstView(const T* data, mtl::size_t size) :
         data_(data),
         size_(size)
     {}
-    VectorConstView(const T* data, int startIndex, int endIndex) :
+    ArrayConstView(const T* data, mtl::size_t startIndex, mtl::size_t endIndex) :
         data_(data + startIndex),
         size_(endIndex - startIndex + 1)
     {}
 
-    const T& operator[](int index) const {
+    const T& operator[](mtl::size_t index) const {
+        debugAssertOp(index, < , size());
         return data_[index];
     }
 
@@ -24,7 +27,7 @@ public:
         return data_;
     }
 
-    int size() const {
+    mtl::size_t size() const {
         return size_;
     }
 
@@ -37,5 +40,5 @@ public:
 
 private:
     const T* data_;
-    int size_;
+    mtl::size_t size_;
 };

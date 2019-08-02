@@ -54,5 +54,5 @@ template<typename Function, typename... Args> double benchmark(int repetitions, 
 // run "repetitions" times, return pair { functionReturnValue, avarage time }
 template<typename ReturnType, typename Function, typename... Args>
 std::pair<ReturnType, double> benchmark(int repetitions, Function function, Args... args) {
-    return { function(args...), benchmark(repetitions, function, args...)};
+    return { function(args...), benchmark(repetitions, function, args...) };
 }

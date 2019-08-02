@@ -1,227 +1,156 @@
-#include <vector>
 #include <iostream>
-#include "benchmark.h"
-#include "FullMatrix.h"
-#include "FullMatrixView.h"
-#include "FullMatrixConstView.h"
-#include "strassenMultiply.h"
-#include "fastMultiply3x3.h"
-#include "FastMatrixMultiplyGenerator.h"
-#include "fastMatrixMultiplyAlgorithms/genStrassen.h"
-#include "RangeZip.h"
+#include <iomanip>
+#include <fstream>
+#include <vector>
+#include "Matrix.h"
+#include "MatrixView.h"
+#include "naiveBasicOperations.h"
+#include "matrixOperators.h"
 #include "Range.h"
+#include "RangeZip.h"
+#include "MatrixExtendedFunctions.h"
+#include "benchmark.h"
+#include "strassen.h"
 
-void strassenVsNaiveMulSpeedTest() {
-    constexpr int N = 1024;
-
-    FullMatrix<int> a(N, N);
-    FullMatrix<int> b(N, N);
-    for (int i = 0; i < N*N; ++i) {
-        a.data()[i] = i;
-        b.data()[i] = i * i;
+template<int N, int Steps, bool OnlyAvx=false> void strassenTest(int n, int steps) {
+    if (n != N || steps != Steps) {
+        std::cout << "incorrect stdin\n";
+        return;
     }
-
-    auto[c, strassenTime] = benchmark<FullMatrix<int>>([&]() -> auto {
-        return strassenMul(a, b);
-    });
-    auto[d, naiveTime] = benchmark<FullMatrix<int>>([&]() -> auto {
-        return naiveMul(a, b);
-    });
-    auto[e, genStrassenTime] = benchmark<FullMatrix<int>>([&]() -> auto {
-        return genStrassen(a, b);
-    });
-
-    std::cout << "strassenTime    = " << strassenTime << '\n';
-    std::cout << "genStrassenTime = " << genStrassenTime << '\n';
-    std::cout << "naiveTime       = " << naiveTime << '\n';
-}
-
-void fast3x3VsNaiveMulSpeedTest() {
-    constexpr int N = 729;
-
-    FullMatrix<int> a(N, N);
-    FullMatrix<int> b(N, N);
-    for (int i = 0; i < N*N; ++i) {
-        a.data()[i] = i;
-        b.data()[i] = i * i;
-    }
-
-    auto[c, fast3x3Time] = benchmark<FullMatrix<int>>([&]() -> auto {
-        return fastMul3x3(a, b);
-    });
-    auto[d, naiveTime] = benchmark<FullMatrix<int>>([&]() -> auto {
-        return naiveMul(a, b);
-    });
-
-    std::cout << "fast3x3Time  = " << fast3x3Time << '\n';
-    std::cout << "naiveTime    = " << naiveTime << '\n';
-}
-
-/*
-    all iteration methods for T=int compile the most inner loop in x86-64 architecture to:
-
-    when using gcc 8.2:
-    Loop:
-        mov     DWORD PTR [rax], 10
-        add     rax, 4
-        cmp     rdx, rax
-        jne     Loop
-
-    when using clang 7.0.0:
-    Loop:
-        movups  xmmword ptr [rsi + 4*rdx], xmm0
-        movups  xmmword ptr [rsi + 4*rdx + 16], xmm0
-        movups  xmmword ptr [rsi + 4*rdx + 32], xmm0
-        movups  xmmword ptr [rsi + 4*rdx + 48], xmm0
-        movups  xmmword ptr [rsi + 4*rdx + 64], xmm0
-        movups  xmmword ptr [rsi + 4*rdx + 80], xmm0
-        movups  xmmword ptr [rsi + 4*rdx + 96], xmm0
-        movups  xmmword ptr [rsi + 4*rdx + 112], xmm0
-        movups  xmmword ptr [rsi + 4*rdx + 128], xmm0
-        movups  xmmword ptr [rsi + 4*rdx + 144], xmm0
-        movups  xmmword ptr [rsi + 4*rdx + 160], xmm0
-        movups  xmmword ptr [rsi + 4*rdx + 176], xmm0
-        movups  xmmword ptr [rsi + 4*rdx + 192], xmm0
-        movups  xmmword ptr [rsi + 4*rdx + 208], xmm0
-        movups  xmmword ptr [rsi + 4*rdx + 224], xmm0
-        movups  xmmword ptr [rsi + 4*rdx + 240], xmm0
-        add     rdx, 64
-        add     rbp, 8
-        jne     Loop
-
-    In case of clang matrixIndexLoop was compiled to less efficient code (lower xmm usage by half).
-
-    In practice all methods seem to be equal in speed using msvc 19.16 compiler.
-*/
-
-template<typename T> void matrixDirectIndexing(T* data, int n, int m) {
-    // note that this method is not usable for FullMatrixView and FullMatrixConstView classes
-    int size = n * m;
-    for (int i = 0; i < size; ++i) {
-        data[i] = 10;
-    }
-}
-template<typename T> void matrixRangeBasedForLoop(FullMatrixView<T> matrix) {
-    for (auto& row : matrix) {
-        for (auto& value : row) {
-            value = 10;
+    std::cout << std::left;
+    std::cout << "=================================================================\n";
+    std::cout << "N               : " << N << '\n';
+    std::cout << "Recursive Steps : " << Steps << '\n';
+    std::cout << "-------------------------------\n";
+    if (!OnlyAvx) {
+        {
+            HeapMatrix<int> a(n, n);
+            HeapMatrix<int> b(n, n);
+            for (int i = 0; i < a.size(); ++i) {
+                a.data()[i] = i;
+                b.data()[i] = i * 2;
+            }
+            auto start = MyTime();
+            auto c = strassen(a, b, steps);
+            auto end = MyTime();
+            std::cout << "Dynamic High-level noAVX : " << std::setw(10) << end - start << "; data[14] = " << c.data()[14] << '\n';
+        }
+        {
+            HeapMatrix<int> a(n, n);
+            HeapMatrix<int> b(n, n);
+            for (int i = 0; i < a.size(); ++i) {
+                a.data()[i] = i;
+                b.data()[i] = i * 2;
+            }
+            auto start = MyTime();
+            auto c = lowLevelStrassen(a, b, steps);
+            auto end = MyTime();
+            std::cout << "Static  High-level noAVX : " << std::setw(10) << end - start << "; data[14] = " << c.data()[14] << '\n';
+        }
+        {
+            StaticHeapMatrix<int, N, N> a;
+            StaticHeapMatrix<int, N, N> b;
+            for (int i = 0; i < a.size(); ++i) {
+                a.data()[i] = i;
+                b.data()[i] = i * 2;
+            }
+            auto start = MyTime();
+            auto c = strassen<Steps>(a, b);
+            auto end = MyTime();
+            std::cout << "Dynamic Low-level  noAVX : " << std::setw(10) << end - start << "; data[14] = " << c.data()[14] << '\n';
+        }
+        {
+            StaticHeapMatrix<int, N, N> a;
+            StaticHeapMatrix<int, N, N> b;
+            for (int i = 0; i < a.size(); ++i) {
+                a.data()[i] = i;
+                b.data()[i] = i * 2;
+            }
+            auto start = MyTime();
+            auto c = lowLevelStrassen(a, b, Steps);
+            auto end = MyTime();
+            std::cout << "Static  Low-level  noAVX : " << std::setw(10) << end - start << "; data[14] = " << c.data()[14] << '\n';
         }
     }
-}
-template<typename T> void matrixIteratorLoop(T* data, int n, int m) {
-    for (auto iter = data, end = data + n * m; iter != end; iter += m) {
-        for (auto vIter = iter, vEnd = iter + m; vIter != vEnd; ++vIter) {
-            *vIter = 10;
+    {
+        HeapMatrix<int> a(n, n);
+        HeapMatrix<int> b(n, n);
+        for (int i = 0; i < a.size(); ++i) {
+            a.data()[i] = i;
+            b.data()[i] = i*2;
         }
+        auto start = MyTime();
+        auto c = strassenAvx(a, b, steps);
+        auto end = MyTime();
+        std::cout << "Dynamic High-level AVX   : " << std::setw(10) << end - start << "; data[14] = " << c.data()[14] << '\n';
     }
-}
-template<typename T> void matrixIndexLoop(T* data, int n, int m) {
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < m; ++j) {
-            data[j + i * n] = 10;
+    {
+        HeapMatrix<int> a(n, n);
+        HeapMatrix<int> b(n, n);
+        for (int i = 0; i < a.size(); ++i) {
+            a.data()[i] = i;
+            b.data()[i] = i * 2;
         }
+        auto start = MyTime();
+        auto c = lowLevelAvxStrassen(a, b, steps);
+        auto end = MyTime();
+        std::cout << "Static  High-level AVX   : " << std::setw(10) << end - start << "; data[14] = " << c.data()[14] << '\n';
     }
-}
-template<typename T> void matrixIndexIteratorHybridLoop(T* data, int n, int m) {
-    T* iter = data;
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < m; ++j) {
-            iter[j] = 10;
+    {
+        StaticHeapMatrix<int, N, N> a;
+        StaticHeapMatrix<int, N, N> b;
+        for (int i = 0; i < a.size(); ++i) {
+            a.data()[i] = i;
+            b.data()[i] = i * 2;
         }
-        iter += n;
+        auto start = MyTime();
+        auto c = strassenAvx<Steps>(a, b);
+        auto end = MyTime();
+        std::cout << "Dynamic Low-level  AVX   : " << std::setw(10) << end - start << "; data[14] = " << c.data()[14] << '\n';
     }
-}
-
-template<typename T> void matrixIterationMethodsTest() {
-    int n = 2000;
-    int m = 2000;
-    int times = 300;
-    FullMatrix<T> v(n, m);
-
-    auto matrixDirectIndexingTime = benchmark(times, matrixDirectIndexing<T>, v.data(), v.rowCount(), v.columnCount());
-    auto matrixRangeBasedForLoopTime = benchmark(times, matrixRangeBasedForLoop<T>, v);
-    auto matrixIteratorLoopTime = benchmark(times, matrixIteratorLoop<T>, v.data(), v.rowCount(), v.columnCount());
-    auto matrixIndexLoopTime = benchmark(times, matrixIndexLoop<T>, v.data(), v.rowCount(), v.columnCount());
-    auto matrixIndexIteratorHybridLoopTime = benchmark(times, matrixIndexIteratorHybridLoop<T>, v.data(), v.rowCount(), v.columnCount());
-
-    matrixDirectIndexingTime = benchmark(times, matrixDirectIndexing<T>, v.data(), v.rowCount(), v.columnCount());
-    matrixRangeBasedForLoopTime = benchmark(times, matrixRangeBasedForLoop<T>, v);
-    matrixIteratorLoopTime = benchmark(times, matrixIteratorLoop<T>, v.data(), v.rowCount(), v.columnCount());
-    matrixIndexLoopTime = benchmark(times, matrixIndexLoop<T>, v.data(), v.rowCount(), v.columnCount());
-    matrixIndexIteratorHybridLoopTime = benchmark(times, matrixIndexIteratorHybridLoop<T>, v.data(), v.rowCount(), v.columnCount());
-
-    std::cout << "matrixDirectIndexingTime          : " << matrixDirectIndexingTime << '\n';
-    std::cout << "matrixRangeBasedForLoopTime       : " << matrixRangeBasedForLoopTime << '\n';
-    std::cout << "matrixIteratorLoopTime            : " << matrixIteratorLoopTime << '\n';
-    std::cout << "matrixIndexLoopTime               : " << matrixIndexLoopTime << '\n';
-    std::cout << "matrixIndexIteratorHybridLoopTime : " << matrixIndexIteratorHybridLoopTime << '\n';
-}
-
-
-template<typename T> FullMatrix<T> matrixAddIndex(FullMatrixConstView<T> a, FullMatrixConstView<T> b) {
-    FullMatrix<T> result(a.rowCount(), a.columnCount());
-    for (int row = 0; row < result.rowCount(); ++row) {
-        for (int col = 0; col < result.columnCount(); ++col) {
-            result.at(row, col) = a.at(row, col) + b.at(row, col);
+    {
+        StaticHeapMatrix<int, N, N> a;
+        StaticHeapMatrix<int, N, N> b;
+        for (int i = 0; i < a.size(); ++i) {
+            a.data()[i] = i;
+            b.data()[i] = i * 2;
         }
+        auto start = MyTime();
+        auto c = lowLevelAvxStrassen(a, b, Steps);
+        auto end = MyTime();
+        std::cout << "Static  Low-level  AVX   : " << std::setw(10) << end - start << "; data[14] = " << c.data()[14] << '\n';
     }
-    return result;
-}
-template<typename T> FullMatrix<T> matrixAddZip(FullMatrixConstView<T> a, FullMatrixConstView<T> b) {
-    FullMatrix<T> result(a.rowCount(), a.columnCount());
-    for (auto[rowResult, rowA, rowB] : RangeZip(result, a, b)) {
-        for (auto[valueResult, valueA, valueB] : RangeZip(rowResult, rowA, rowB)) {
-            valueResult = valueA + valueB;
-        }
-    }
-    return result;
-}
-template<typename T> FullMatrix<T> matrixAddHybrid(FullMatrixConstView<T> a, FullMatrixConstView<T> b) {
-    FullMatrix<T> result(a.rowCount(), a.columnCount());
-    for (auto[rowResult, rowA, rowB] : RangeZip(result, a, b)) {
-        for (int i = 0; i < rowResult.size(); ++i) {
-            rowResult[i] = rowA[i] + rowB[i];
-        }
-    }
-    return result;
-}
-template<typename T> FullMatrix<T> matrixAddHybridRange(FullMatrixConstView<T> a, FullMatrixConstView<T> b) {
-    FullMatrix<T> result(a.rowCount(), a.columnCount());
-    for (auto[rowResult, rowA, rowB] : RangeZip(result, a, b)) {
-        for (auto i : indicies(rowResult)) {
-            rowResult[i] = rowA[i] + rowB[i];
-        }
-    }
-    return result;
-}
-template<typename T> void matrixAddIterationMethodsTest() {
-    int n = 1000;
-    int m = 1000;
-    int times = 100;
-    FullMatrix<T> a(n, m);
-    FullMatrix<T> b(n, m);
-
-    auto matrixIndexTime          = benchmark(times, matrixAddIndex<T>, a, b);
-    auto matrxRangeZipTime        = benchmark(times, matrixAddZip<T>, a, b);
-    auto matrixAddHybridTime      = benchmark(times, matrixAddHybrid<T>, a, b);
-    auto matrixAddHybridRangeTime = benchmark(times, matrixAddHybridRange<T>, a, b);
-
-    matrixIndexTime          = benchmark(times, matrixAddIndex<T>, a, b);
-    matrxRangeZipTime        = benchmark(times, matrixAddZip<T>, a, b);
-    matrixAddHybridTime      = benchmark(times, matrixAddHybrid<T>, a, b);
-    matrixAddHybridRangeTime = benchmark(times, matrixAddHybridRange<T>, a, b);
-
-    std::cout << "matrixIndexTime          : " << matrixIndexTime << '\n';
-    std::cout << "matrxRangeZipTime        : " << matrxRangeZipTime << '\n';
-    std::cout << "matrixAddHybridTime      : " << matrixAddHybridTime << '\n';
-    std::cout << "matrixAddHybridRangeTime : " << matrixAddHybridRangeTime << '\n';
+    std::cout << "=================================================================\n\n";
 }
 
 int main() {
-    strassenVsNaiveMulSpeedTest();
-    fast3x3VsNaiveMulSpeedTest();
-    matrixIterationMethodsTest<int>();
-    matrixAddIterationMethodsTest<int>();
+    std::array<int, 4> vec;
+    std::cout << "copy line below and click enter: \n";
+    std::cout << "480 992 1024 1920 2048 4096\n";
+    std::cin >> vec[0] >> vec[1] >> vec[2] >> vec[3] >> vec[4] >> vec[5];
+    strassenTest<480, 0>(vec[0], 0);
+    strassenTest<480, 1>(vec[0], 1);
+    strassenTest<480, 2>(vec[0], 2);
+    strassenTest<992, 0>(vec[1], 0);
+    strassenTest<992, 1>(vec[1], 1);
+    strassenTest<992, 2>(vec[1], 2);
+    strassenTest<992, 3>(vec[1], 3);
+    strassenTest<992, 4>(vec[1], 4);
+    strassenTest<992, 5>(vec[1], 5);
+    strassenTest<1024, 0>(vec[2], 0);
+    strassenTest<1024, 1>(vec[2], 1);
+    strassenTest<1024, 2>(vec[2], 2);
+    strassenTest<1920, 0>(vec[3], 0);
+    strassenTest<1920, 1>(vec[3], 1);
+    strassenTest<1920, 2>(vec[3], 2);
+    strassenTest<1920, 3>(vec[3], 3);
+    strassenTest<1920, 4>(vec[3], 4);
+    strassenTest<1920, 5>(vec[3], 5);
+    strassenTest<2048, 2>(vec[4], 2);
+    strassenTest<2048, 3>(vec[4], 3);
+    strassenTest<4096, 0, true>(vec[5], 0);
+    strassenTest<4096, 1, true>(vec[5], 1);
+    strassenTest<4096, 2, true>(vec[5], 2);
 
     std::cin.get();
     return 0;

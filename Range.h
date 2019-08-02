@@ -15,7 +15,7 @@ template<typename T> class Range {
         bool operator!=(const Iterator& other) {
             return value != other.value;
         }
-        int operator*() {
+        T operator*() {
             return value;
         }
 
