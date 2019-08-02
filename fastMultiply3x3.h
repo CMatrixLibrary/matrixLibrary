@@ -1,11 +1,11 @@
-#pragma once
+/*#pragma once
 #include <tuple>
 #include <array>
 #include "FullMatrix.h"
 #include "FullMatrixView.h"
 #include "naiveOperations.h"
 #include "operators.h"
-#include "matrixDivision.h"
+#include "matrixDivision.h"*/
 
 /*
     A noncommutative algorithm for multiplying 3 x 3 matrices using 23 multiplications
@@ -13,7 +13,7 @@
     http://www.ams.org/journals/bull/1976-82-01/S0002-9904-1976-13988-2/S0002-9904-1976-13988-2.pdf
 */
 
-namespace details {
+/*namespace details {
     template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB>
     FullMatrix<T> fastMul3x3Recursive(const MatrixA<T>& a, const MatrixB<T>& b, int steps) {
         if (steps <= 0) {
@@ -76,4 +76,4 @@ namespace details {
 template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB> 
 FullMatrix<T> fastMul3x3(const MatrixA<T>& a, const MatrixB<T>& b) {
     return details::fastMul<3, 3, 3>(a, b, 50, details::fastMul3x3Recursive<T, MatrixA, MatrixB>);
-}
+}*/

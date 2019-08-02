@@ -69,3 +69,8 @@ private:
     TupleType beginTuple;
     TupleType endTuple;
 };
+
+
+template<typename... Ts> RangeZip<Ts...> rangeZip(Ts&... values) {
+    return RangeZip(values...);
+}

@@ -1,5 +1,5 @@
 // this file was generated using fastMatrixMultiplyAlgorithms/generator
-#pragma once
+/*#pragma once
 #include <array>
 #include "../FullMatrix.h"
 #include "../FullMatrixView.h"
@@ -43,3 +43,4 @@ template<typename T, template<typename> typename MatrixA, template<typename> typ
 FullMatrix<T> genStrassen(const MatrixA<T>& A, const MatrixB<T>& B) {
     return details::fastMul<2, 2, 2>(A, B, 50, details::genStrassen<T, MatrixA, MatrixB>);
 }
+*/

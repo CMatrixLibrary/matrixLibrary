@@ -1,4 +1,4 @@
-#pragma once
+/*#pragma once
 #include <cstdint>
 #include <cmath>
 #include <array>
@@ -79,4 +79,4 @@ namespace details {
         double value = std::log(power) / std::log(number);
         return trunc(value) == value;
     }
-}
+}*/

@@ -43,4 +43,4 @@ do {\
 
 #endif
 
-#define debugAssertOp(value1, oper, value2, ...) debugAssert((value1) oper (value2), '(',value1,") ", #oper, " (",value2,')', __VA_ARGS__)
+#define debugAssertOp(value1, oper, value2, ...) debugAssert((value1) oper (value2), '(',value1,") ", #oper, " (",value2,')', "\ntype name  : ", typeid(*this).name(), __VA_ARGS__)
