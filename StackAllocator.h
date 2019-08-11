@@ -1,9 +1,8 @@
 #pragma once
-#include <cstdlib>
-#include <new>
+#include "alignedAllocation.h"
 
-class StackAllocator {
-    int* memory;
+template<typename T> class StackAllocator {
+    T* memory;
 
 public:
     static const int Allignment = 32;
@@ -11,21 +10,21 @@ public:
         return ((valueToAllign + Allignment - 1) / Allignment) * Allignment;
     }
 
-    StackAllocator(int size) {
-        memory = reinterpret_cast<int*>(operator new[](sizeof(int)*size, static_cast<std::align_val_t>(Allignment)));
+    StackAllocator(std::size_t size) {
+        memory = alignedArrayNew<T>(size, Allignment);
     }
     ~StackAllocator() {
-        operator delete[](memory, static_cast<std::align_val_t>(Allignment));
+        alignedArrayDelete(memory);
     }
     StackAllocator(const StackAllocator&) = delete;
     StackAllocator& operator=(const StackAllocator&) = delete;
 
-    int* alloc(int size) {
-        int* oldMemory = memory;
+    T* alloc(int size) {
+        T* oldMemory = memory;
         memory += Allign(size);
         return oldMemory;
     }
-    void dealloc(int* ptr) {
+    void dealloc(T* ptr) {
         memory = ptr;
     }
 };
