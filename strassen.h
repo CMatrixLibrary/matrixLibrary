@@ -431,10 +431,10 @@ auto strassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int st
     return c;
 }
 
-template<int Steps, typename M1, typename M2> auto strassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, std::false_type) {
+template<int Steps, typename M1, typename M2> auto strassenImpl(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, std::false_type) {
     return a * b;
 }
-template<int Steps, typename M1, typename M2> auto strassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, std::true_type unused = std::true_type()) {
+template<int Steps, typename M1, typename M2> auto strassenImpl(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, std::true_type unused = std::true_type()) {
     if (Steps <= 0) {
         return a * b;
     }
@@ -442,13 +442,13 @@ template<int Steps, typename M1, typename M2> auto strassen(const MatrixInterfac
     auto dA = matrixDivide<2, 2>(a);
     auto dB = matrixDivide<2, 2>(b);
 
-    auto m1 = strassen<Steps - 1>(dA[0][0] + dA[1][1], dB[0][0] + dB[1][1], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
-    auto m2 = strassen<Steps - 1>(dA[1][0] + dA[1][1], dB[0][0], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
-    auto m3 = strassen<Steps - 1>(dA[0][0], dB[0][1] - dB[1][1], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
-    auto m4 = strassen<Steps - 1>(dA[1][1], dB[1][0] - dB[0][0], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
-    auto m5 = strassen<Steps - 1>(dA[0][0] + dA[0][1], dB[1][1], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
-    auto m6 = strassen<Steps - 1>(dA[1][0] - dA[0][0], dB[0][0] + dB[0][1], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
-    auto m7 = strassen<Steps - 1>(dA[0][1] - dA[1][1], dB[1][0] + dB[1][1], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
+    auto m1 = strassenImpl<Steps - 1>(dA[0][0] + dA[1][1], dB[0][0] + dB[1][1], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
+    auto m2 = strassenImpl<Steps - 1>(dA[1][0] + dA[1][1], dB[0][0], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
+    auto m3 = strassenImpl<Steps - 1>(dA[0][0], dB[0][1] - dB[1][1], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
+    auto m4 = strassenImpl<Steps - 1>(dA[1][1], dB[1][0] - dB[0][0], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
+    auto m5 = strassenImpl<Steps - 1>(dA[0][0] + dA[0][1], dB[1][1], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
+    auto m6 = strassenImpl<Steps - 1>(dA[1][0] - dA[0][0], dB[0][0] + dB[0][1], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
+    auto m7 = strassenImpl<Steps - 1>(dA[0][1] - dA[1][1], dB[1][0] + dB[1][1], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
 
     Matrix<typename M1::ValueType, M1::CRow(), M2::CCol()> c;
     auto dC = matrixDivideView<2, 2>(c);
@@ -458,6 +458,9 @@ template<int Steps, typename M1, typename M2> auto strassen(const MatrixInterfac
     dC[1][1].copy(m1 + m3 - m2 + m6);
 
     return c;
+}
+template<int Steps, typename M1, typename M2> auto strassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
+    return strassenImpl<Steps>(a, b);
 }
 
 template<typename M1, typename M2> 
@@ -489,12 +492,12 @@ auto strassenAvx(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int
     return c;
 }
 
-template<int Steps, typename M1, typename M2> auto strassenAvx(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, std::false_type) {
+template<int Steps, typename M1, typename M2> auto strassenAvxImpl(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, std::false_type) {
     Matrix<typename M1::ValueType, M1::CRow(), M2::CCol()> result;
     avxMul7<M1::CRow(), M1::CCol(), M2::CCol()>(result.data(), a.data(), b.data());
     return result;
 }
-template<int Steps, typename M1, typename M2> auto strassenAvx(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, std::true_type unused = std::true_type()) {
+template<int Steps, typename M1, typename M2> auto strassenAvxImpl(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, std::true_type unused = std::true_type()) {
     if (Steps <= 0) {
         Matrix<typename M1::ValueType, M1::CRow(), M2::CCol()> result;
         avxMul7<M1::CRow(), M1::CCol(), M2::CCol()>(result.data(), a.data(), b.data());
@@ -504,13 +507,13 @@ template<int Steps, typename M1, typename M2> auto strassenAvx(const MatrixInter
     auto dA = matrixDivide<2, 2>(a);
     auto dB = matrixDivide<2, 2>(b);
 
-    auto m1 = strassenAvx<Steps - 1>(dA[0][0] + dA[1][1], dB[0][0] + dB[1][1], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
-    auto m2 = strassenAvx<Steps - 1>(dA[1][0] + dA[1][1], dB[0][0], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
-    auto m3 = strassenAvx<Steps - 1>(dA[0][0], dB[0][1] - dB[1][1], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
-    auto m4 = strassenAvx<Steps - 1>(dA[1][1], dB[1][0] - dB[0][0], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
-    auto m5 = strassenAvx<Steps - 1>(dA[0][0] + dA[0][1], dB[1][1], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
-    auto m6 = strassenAvx<Steps - 1>(dA[1][0] - dA[0][0], dB[0][0] + dB[0][1], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
-    auto m7 = strassenAvx<Steps - 1>(dA[0][1] - dA[1][1], dB[1][0] + dB[1][1], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
+    auto m1 = strassenAvxImpl<Steps - 1>(dA[0][0] + dA[1][1], dB[0][0] + dB[1][1], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
+    auto m2 = strassenAvxImpl<Steps - 1>(dA[1][0] + dA[1][1], dB[0][0], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
+    auto m3 = strassenAvxImpl<Steps - 1>(dA[0][0], dB[0][1] - dB[1][1], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
+    auto m4 = strassenAvxImpl<Steps - 1>(dA[1][1], dB[1][0] - dB[0][0], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
+    auto m5 = strassenAvxImpl<Steps - 1>(dA[0][0] + dA[0][1], dB[1][1], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
+    auto m6 = strassenAvxImpl<Steps - 1>(dA[1][0] - dA[0][0], dB[0][0] + dB[0][1], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
+    auto m7 = strassenAvxImpl<Steps - 1>(dA[0][1] - dA[1][1], dB[1][0] + dB[1][1], typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
 
     Matrix<typename M1::ValueType, M1::CRow(), M2::CCol()> c;
     auto dC = matrixDivideView<2, 2>(c);
@@ -521,7 +524,9 @@ template<int Steps, typename M1, typename M2> auto strassenAvx(const MatrixInter
 
     return c;
 }
-
+template<int Steps, typename M1, typename M2> auto strassenAvx(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
+    return strassenAvxImpl<Steps>(a, b);
+}
 
 template<typename T> void copy(T* dst, T* src, int n, int m, int effDst, int effSrc) {
     for (int i = 0; i < n; ++i) {
