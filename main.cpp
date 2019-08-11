@@ -12,7 +12,7 @@
 #include "benchmark.h"
 #include "strassen.h"
 
-template<int N, int Steps, bool OnlyAvx=false> void strassenTest(int n, int steps) {
+template<typename T, int N, int Steps, bool OnlyAvx=false> void strassenTest(int n, int steps) {
     if (n != N || steps != Steps) {
         std::cout << "incorrect stdin\n";
         return;
@@ -24,8 +24,8 @@ template<int N, int Steps, bool OnlyAvx=false> void strassenTest(int n, int step
     std::cout << "-------------------------------\n";
     if (!OnlyAvx) {
         {
-            HeapMatrix<int> a(n, n);
-            HeapMatrix<int> b(n, n);
+            HeapMatrix<T> a(n, n);
+            HeapMatrix<T> b(n, n);
             for (int i = 0; i < a.size(); ++i) {
                 a.data()[i] = i;
                 b.data()[i] = i * 2;
@@ -36,8 +36,8 @@ template<int N, int Steps, bool OnlyAvx=false> void strassenTest(int n, int step
             std::cout << "Dynamic High-level noAVX : " << std::setw(10) << end - start << "; data[14] = " << c.data()[14] << '\n';
         }
         {
-            HeapMatrix<int> a(n, n);
-            HeapMatrix<int> b(n, n);
+            HeapMatrix<T> a(n, n);
+            HeapMatrix<T> b(n, n);
             for (int i = 0; i < a.size(); ++i) {
                 a.data()[i] = i;
                 b.data()[i] = i * 2;
@@ -48,8 +48,8 @@ template<int N, int Steps, bool OnlyAvx=false> void strassenTest(int n, int step
             std::cout << "Static  High-level noAVX : " << std::setw(10) << end - start << "; data[14] = " << c.data()[14] << '\n';
         }
         {
-            StaticHeapMatrix<int, N, N> a;
-            StaticHeapMatrix<int, N, N> b;
+            StaticHeapMatrix<T, N, N> a;
+            StaticHeapMatrix<T, N, N> b;
             for (int i = 0; i < a.size(); ++i) {
                 a.data()[i] = i;
                 b.data()[i] = i * 2;
@@ -60,8 +60,8 @@ template<int N, int Steps, bool OnlyAvx=false> void strassenTest(int n, int step
             std::cout << "Dynamic Low-level  noAVX : " << std::setw(10) << end - start << "; data[14] = " << c.data()[14] << '\n';
         }
         {
-            StaticHeapMatrix<int, N, N> a;
-            StaticHeapMatrix<int, N, N> b;
+            StaticHeapMatrix<T, N, N> a;
+            StaticHeapMatrix<T, N, N> b;
             for (int i = 0; i < a.size(); ++i) {
                 a.data()[i] = i;
                 b.data()[i] = i * 2;
@@ -73,8 +73,8 @@ template<int N, int Steps, bool OnlyAvx=false> void strassenTest(int n, int step
         }
     }
     {
-        HeapMatrix<int> a(n, n);
-        HeapMatrix<int> b(n, n);
+        HeapMatrix<T> a(n, n);
+        HeapMatrix<T> b(n, n);
         for (int i = 0; i < a.size(); ++i) {
             a.data()[i] = i;
             b.data()[i] = i*2;
@@ -85,8 +85,8 @@ template<int N, int Steps, bool OnlyAvx=false> void strassenTest(int n, int step
         std::cout << "Dynamic High-level AVX   : " << std::setw(10) << end - start << "; data[14] = " << c.data()[14] << '\n';
     }
     {
-        HeapMatrix<int> a(n, n);
-        HeapMatrix<int> b(n, n);
+        HeapMatrix<T> a(n, n);
+        HeapMatrix<T> b(n, n);
         for (int i = 0; i < a.size(); ++i) {
             a.data()[i] = i;
             b.data()[i] = i * 2;
@@ -97,8 +97,8 @@ template<int N, int Steps, bool OnlyAvx=false> void strassenTest(int n, int step
         std::cout << "Static  High-level AVX   : " << std::setw(10) << end - start << "; data[14] = " << c.data()[14] << '\n';
     }
     {
-        StaticHeapMatrix<int, N, N> a;
-        StaticHeapMatrix<int, N, N> b;
+        StaticHeapMatrix<T, N, N> a;
+        StaticHeapMatrix<T, N, N> b;
         for (int i = 0; i < a.size(); ++i) {
             a.data()[i] = i;
             b.data()[i] = i * 2;
@@ -109,8 +109,8 @@ template<int N, int Steps, bool OnlyAvx=false> void strassenTest(int n, int step
         std::cout << "Dynamic Low-level  AVX   : " << std::setw(10) << end - start << "; data[14] = " << c.data()[14] << '\n';
     }
     {
-        StaticHeapMatrix<int, N, N> a;
-        StaticHeapMatrix<int, N, N> b;
+        StaticHeapMatrix<T, N, N> a;
+        StaticHeapMatrix<T, N, N> b;
         for (int i = 0; i < a.size(); ++i) {
             a.data()[i] = i;
             b.data()[i] = i * 2;
@@ -123,35 +123,38 @@ template<int N, int Steps, bool OnlyAvx=false> void strassenTest(int n, int step
     std::cout << "=================================================================\n\n";
 }
 
-int main() {
-    std::array<int, 4> vec;
+template<typename T> void strassenTestForType() {
+    std::array<int, 6> vec;
     std::cout << "copy line below and click enter: \n";
-    std::cout << "480 992 1024 1920 2048 4096\n";
+    std::cout << "480 992 1024 1920 2048 3840\n";
     std::cin >> vec[0] >> vec[1] >> vec[2] >> vec[3] >> vec[4] >> vec[5];
-    strassenTest<480, 0>(vec[0], 0);
-    strassenTest<480, 1>(vec[0], 1);
-    strassenTest<480, 2>(vec[0], 2);
-    strassenTest<992, 0>(vec[1], 0);
-    strassenTest<992, 1>(vec[1], 1);
-    strassenTest<992, 2>(vec[1], 2);
-    strassenTest<992, 3>(vec[1], 3);
-    strassenTest<992, 4>(vec[1], 4);
-    strassenTest<992, 5>(vec[1], 5);
-    strassenTest<1024, 0>(vec[2], 0);
-    strassenTest<1024, 1>(vec[2], 1);
-    strassenTest<1024, 2>(vec[2], 2);
-    strassenTest<1920, 0>(vec[3], 0);
-    strassenTest<1920, 1>(vec[3], 1);
-    strassenTest<1920, 2>(vec[3], 2);
-    strassenTest<1920, 3>(vec[3], 3);
-    strassenTest<1920, 4>(vec[3], 4);
-    strassenTest<1920, 5>(vec[3], 5);
-    strassenTest<2048, 2>(vec[4], 2);
-    strassenTest<2048, 3>(vec[4], 3);
-    strassenTest<4096, 0, true>(vec[5], 0);
-    strassenTest<4096, 1, true>(vec[5], 1);
-    strassenTest<4096, 2, true>(vec[5], 2);
+    strassenTest<T, 480, 0>(vec[0], 0);
+    strassenTest<T, 480, 1>(vec[0], 1);
+    strassenTest<T, 480, 2>(vec[0], 2);
+    strassenTest<T, 992, 0>(vec[1], 0);
+    strassenTest<T, 992, 1>(vec[1], 1);
+    strassenTest<T, 992, 2>(vec[1], 2);
+    strassenTest<T, 992, 3>(vec[1], 3);
+    strassenTest<T, 992, 4>(vec[1], 4);
+    strassenTest<T, 992, 5>(vec[1], 5);
+    strassenTest<T, 1024, 0>(vec[2], 0);
+    strassenTest<T, 1024, 1>(vec[2], 1);
+    strassenTest<T, 1024, 2>(vec[2], 2);
+    strassenTest<T, 1920, 0>(vec[3], 0);
+    strassenTest<T, 1920, 1>(vec[3], 1);
+    strassenTest<T, 1920, 2>(vec[3], 2);
+    strassenTest<T, 1920, 3>(vec[3], 3);
+    strassenTest<T, 1920, 4>(vec[3], 4);
+    strassenTest<T, 1920, 5>(vec[3], 5);
+    strassenTest<T, 2048, 2>(vec[4], 2);
+    strassenTest<T, 2048, 3>(vec[4], 3);
+    strassenTest<T, 3840, 0, true>(vec[5], 0);
+    strassenTest<T, 3840, 1, true>(vec[5], 1);
+    strassenTest<T, 3840, 2, true>(vec[5], 2);
+}
 
+int main() {
+    strassenTestForType<float>();
     std::cin.get();
     return 0;
 }

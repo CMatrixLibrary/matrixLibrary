@@ -195,7 +195,7 @@ void avxMul6(int* result, const int* a, const int* b, int n, int m, int q) {
         }
     }
 }
-void avxMul7(int* result, const int* a, const int* b, int n, int m, int q) {
+template<typename T> void avxMul7(T* result, const T* a, const T* b, int n, int m, int q) {
     for (int i = 0; i < n*q; ++i) {
         result[i] = 0;
     }
@@ -213,29 +213,29 @@ void avxMul7(int* result, const int* a, const int* b, int n, int m, int q) {
                 int i = ii;
                 for (; i <= lastib - 2; i += 2) {
                     int j = jj;
-                    int jEnd = lastjb - 16;
-                    for (; j <= jEnd; j += 16) {
+                    int jEnd = lastjb - 2*AVX256::packedCount<T>();
+                    for (; j <= jEnd; j += 2 * AVX256::packedCount<T>()) {
                         auto sum1i1 = AVX256::loadUnaligned(&result[j + i * q]);
-                        auto sum1i2 = AVX256::loadUnaligned(&result[8 + j + i * q]);
+                        auto sum1i2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + i * q]);
                         auto sum2i1 = AVX256::loadUnaligned(&result[j + (i + 1) * q]);
-                        auto sum2i2 = AVX256::loadUnaligned(&result[8 + j + (i + 1) * q]);
+                        auto sum2i2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + (i + 1) * q]);
                         for (int k = kk; k < lastKb; ++k) {
                             auto aValue1 = AVX256::setAllElements(a[k + i * m]);
                             auto bVectr1 = AVX256::loadUnaligned(&b[j + k * q]);
-                            sum1i1 += aValue1 * bVectr1;
-                            auto bVectr2 = AVX256::loadUnaligned(&b[8 + j + k * q]);
-                            sum1i2 += aValue1 * bVectr2;
+                            sum1i1 = AVX256::fma(aValue1, bVectr1, sum1i1);
+                            auto bVectr2 = AVX256::loadUnaligned(&b[AVX256::packedCount<T>() + j + k * q]);
+                            sum1i2 = AVX256::fma(aValue1, bVectr2, sum1i2);
                             auto aValue2 = AVX256::setAllElements(a[k + (i + 1) * m]);
-                            sum2i1 += aValue2 * bVectr1;
-                            sum2i2 += aValue2 * bVectr2;
+                            sum2i1 = AVX256::fma(aValue2, bVectr1, sum2i1);
+                            sum2i2 = AVX256::fma(aValue2, bVectr2, sum2i2);
                         }
                         AVX256::storeUnaligned(&result[j + i * q], sum1i1);
-                        AVX256::storeUnaligned(&result[8 + j + i * q], sum1i2);
+                        AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + i * q], sum1i2);
                         AVX256::storeUnaligned(&result[j + (i + 1) * q], sum1i1);
-                        AVX256::storeUnaligned(&result[8 + j + (i + 1) * q], sum1i2);
+                        AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + (i + 1) * q], sum1i2);
                     }
                     for (; j < lastjb; ++j) {
-                        int sum = 0;
+                        T sum = 0;
                         for (int k = 0; k < m; ++k) {
                             sum += a[k + i * m] * b[j + k * q];
                         }
@@ -244,22 +244,22 @@ void avxMul7(int* result, const int* a, const int* b, int n, int m, int q) {
                 }
                 if (i < lastib) {
                     int j = jj;
-                    int jEnd = lastjb - 16;
-                    for (; j <= jEnd; j += 16) {
+                    int jEnd = lastjb - 2 * AVX256::packedCount<T>();
+                    for (; j <= jEnd; j += 2 * AVX256::packedCount<T>()) {
                         auto sum1 = AVX256::loadUnaligned(&result[j + i * q]);
-                        auto sum2 = AVX256::loadUnaligned(&result[8 + j + i * q]);
+                        auto sum2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + i * q]);
                         for (int k = kk; k < lastKb; ++k) {
                             auto aValue = AVX256::setAllElements(a[k + i * m]);
                             auto bVectr1 = AVX256::loadUnaligned(&b[j + k * q]);
-                            sum1 += aValue * bVectr1;
-                            auto bVectr2 = AVX256::loadUnaligned(&b[8 + j + k * q]);
-                            sum2 += aValue * bVectr2;
+                            sum1 = AVX256::fma(aValue, bVectr1, sum1);
+                            auto bVectr2 = AVX256::loadUnaligned(&b[AVX256::packedCount<T>() + j + k * q]);
+                            sum2 = AVX256::fma(aValue, bVectr2, sum2);
                         }
                         AVX256::storeUnaligned(&result[j + i * q], sum1);
-                        AVX256::storeUnaligned(&result[8 + j + i * q], sum2);
+                        AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + i * q], sum2);
                     }
                     for (; j < lastjb; ++j) {
-                        int sum = 0;
+                        T sum = 0;
                         for (int k = 0; k < m; ++k) {
                             sum += a[k + i * m] * b[j + k * q];
                         }
@@ -270,7 +270,7 @@ void avxMul7(int* result, const int* a, const int* b, int n, int m, int q) {
         }
     }
 }
-void avxMul8(int* result, const int* a, const int* b, int n) {
+template<typename T> void avxMul8(T* result, const T* a, const T* b, int n) {
     for (int i = 0; i < n*n; ++i) {
         result[i] = 0;
     }
@@ -279,17 +279,17 @@ void avxMul8(int* result, const int* a, const int* b, int n) {
     int jb = std::min(512, n);
     int kb = std::min(16, n);
 
-    int* mat2 = AVX256::AlignedArrayAlloc<int>(n*n);
+    T* mat2 = AVX256::alignedArrayAlloc<T>(n*n);
     int m2idx = 0;
     for (int jj = 0; jj < n; jj += jb) {
         for (int kk = 0; kk < n; kk += kb) {
-            for (int j = jj; j < jj + jb; j += 16) {
+            for (int j = jj; j < jj + jb; j += 2 * AVX256::packedCount<T>()) {
                 for (int k = kk; k < kk + kb; k++) {
                     auto vecA_mat2 = AVX256::loadUnaligned(&b[j + k * n]);
-                    auto vecB_mat2 = AVX256::loadUnaligned(&b[8 + j + k * n]);
+                    auto vecB_mat2 = AVX256::loadUnaligned(&b[AVX256::packedCount<T>() + j + k * n]);
                     AVX256::storeUnaligned(&mat2[m2idx], vecA_mat2);
-                    AVX256::storeUnaligned(&mat2[m2idx + 8], vecB_mat2);
-                    m2idx += 16;
+                    AVX256::storeUnaligned(&mat2[m2idx + AVX256::packedCount<T>()], vecB_mat2);
+                    m2idx += 2 * AVX256::packedCount<T>();
                 }
             }
         }
@@ -299,35 +299,35 @@ void avxMul8(int* result, const int* a, const int* b, int n) {
         for (int jj = 0; jj < n; jj += jb) {
             for (int kk = 0; kk < n; kk += kb) {
                 for (int i = ii; i < ii + ib; i += 2) {
-                    for (int j = jj; j < jj + jb; j += 16) {
+                    for (int j = jj; j < jj + jb; j += 2 * AVX256::packedCount<T>()) {
                         int m2idx = (j - jj) * kb + kk * jb + jj * n;
                         auto sumA_1 = AVX256::loadUnaligned(&result[i*n + j]);
-                        auto sumB_1 = AVX256::loadUnaligned(&result[i*n + j + 8]);
+                        auto sumB_1 = AVX256::loadUnaligned(&result[i*n + j + AVX256::packedCount<T>()]);
                         auto sumA_2 = AVX256::loadUnaligned(&result[(i + 1)*n + j]);
-                        auto sumB_2 = AVX256::loadUnaligned(&result[(i + 1)*n + j + 8]);
+                        auto sumB_2 = AVX256::loadUnaligned(&result[(i + 1)*n + j + AVX256::packedCount<T>()]);
                         for (int k = kk; k < kk + kb; k++) {
                             auto bc_mat1_1 = AVX256::setAllElements(a[i*n + k]);
                             auto vecA_mat2 = AVX256::loadUnaligned(&mat2[m2idx]);
-                            auto vecB_mat2 = AVX256::loadUnaligned(&mat2[m2idx + 8]);
+                            auto vecB_mat2 = AVX256::loadUnaligned(&mat2[m2idx + AVX256::packedCount<T>()]);
                             sumA_1 += bc_mat1_1 * vecA_mat2;
                             sumB_1 += bc_mat1_1 * vecB_mat2;
                             auto bc_mat1_2 = AVX256::setAllElements(a[(i+1)*n + k]);
                             sumA_2 += bc_mat1_2 * vecA_mat2;
                             sumB_2 += bc_mat1_2 * vecB_mat2;
-                            m2idx += 16;
+                            m2idx += 2 * AVX256::packedCount<T>();
                         }
                         AVX256::storeUnaligned(&result[i*n + j], sumA_1);
-                        AVX256::storeUnaligned(&result[i*n + j + 8], sumB_1);
+                        AVX256::storeUnaligned(&result[i*n + j + AVX256::packedCount<T>()], sumB_1);
                         AVX256::storeUnaligned(&result[(i + 1)*n + j], sumA_2);
-                        AVX256::storeUnaligned(&result[(i + 1) * n + j + 8], sumB_2);
+                        AVX256::storeUnaligned(&result[(i + 1) * n + j + AVX256::packedCount<T>()], sumB_2);
                     }
                 }
             }
         }
     }
-    AVX256::AlignedArrayDealloc(mat2);
+    AVX256::alignedArrayDealloc(mat2);
 }
-template<int n, int m, int q> void avxMul7(int* result, const int* a, const int* b) {
+template<int n, int m, int q, typename T> void avxMul7(T* result, const T* a, const T* b) {
     for (int i = 0; i < n*q; ++i) {
         result[i] = 0;
     }
@@ -345,29 +345,29 @@ template<int n, int m, int q> void avxMul7(int* result, const int* a, const int*
                 int i = ii;
                 for (; i <= lastib - 2; i += 2) {
                     int j = jj;
-                    int jEnd = lastjb - 16;
-                    for (; j <= jEnd; j += 16) {
+                    int jEnd = lastjb - 2*AVX256::packedCount<T>();
+                    for (; j <= jEnd; j += 2 * AVX256::packedCount<T>()) {
                         auto sum1i1 = AVX256::loadUnaligned(&result[j + i * q]);
-                        auto sum1i2 = AVX256::loadUnaligned(&result[8 + j + i * q]);
+                        auto sum1i2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + i * q]);
                         auto sum2i1 = AVX256::loadUnaligned(&result[j + (i + 1) * q]);
-                        auto sum2i2 = AVX256::loadUnaligned(&result[8 + j + (i + 1) * q]);
+                        auto sum2i2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + (i + 1) * q]);
                         for (int k = kk; k < lastKb; ++k) {
                             auto aValue1 = AVX256::setAllElements(a[k + i * m]);
                             auto bVectr1 = AVX256::loadUnaligned(&b[j + k * q]);
-                            sum1i1 += aValue1 * bVectr1;
-                            auto bVectr2 = AVX256::loadUnaligned(&b[8 + j + k * q]);
-                            sum1i2 += aValue1 * bVectr2;
+                            sum1i1 = AVX256::fma(aValue1, bVectr1, sum1i1);
+                            auto bVectr2 = AVX256::loadUnaligned(&b[AVX256::packedCount<T>() + j + k * q]);
+                            sum1i2 = AVX256::fma(aValue1, bVectr2, sum1i2);
                             auto aValue2 = AVX256::setAllElements(a[k + (i + 1) * m]);
-                            sum2i1 += aValue2 * bVectr1;
-                            sum2i2 += aValue2 * bVectr2;
+                            sum2i1 = AVX256::fma(aValue2, bVectr1, sum2i1);
+                            sum2i2 = AVX256::fma(aValue2, bVectr2, sum2i2);
                         }
                         AVX256::storeUnaligned(&result[j + i * q], sum1i1);
-                        AVX256::storeUnaligned(&result[8 + j + i * q], sum1i2);
+                        AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + i * q], sum1i2);
                         AVX256::storeUnaligned(&result[j + (i + 1) * q], sum1i1);
-                        AVX256::storeUnaligned(&result[8 + j + (i + 1) * q], sum1i2);
+                        AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + (i + 1) * q], sum1i2);
                     }
                     for (; j < lastjb; ++j) {
-                        int sum = 0;
+                        T sum = 0;
                         for (int k = 0; k < m; ++k) {
                             sum += a[k + i * m] * b[j + k * q];
                         }
@@ -376,22 +376,22 @@ template<int n, int m, int q> void avxMul7(int* result, const int* a, const int*
                 }
                 if (i < lastib) {
                     int j = jj;
-                    int jEnd = lastjb - 16;
-                    for (; j <= jEnd; j += 16) {
+                    int jEnd = lastjb - 2 * AVX256::packedCount<T>();
+                    for (; j <= jEnd; j += 2 * AVX256::packedCount<T>()) {
                         auto sum1 = AVX256::loadUnaligned(&result[j + i * q]);
-                        auto sum2 = AVX256::loadUnaligned(&result[8 + j + i * q]);
+                        auto sum2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + i * q]);
                         for (int k = kk; k < lastKb; ++k) {
                             auto aValue = AVX256::setAllElements(a[k + i * m]);
                             auto bVectr1 = AVX256::loadUnaligned(&b[j + k * q]);
-                            sum1 += aValue * bVectr1;
-                            auto bVectr2 = AVX256::loadUnaligned(&b[8 + j + k * q]);
-                            sum2 += aValue * bVectr2;
+                            sum1 = AVX256::fma(aValue, bVectr1, sum1);
+                            auto bVectr2 = AVX256::loadUnaligned(&b[AVX256::packedCount<T>() + j + k * q]);
+                            sum2 = AVX256::fma(aValue, bVectr2, sum2);
                         }
                         AVX256::storeUnaligned(&result[j + i * q], sum1);
-                        AVX256::storeUnaligned(&result[8 + j + i * q], sum2);
+                        AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + i * q], sum2);
                     }
                     for (; j < lastjb; ++j) {
-                        int sum = 0;
+                        T sum = 0;
                         for (int k = 0; k < m; ++k) {
                             sum += a[k + i * m] * b[j + k * q];
                         }
@@ -402,6 +402,7 @@ template<int n, int m, int q> void avxMul7(int* result, const int* a, const int*
         }
     }
 }
+
 
 template<typename M1, typename M2> 
 auto strassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
@@ -522,16 +523,16 @@ template<int Steps, typename M1, typename M2> auto strassenAvx(const MatrixInter
 }
 
 
-void copy(int* dst, int* src, int n, int m, int effDst, int effSrc) {
+template<typename T> void copy(T* dst, T* src, int n, int m, int effDst, int effSrc) {
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < m; ++j) {
             dst[j + i * effDst] = src[j + i * effSrc];
         }
     }
 }
-template<int Rows, int Columns>
-std::array<std::array<int*, Columns>, Rows> lowLevelStrassenDivide(int* a, int n, int m, StackAllocator& allocator) {
-    std::array<std::array<int*, Columns>, Rows> result;
+template<int Rows, int Columns, typename T>
+std::array<std::array<T*, Columns>, Rows> lowLevelStrassenDivide(T* a, int n, int m, StackAllocator<T>& allocator) {
+    std::array<std::array<T*, Columns>, Rows> result;
     auto rowSize = n / Rows;
     auto columnSize = m / Columns;
     for (int y = 0; y < Rows; ++y) {
@@ -542,9 +543,9 @@ std::array<std::array<int*, Columns>, Rows> lowLevelStrassenDivide(int* a, int n
     }
     return result;
 }
-template<int Rows, int Columns>
-std::array<std::array<int*, Columns>, Rows> lowLevelStrassenDivideView(int* a, int n, int m) {
-    std::array<std::array<int*, Columns>, Rows> result;
+template<int Rows, int Columns, typename T>
+std::array<std::array<T*, Columns>, Rows> lowLevelStrassenDivideView(T* a, int n, int m) {
+    std::array<std::array<T*, Columns>, Rows> result;
     auto rowSize = n / Rows;
     auto columnSize = m / Columns;
     for (int y = 0; y < Rows; ++y) {
@@ -554,47 +555,103 @@ std::array<std::array<int*, Columns>, Rows> lowLevelStrassenDivideView(int* a, i
     }
     return result;
 }
-int* lowLevelStrassenAdd(const int* a, const int* b, int n, int m, StackAllocator& allocator) {
-    int* result = allocator.alloc(n*m);
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < m; ++j) {
-            result[j + i * m] = a[j + i * m] + b[j + i * m];
-        }
+template<typename T>
+T* lowLevelStrassenAdd(const T* a, const T* b, int n, int m, StackAllocator<T>& allocator) {
+    T* result = allocator.alloc(n*m);
+    for (int i = 0; i < n*m; ++i) {
+        result[i] = a[i] + b[i];
     }
     return result;
 }
-int* lowLevelStrassenSub(const int* a, const int* b, int n, int m, StackAllocator& allocator) {
-    int* result = allocator.alloc(n*m);
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < m; ++j) {
-            result[j + i * m] = a[j + i * m] - b[j + i * m];
-        }
+template<typename T> 
+T* lowLevelStrassenSub(const T* a, const T* b, int n, int m, StackAllocator<T>& allocator) {
+    T* result = allocator.alloc(n*m);
+    for (int i = 0; i < n*m; ++i) {
+        result[i] = a[i] - b[i];
     }
     return result;
 }
-template<int n, int m> int* lowLevelStrassenAdd(const int* a, const int* b, StackAllocator& allocator) {
-    int* result = allocator.alloc(n*m);
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < m; ++j) {
-            result[j + i * m] = a[j + i * m] + b[j + i * m];
-        }
+template<int n, int m, typename T> T* lowLevelStrassenAdd(const T* a, const T* b, StackAllocator<T>& allocator) {
+    T* result = allocator.alloc(n*m);
+    for (int i = 0; i < n*m; ++i) {
+        result[i] = a[i] + b[i];
     }
     return result;
 }
-template<int n, int m> int* lowLevelStrassenSub(const int* a, const int* b, StackAllocator& allocator) {
-    int* result = allocator.alloc(n*m);
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < m; ++j) {
-            result[j + i * m] = a[j + i * m] - b[j + i * m];
-        }
+template<int n, int m, typename T> T* lowLevelStrassenSub(const T* a, const T* b, StackAllocator<T>& allocator) {
+    T* result = allocator.alloc(n*m);
+    for (int i = 0; i < n*m; ++i) {
+        result[i] = a[i] - b[i];
     }
     return result;
 }
-
-void bestStrassenMul(int* result, const int* a, const int* b, int n, int m, int q) {
+template<typename T>
+T* lowLevelStrassenAddAvx(const T* a, const T* b, int n, int m, StackAllocator<T>& allocator) {
+    T* result = allocator.alloc(n*m);
+    constexpr int packedCount = AVX256::packedCount<T>();
+    int i = 0;
+    int end = n * m - packedCount;
+    for (; i <= end; i += packedCount) {
+        auto aVector1 = AVX256::loadUnaligned(&a[i]);
+        auto bVector1 = AVX256::loadUnaligned(&b[i]);
+        AVX256::storeUnaligned(&result[i], aVector1 + bVector1);
+    }
+    for (; i < n*m; ++i) {
+        result[i] = a[i] + b[i];
+    }
+    return result;
+}
+template<typename T> 
+T* lowLevelStrassenSubAvx(const T* a, const T* b, int n, int m, StackAllocator<T>& allocator) {
+    T* result = allocator.alloc(n*m);
+    constexpr int packedCount = AVX256::packedCount<T>();
+    int i = 0;
+    int end = n * m - packedCount;
+    for (; i <= end; i += packedCount) {
+        auto aVector1 = AVX256::loadUnaligned(&a[i]);
+        auto bVector1 = AVX256::loadUnaligned(&b[i]);
+        AVX256::storeUnaligned(&result[i], aVector1 - bVector1);
+    }
+    for (; i < n*m; ++i) {
+        result[i] = a[i] - b[i];
+    }
+    return result;
+}
+template<int n, int m, typename T> T* lowLevelStrassenAddAvx(const T* a, const T* b, StackAllocator<T>& allocator) {
+    T* result = allocator.alloc(n*m);
+    constexpr int packedCount = AVX256::packedCount<T>();
+    int i = 0;
+    int end = n * m - packedCount;
+    for (; i <= end; i += packedCount) {
+        auto aVector1 = AVX256::loadUnaligned(&a[i]);
+        auto bVector1 = AVX256::loadUnaligned(&b[i]);
+        AVX256::storeUnaligned(&result[i], aVector1 + bVector1);
+    }
+    for (; i < n*m; ++i) {
+        result[i] = a[i] + b[i];
+    }
+    return result;
+}
+template<int n, int m, typename T> T* lowLevelStrassenSubAvx(const T* a, const T* b, StackAllocator<T>& allocator) {
+    T* result = allocator.alloc(n*m);
+    constexpr int packedCount = AVX256::packedCount<T>();
+    int i = 0;
+    int end = n * m - packedCount;
+    for (; i <= end; i += packedCount) {
+        auto aVector1 = AVX256::loadUnaligned(&a[i]);
+        auto bVector1 = AVX256::loadUnaligned(&b[i]);
+        AVX256::storeUnaligned(&result[i], aVector1 - bVector1);
+    }
+    for (; i < n*m; ++i) {
+        result[i] = a[i] + b[i];
+    }
+    return result;
+}
+template<typename T>
+void bestStrassenMul(T* result, const T* a, const T* b, int n, int m, int q) {
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < q; ++j) {
-            int sum = 0;
+            T sum = 0;
             for (int k = 0; k < m; ++k) {
                 sum += a[k + i * m] * b[j + k * q];
             }
@@ -602,10 +659,10 @@ void bestStrassenMul(int* result, const int* a, const int* b, int n, int m, int 
         }
     }
 }
-template<int n, int m, int q> void bestStrassenMul(int* result, const int* a, const int* b) {
+template<int n, int m, int q, typename T> void bestStrassenMul(T* result, const T* a, const T* b) {
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < q; ++j) {
-            int sum = 0;
+            T sum = 0;
             for (int k = 0; k < m; ++k) {
                 sum += a[k + i * m] * b[j + k * q];
             }
@@ -613,7 +670,8 @@ template<int n, int m, int q> void bestStrassenMul(int* result, const int* a, co
         }
     }
 }
-void lowLevelStrassen(int* a, int* b, int n, int m, int q, int steps, int* c, StackAllocator& allocator) {
+template<typename T>
+void lowLevelStrassen(T* a, T* b, int n, int m, int q, int steps, T* c, StackAllocator<T>& allocator) {
     if (steps <= 0) {
         bestStrassenMul(c, a, b, n, m, q);
         return;
@@ -678,7 +736,8 @@ void lowLevelStrassen(int* a, int* b, int n, int m, int q, int steps, int* c, St
 
     allocator.dealloc(dA[0][0]);
 }
-void lowLevelStrassen(int* result, int* a, int* b, int n, int m, int q, int steps) {
+template<typename T>
+void lowLevelStrassen(T* result, T* a, T* b, int n, int m, int q, int steps) {
     int expected = 0;
     int eN = n;
     int eM = m;
@@ -687,13 +746,13 @@ void lowLevelStrassen(int* result, int* a, int* b, int n, int m, int q, int step
         eN /= 2;
         eM /= 2;
         eQ /= 2;
-        expected += 9*StackAllocator::Allign(eN*eM) + 9* StackAllocator::Allign(eM*eQ) + 7* StackAllocator::Allign(eN*eQ);
+        expected += 9*StackAllocator<T>::Allign(eN*eM) + 9* StackAllocator<T>::Allign(eM*eQ) + 7* StackAllocator<T>::Allign(eN*eQ);
     }
-    StackAllocator allocator(expected);
+    StackAllocator<T> allocator(expected);
     lowLevelStrassen(a, b, n, m, q, steps, result, allocator);
 }
 
-template<int n, int m, int q> void lowLevelStrassen(int* a, int* b, int steps, int* c, StackAllocator& allocator) {
+template<int n, int m, int q, typename T> void lowLevelStrassen(T* a, T* b, int steps, T* c, StackAllocator<T>& allocator) {
     if (steps <= 0) {
         bestStrassenMul<n, m, q>(c, a, b);
         return;
@@ -758,7 +817,7 @@ template<int n, int m, int q> void lowLevelStrassen(int* a, int* b, int steps, i
 
     allocator.dealloc(dA[0][0]);
 }
-template<int n, int m, int q> void lowLevelStrassen(int* result, int* a, int* b, int steps) {
+template<int n, int m, int q, typename T> void lowLevelStrassen(T* result, T* a, T* b, int steps) {
     int expected = 0;
     int eN = n;
     int eM = m;
@@ -767,9 +826,9 @@ template<int n, int m, int q> void lowLevelStrassen(int* result, int* a, int* b,
         eN /= 2;
         eM /= 2;
         eQ /= 2;
-        expected += 9*StackAllocator::Allign(eN*eM) + 9* StackAllocator::Allign(eM*eQ) + 7* StackAllocator::Allign(eN*eQ);
+        expected += 9*StackAllocator<T>::Allign(eN*eM) + 9* StackAllocator<T>::Allign(eM*eQ) + 7* StackAllocator<T>::Allign(eN*eQ);
     }
-    StackAllocator allocator(expected);
+    StackAllocator<T> allocator(expected);
     lowLevelStrassen<n, m, q>(a, b, steps, result, allocator);
 }
 
@@ -785,8 +844,8 @@ auto lowLevelStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b
         return result;
     }
 }
-
-void lowLevelAvxStrassen(int* a, int* b, int n, int m, int q, int steps, int* c, StackAllocator& allocator) {
+template<typename T>
+void lowLevelAvxStrassen(T* a, T* b, int n, int m, int q, int steps, T* c, StackAllocator<T>& allocator) {
     if (steps <= 0) {
         avxMul7(c, a, b, n, m, q);
         return;
@@ -800,40 +859,40 @@ void lowLevelAvxStrassen(int* a, int* b, int n, int m, int q, int steps, int* c,
     int halfQ = q / 2;
 
     auto m1 = allocator.alloc(halfN * halfQ);
-    auto m1_a = lowLevelStrassenAdd(dA[0][0], dA[1][1], halfN, halfM, allocator);
-    auto m1_b = lowLevelStrassenAdd(dB[0][0], dB[1][1], halfM, halfQ, allocator);
+    auto m1_a = lowLevelStrassenAddAvx(dA[0][0], dA[1][1], halfN, halfM, allocator);
+    auto m1_b = lowLevelStrassenAddAvx(dB[0][0], dB[1][1], halfM, halfQ, allocator);
     lowLevelAvxStrassen(m1_a, m1_b, halfN, halfM, halfQ, steps - 1, m1, allocator);
     allocator.dealloc(m1_a);
 
     auto m2 = allocator.alloc(halfN * halfQ);
-    auto m2_a = lowLevelStrassenAdd(dA[1][0], dA[1][1], halfN, halfM, allocator);
+    auto m2_a = lowLevelStrassenAddAvx(dA[1][0], dA[1][1], halfN, halfM, allocator);
     lowLevelAvxStrassen(m2_a, dB[0][0], halfN, halfM, halfQ, steps - 1, m2, allocator);
     allocator.dealloc(m2_a);
 
     auto m3 = allocator.alloc(halfN * halfQ);
-    auto m3_b = lowLevelStrassenSub(dB[0][1], dB[1][1], halfM, halfQ, allocator);
+    auto m3_b = lowLevelStrassenSubAvx(dB[0][1], dB[1][1], halfM, halfQ, allocator);
     lowLevelAvxStrassen(dA[0][0], m3_b, halfN, halfM, halfQ, steps - 1, m3, allocator);
     allocator.dealloc(m3_b);
 
     auto m4 = allocator.alloc(halfN * halfQ);
-    auto m4_b = lowLevelStrassenSub(dB[1][0], dB[0][0], halfM, halfQ, allocator);
+    auto m4_b = lowLevelStrassenSubAvx(dB[1][0], dB[0][0], halfM, halfQ, allocator);
     lowLevelAvxStrassen(dA[1][1], m4_b, halfN, halfM, halfQ, steps - 1, m4, allocator);
     allocator.dealloc(m4_b);
 
     auto m5 = allocator.alloc(halfN * halfQ);
-    auto m5_a = lowLevelStrassenAdd(dA[0][0], dA[0][1], halfN, halfM, allocator);
+    auto m5_a = lowLevelStrassenAddAvx(dA[0][0], dA[0][1], halfN, halfM, allocator);
     lowLevelAvxStrassen(m5_a, dB[1][1], halfN, halfM, halfQ, steps - 1, m5, allocator);
     allocator.dealloc(m5_a);
 
     auto m6 = allocator.alloc(halfN * halfQ);
-    auto m6_a = lowLevelStrassenSub(dA[1][0], dA[0][0], halfN, halfM, allocator);
-    auto m6_b = lowLevelStrassenAdd(dB[0][0], dB[0][1], halfM, halfQ, allocator);
+    auto m6_a = lowLevelStrassenSubAvx(dA[1][0], dA[0][0], halfN, halfM, allocator);
+    auto m6_b = lowLevelStrassenAddAvx(dB[0][0], dB[0][1], halfM, halfQ, allocator);
     lowLevelAvxStrassen(m6_a, m6_b, halfN, halfM, halfQ, steps - 1, m6, allocator);
     allocator.dealloc(m6_a);
 
     auto m7 = allocator.alloc(halfN * halfQ);
-    auto m7_a = lowLevelStrassenSub(dA[0][1], dA[1][1], halfN, halfM, allocator);
-    auto m7_b = lowLevelStrassenAdd(dB[1][0], dB[1][1], halfM, halfQ, allocator);
+    auto m7_a = lowLevelStrassenSubAvx(dA[0][1], dA[1][1], halfN, halfM, allocator);
+    auto m7_b = lowLevelStrassenAddAvx(dB[1][0], dB[1][1], halfM, halfQ, allocator);
     lowLevelAvxStrassen(m7_a, m7_b, halfN, halfM, halfQ, steps - 1, m7, allocator);
     allocator.dealloc(m7_a);
 
@@ -851,7 +910,8 @@ void lowLevelAvxStrassen(int* a, int* b, int n, int m, int q, int steps, int* c,
 
     allocator.dealloc(dA[0][0]);
 }
-void lowLevelAvxStrassen(int* result, int* a, int* b, int n, int m, int q, int steps) {
+template<typename T>
+void lowLevelAvxStrassen(T* result, T* a, T* b, int n, int m, int q, int steps) {
     int expected = 0;
     int eN = n;
     int eM = m;
@@ -860,13 +920,13 @@ void lowLevelAvxStrassen(int* result, int* a, int* b, int n, int m, int q, int s
         eN /= 2;
         eM /= 2;
         eQ /= 2;
-        expected += 9*StackAllocator::Allign(eN*eM) + 9* StackAllocator::Allign(eM*eQ) + 7* StackAllocator::Allign(eN*eQ);
+        expected += 9*StackAllocator<T>::Allign(eN*eM) + 9* StackAllocator<T>::Allign(eM*eQ) + 7* StackAllocator<T>::Allign(eN*eQ);
     }
-    StackAllocator allocator(expected);
+    StackAllocator<T> allocator(expected);
     lowLevelAvxStrassen(a, b, n, m, q, steps, result, allocator);
 }
 
-template<int n, int m, int q> void lowLevelAvxStrassen(int* a, int* b, int steps, int* c, StackAllocator& allocator) {
+template<int n, int m, int q, typename T> void lowLevelAvxStrassen(T* a, T* b, int steps, T* c, StackAllocator<T>& allocator) {
     if (steps <= 0) {
         avxMul7<n, m, q>(c, a, b);
         return;
@@ -880,40 +940,40 @@ template<int n, int m, int q> void lowLevelAvxStrassen(int* a, int* b, int steps
     constexpr int halfQ = q / 2;
 
     auto m1 = allocator.alloc(halfN * halfQ);
-    auto m1_a = lowLevelStrassenAdd<halfN, halfM>(dA[0][0], dA[1][1], allocator);
-    auto m1_b = lowLevelStrassenAdd<halfM, halfQ>(dB[0][0], dB[1][1], allocator);
+    auto m1_a = lowLevelStrassenAddAvx<halfN, halfM>(dA[0][0], dA[1][1], allocator);
+    auto m1_b = lowLevelStrassenAddAvx<halfM, halfQ>(dB[0][0], dB[1][1], allocator);
     lowLevelAvxStrassen<halfN, halfM, halfQ>(m1_a, m1_b, steps - 1, m1, allocator);
     allocator.dealloc(m1_a);
 
     auto m2 = allocator.alloc(halfN * halfQ);
-    auto m2_a = lowLevelStrassenAdd<halfN, halfM>(dA[1][0], dA[1][1], allocator);
+    auto m2_a = lowLevelStrassenAddAvx<halfN, halfM>(dA[1][0], dA[1][1], allocator);
     lowLevelAvxStrassen<halfN, halfM, halfQ>(m2_a, dB[0][0], steps - 1, m2, allocator);
     allocator.dealloc(m2_a);
 
     auto m3 = allocator.alloc(halfN * halfQ);
-    auto m3_b = lowLevelStrassenSub<halfM, halfQ>(dB[0][1], dB[1][1], allocator);
+    auto m3_b = lowLevelStrassenSubAvx<halfM, halfQ>(dB[0][1], dB[1][1], allocator);
     lowLevelAvxStrassen<halfN, halfM, halfQ>(dA[0][0], m3_b, steps - 1, m3, allocator);
     allocator.dealloc(m3_b);
 
     auto m4 = allocator.alloc(halfN * halfQ);
-    auto m4_b = lowLevelStrassenSub<halfM, halfQ>(dB[1][0], dB[0][0], allocator);
+    auto m4_b = lowLevelStrassenSubAvx<halfM, halfQ>(dB[1][0], dB[0][0], allocator);
     lowLevelAvxStrassen<halfN, halfM, halfQ>(dA[1][1], m4_b, steps - 1, m4, allocator);
     allocator.dealloc(m4_b);
 
     auto m5 = allocator.alloc(halfN * halfQ);
-    auto m5_a = lowLevelStrassenAdd<halfN, halfM>(dA[0][0], dA[0][1], allocator);
+    auto m5_a = lowLevelStrassenAddAvx<halfN, halfM>(dA[0][0], dA[0][1], allocator);
     lowLevelAvxStrassen<halfN, halfM, halfQ>(m5_a, dB[1][1], steps - 1, m5, allocator);
     allocator.dealloc(m5_a);
 
     auto m6 = allocator.alloc(halfN * halfQ);
-    auto m6_a = lowLevelStrassenSub<halfN, halfM>(dA[1][0], dA[0][0], allocator);
-    auto m6_b = lowLevelStrassenAdd<halfM, halfQ>(dB[0][0], dB[0][1], allocator);
+    auto m6_a = lowLevelStrassenSubAvx<halfN, halfM>(dA[1][0], dA[0][0], allocator);
+    auto m6_b = lowLevelStrassenAddAvx<halfM, halfQ>(dB[0][0], dB[0][1], allocator);
     lowLevelAvxStrassen<halfN, halfM, halfQ>(m6_a, m6_b, steps - 1, m6, allocator);
     allocator.dealloc(m6_a);
 
     auto m7 = allocator.alloc(halfN * halfQ);
-    auto m7_a = lowLevelStrassenSub<halfN, halfM>(dA[0][1], dA[1][1], allocator);
-    auto m7_b = lowLevelStrassenAdd<halfM, halfQ>(dB[1][0], dB[1][1], allocator);
+    auto m7_a = lowLevelStrassenSubAvx<halfN, halfM>(dA[0][1], dA[1][1], allocator);
+    auto m7_b = lowLevelStrassenAddAvx<halfM, halfQ>(dB[1][0], dB[1][1], allocator);
     lowLevelAvxStrassen<halfN, halfM, halfQ>(m7_a, m7_b, steps - 1, m7, allocator);
     allocator.dealloc(m7_a);
 
@@ -931,7 +991,7 @@ template<int n, int m, int q> void lowLevelAvxStrassen(int* a, int* b, int steps
 
     allocator.dealloc(dA[0][0]);
 }
-template<int n, int m, int q> void lowLevelAvxStrassen(int* result, int* a, int* b, int steps) {
+template<int n, int m, int q, typename T> void lowLevelAvxStrassen(T* result, T* a, T* b, int steps) {
     int expected = 0;
     int eN = n;
     int eM = m;
@@ -940,9 +1000,9 @@ template<int n, int m, int q> void lowLevelAvxStrassen(int* result, int* a, int*
         eN /= 2;
         eM /= 2;
         eQ /= 2;
-        expected += 9*StackAllocator::Allign(eN*eM) + 9* StackAllocator::Allign(eM*eQ) + 7* StackAllocator::Allign(eN*eQ);
+        expected += 9*StackAllocator<T>::Allign(eN*eM) + 9* StackAllocator<T>::Allign(eM*eQ) + 7* StackAllocator<T>::Allign(eN*eQ);
     }
-    StackAllocator allocator(expected);
+    StackAllocator<T> allocator(expected);
     lowLevelAvxStrassen<n, m, q>(a, b, steps, result, allocator);
 }
 
