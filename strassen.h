@@ -1091,3 +1091,195 @@ auto lowLevelAvxStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>
         return result;
     }
 }
+
+
+template<int Rows, int Columns, typename T>
+std::array<std::array<T*, Columns>, Rows> minSpaceStrassenDivideView(T* a, int n, int m, int effM) {
+    std::array<std::array<T*, Columns>, Rows> result;
+    auto rowSize = n / Rows;
+    auto columnSize = m / Columns;
+    for (int y = 0; y < Rows; ++y) {
+        for (int x = 0; x < Columns; ++x) {
+            result[y][x] = a + x * columnSize + y * rowSize*effM;
+        }
+    }
+    return result;
+}
+
+enum class Operation {
+    Null,
+    Assign,
+    Add,
+    Sub
+};
+
+template<Operation op, bool UseAvx, typename T> void minSpaceStrassenOp(T* dst, const T* src, int n, int m, int effDst, int effSrc) {
+    for (int i = 0; i < n; ++i) {
+        auto dstR = &dst[i*effDst];
+        auto srcR = &src[i*effSrc];
+        if constexpr (UseAvx) {
+            constexpr int packedCount = AVX256::packedCount<T>();
+            int j = 0;
+            int end = m - packedCount;
+            for (; j < end; j += packedCount) {
+                auto srcVector = AVX256::loadUnaligned(&srcR[j]);
+                if constexpr (op == Operation::Assign) {
+                    AVX256::storeUnaligned(&dstR[j], srcVector);
+                } else {
+                    auto dstVector = AVX256::loadUnaligned(&dstR[j]);
+                    if constexpr (op == Operation::Add) AVX256::storeUnaligned(&dstR[j], dstVector + srcVector);
+                    if constexpr (op == Operation::Sub) AVX256::storeUnaligned(&dstR[j], dstVector - srcVector);
+                }
+            }
+            for (; j < m; ++j) {
+                if constexpr (op == Operation::Assign) dstR[j] = srcR[j];
+                if constexpr (op == Operation::Add) dstR[j] += srcR[j];
+                if constexpr (op == Operation::Sub) dstR[j] -= srcR[j];
+            }
+        } else {
+            for (int j = 0; j < m; ++j) {
+                if constexpr (op == Operation::Assign) dstR[j] = srcR[j];
+                if constexpr (op == Operation::Add) dstR[j] += srcR[j];
+                if constexpr (op == Operation::Sub) dstR[j] -= srcR[j];
+            }
+        }
+    }
+}
+template<Operation op, bool UseAvx, typename T> void minSpaceStrassenOp(T* dst, const T* a, const T* b, int n, int m, int effM) {
+    for (int i = 0; i < n; ++i) {
+        auto dstR = &dst[i*m];
+        auto aR = &a[i*effM];
+        auto bR = &b[i*effM];
+        if constexpr (UseAvx) {
+            constexpr int packedCount = AVX256::packedCount<T>();
+            int j = 0;
+            int end = m - packedCount;
+            for (; j < end; j += packedCount) {
+                auto aVector1 = AVX256::loadUnaligned(&aR[j]);
+                auto bVector1 = AVX256::loadUnaligned(&bR[j]);
+                if constexpr (op == Operation::Add) AVX256::storeUnaligned(&dstR[j], aVector1 + bVector1);
+                if constexpr (op == Operation::Sub) AVX256::storeUnaligned(&dstR[j], aVector1 - bVector1);
+            }
+            for (; j < m; ++j) {
+                if constexpr (op == Operation::Add) dstR[j] = aR[j] + bR[j];
+                if constexpr (op == Operation::Sub) dstR[j] = aR[j] - bR[j];
+            }
+        } else {
+            for (int j = 0; j < m; ++j) {
+                if constexpr (op == Operation::Add) dstR[j] = aR[j] + bR[j];
+                if constexpr (op == Operation::Sub) dstR[j] = aR[j] - bR[j];
+            }
+        }
+    }
+}
+
+template<bool UseAvx, typename T>
+void minSpaceStrassenMul(T* c, T* a, T* b, int n, int m, int q, int effC, int effA, int effB, StackAllocator<T>& allocator) {
+    T* cx = c;
+    T* ax = a;
+    T* bx = b;
+    if (effA != m) {
+        ax = allocator.alloc(n*m);
+        minSpaceStrassenOp<Operation::Assign, UseAvx>(ax, a, n, m, m, effA);
+    }
+    if (effB != q) {
+        bx = allocator.alloc(m*q);
+        minSpaceStrassenOp<Operation::Assign, UseAvx>(bx, b, m, q, q, effB);
+    }
+    if (effC != q) {
+        cx = allocator.alloc(n*q);
+    }
+    if constexpr (UseAvx) {
+        avxMul7(cx, ax, bx, n, m, q);
+    } else {
+        bestStrassenMul(cx, ax, bx, n, m, q);
+    }
+    if (effC != q) {
+        minSpaceStrassenOp<Operation::Assign, UseAvx>(c, cx, n, q, effC, q);
+        allocator.dealloc(cx, n*q);
+    }
+    if (effB != q) allocator.dealloc(bx, m*q);
+    if (effA != m) allocator.dealloc(ax, n*m);
+}
+
+template<bool UseAvx, typename T>
+void minSpaceStrassen(T* c, T* a, T* b, int n, int m, int q, int effC, int effA, int effB, int steps, StackAllocator<T>& allocator) {
+    if (steps <= 0) {
+        minSpaceStrassenMul<UseAvx>(c, a, b, n, m, q, effC, effA, effB, allocator);
+        return;
+    }
+
+    auto dA = minSpaceStrassenDivideView<2, 2>(a, n, m, effA);
+    auto dB = minSpaceStrassenDivideView<2, 2>(b, m, q, effB);
+    auto dC = minSpaceStrassenDivideView<2, 2>(c, n, q, effC);
+    
+    int hn = n / 2;
+    int hm = m / 2;
+    int hq = q / 2;
+
+    auto tempA = allocator.alloc(hn * hm);
+    auto tempB = allocator.alloc(hm * hq);
+    auto tempC = allocator.alloc(hn * hq);
+
+    minSpaceStrassenOp<Operation::Add, UseAvx>(tempA, dA[0][0], dA[1][1], hn, hm, effA);
+    minSpaceStrassenOp<Operation::Add, UseAvx>(tempB, dB[0][0], dB[1][1], hm, hq, effB);
+    minSpaceStrassen<UseAvx>(dC[0][0], tempA, tempB, hn, hm, hq, effC, hm, hq, steps - 1, allocator);
+    minSpaceStrassenOp<Operation::Assign, UseAvx>(dC[1][1], dC[0][0], hn, hq, effC, effC);
+
+    minSpaceStrassenOp<Operation::Add, UseAvx>(tempA, dA[1][0], dA[1][1], hn, hm, effA);
+    minSpaceStrassen<UseAvx>(dC[1][0], tempA, dB[0][0], hn, hm, hq, effC, hm, effB, steps - 1, allocator);
+    minSpaceStrassenOp<Operation::Sub, UseAvx>(dC[1][1], dC[1][0], hn, hq, effC, effC);
+
+    minSpaceStrassenOp<Operation::Sub, UseAvx>(tempB, dB[0][1], dB[1][1], hm, hq, effB);
+    minSpaceStrassen<UseAvx>(dC[0][1], dA[0][0], tempB, hn, hm, hq, effC, effA, hq, steps - 1, allocator);
+    minSpaceStrassenOp<Operation::Add, UseAvx>(dC[1][1], dC[0][1], hn, hq, effC, effC);
+
+    minSpaceStrassenOp<Operation::Sub, UseAvx>(tempB, dB[1][0], dB[0][0], hm, hq, effB);
+    minSpaceStrassen<UseAvx>(tempC, dA[1][1], tempB, hn, hm, hq, hq, effA, hq, steps - 1, allocator);
+    minSpaceStrassenOp<Operation::Add, UseAvx>(dC[0][0], tempC, hn, hq, effC, hq);
+    minSpaceStrassenOp<Operation::Add, UseAvx>(dC[1][0], tempC, hn, hq, effC, hq);
+
+    minSpaceStrassenOp<Operation::Add, UseAvx>(tempA, dA[0][0], dA[0][1], hn, hm, effA);
+    minSpaceStrassen<UseAvx>(tempC, tempA, dB[1][1], hn, hm, hq, hq, hm, effB, steps - 1, allocator);
+    minSpaceStrassenOp<Operation::Sub, UseAvx>(dC[0][0], tempC, hn, hq, effC, hq);
+    minSpaceStrassenOp<Operation::Add, UseAvx>(dC[0][1], tempC, hn, hq, effC, hq);
+
+    minSpaceStrassenOp<Operation::Sub, UseAvx>(tempA, dA[1][0], dA[0][0], hn, hm, effA);
+    minSpaceStrassenOp<Operation::Add, UseAvx>(tempB, dB[0][0], dB[0][1], hm, hq, effB);
+    minSpaceStrassen<UseAvx>(tempC, tempA, tempB, hn, hm, hq, hq, hm, hq, steps - 1, allocator);
+    minSpaceStrassenOp<Operation::Add, UseAvx>(dC[1][1], tempC, hn, hq, effC, hq);
+
+    minSpaceStrassenOp<Operation::Sub, UseAvx>(tempA, dA[0][1], dA[1][1], hn, hm, effA);
+    minSpaceStrassenOp<Operation::Add, UseAvx>(tempB, dB[1][0], dB[1][1], hm, hq, effB);
+    minSpaceStrassen<UseAvx>(tempC, tempA, tempB, hn, hm, hq, hq, hm, hq, steps - 1, allocator);
+    minSpaceStrassenOp<Operation::Add, UseAvx>(dC[0][0], tempC, hn, hq, effC, hq);
+
+    allocator.dealloc(tempC, hn*hq);
+    allocator.dealloc(tempB, hm*hq);
+    allocator.dealloc(tempA, hn*hm);
+}
+
+
+template<bool UseAvx, typename T> void minSpaceStrassen(T* c, T* a, T* b, int n, int m, int q, int steps) {
+    int expected = 0;
+    int eN = n;
+    int eM = m;
+    int eQ = q;
+    for (int i = 0; i < steps; ++i) {
+        eN /= 2;
+        eM /= 2;
+        eQ /= 2;
+        expected += StackAllocator<T>::Allign(eN*eM) + StackAllocator<T>::Allign(eM*eQ) + StackAllocator<T>::Allign(eN*eQ);
+    }
+    if (steps >= 1) {
+        expected += std::max(StackAllocator<T>::Allign(eN*eM), StackAllocator<T>::Allign(eM*eQ)) + StackAllocator<T>::Allign(eN*eQ);
+    }
+    StackAllocator<T> allocator(expected);
+    minSpaceStrassen<UseAvx>(c, a, b, n, m, q, q, m, q, steps, allocator);
+}
+template<bool UseAvx, typename M1, typename M2>
+auto minSpaceStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
+    auto result = a.createNew(a.rowCount(), b.columnCount());
+    minSpaceStrassen<UseAvx>(result.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(), steps);
+    return result;
+}
