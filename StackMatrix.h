@@ -29,7 +29,7 @@ public:
         data_(m.data_)
     {}
 
-    template<typename MT> StackMatrix& operator=(const MatrixInterface<MT>& m) {
+    template<typename MT> StackMatrix& assign(const MatrixInterface<MT>& m) {
         static_assert(m.ConstexprRowCount() == Interface::DynamicValue || Rows == m.ConstexprRowCount(), "mismatch RowCount");
         static_assert(m.ConstexprColumnCount() == Interface::DynamicValue || Cols == m.ConstexprColumnCount(), "mismatch ColumnCount");
         
@@ -41,8 +41,11 @@ public:
 
         return *this;
     }
+    template<typename MT> StackMatrix& operator=(const MatrixInterface<MT>& m) {
+        return assign(m);
+    }
     StackMatrix& operator=(const StackMatrix& m) {
-        return operator=(Interface(m));
+        return assign(m);
     }
     StackMatrix& operator=(StackMatrix&& m) {
         if (&m == this) {
