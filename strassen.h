@@ -393,7 +393,7 @@ template<BaseOperationType opType, ArithmeticOperation op, typename T> void oper
 template<typename T> void naiveMul(T* result, const T* a, const T* b, int n, int m, int q) {
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < q; ++j) {
-            T sum = 0;
+            T sum{};
             for (int k = 0; k < m; ++k) {
                 sum += a[k + i * m] * b[j + k * q];
             }
@@ -404,7 +404,7 @@ template<typename T> void naiveMul(T* result, const T* a, const T* b, int n, int
 template<int n, int m, int q, typename T> void naiveMul(T* result, const T* a, const T* b) {
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < q; ++j) {
-            T sum = 0;
+            T sum{};
             for (int k = 0; k < m; ++k) {
                 sum += a[k + i * m] * b[j + k * q];
             }
@@ -548,10 +548,10 @@ void lowLevelStrassenWithStaticPadding(T* result, T* a, T* b, int n, int m, int 
         auto newB = allocator.alloc(paddedSizes[1] * paddedSizes[2]);
         auto newResult = allocator.alloc(paddedSizes[0] * paddedSizes[2]);
         for (int i = 0; i < paddedSizes[0] * paddedSizes[1]; ++i) {
-            newA[i] = 0;
+            newA[i] = T{};
         }
         for (int i = 0; i < paddedSizes[1] * paddedSizes[2]; ++i) {
-            newB[i] = 0;
+            newB[i] = T{};
         }
         copy(newA, a, n, m, paddedSizes[1], m);
         copy(newB, b, m, q, paddedSizes[2], q);
@@ -806,10 +806,10 @@ template<BaseOperationType opType, typename T> void minSpaceStrassenWithStaticPa
         auto newB = allocator.alloc(paddedSizes[1] * paddedSizes[2]);
         auto newC = allocator.alloc(paddedSizes[0] * paddedSizes[2]);
         for (int i = 0; i < paddedSizes[0] * paddedSizes[1]; ++i) {
-            newA[i] = 0;
+            newA[i] = T{};
         }
         for (int i = 0; i < paddedSizes[1] * paddedSizes[2]; ++i) {
-            newB[i] = 0;
+            newB[i] = T{};
         }
         copy(newA, a, n, m, paddedSizes[1], m);
         copy(newB, b, m, q, paddedSizes[2], q);
