@@ -75,7 +75,10 @@ template<typename T, int N, int Steps, bool OnlyAvx=false> void strassenTest(int
             return lowLevelStrassen(a, b, steps);
         });
         strassenDynamicBenchmark<T>("Min-Space  noAVX :", n, Steps, [](const auto& a, const auto& b, int steps) {
-            return minSpaceStrassen<false>(a, b, steps);
+            return minSpaceStrassen(a, b, steps);
+        });
+        strassenStaticBenchmark<T, N>("Min-Space  noAVX :", [](const auto& a, const auto& b) {
+            return minSpaceStrassen<Steps>(a, b);
         });
     }
     strassenDynamicBenchmark<T>("High-level AVX   :", n, Steps, [](const auto& a, const auto& b, int steps) {
@@ -91,7 +94,10 @@ template<typename T, int N, int Steps, bool OnlyAvx=false> void strassenTest(int
         return lowLevelAvxStrassen(a, b, steps);
     });
     strassenDynamicBenchmark<T>("Min-Space  AVX   :", n, Steps, [](const auto& a, const auto& b, int steps) {
-        return minSpaceStrassen<true>(a, b, steps);
+        return minSpaceAvxStrassen(a, b, steps);
+    });
+    strassenStaticBenchmark<T, N>("Min-Space  AVX   :", [](const auto& a, const auto& b) {
+        return minSpaceAvxStrassen<Steps>(a, b);
     });
     std::cout << "=================================================================\n\n";
 }
