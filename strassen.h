@@ -7,6 +7,32 @@
 #include "MatrixView.h"
 #include "MatrixExtendedFunctions.h"
 #include <utility>
+#include <cmath>
+#include <optional>
+
+
+double log(double base, double value) {
+    return ::log(value) / ::log(base);
+}
+int staticPaddingNewSize(int size, int base, int steps) {
+    if (steps <= 0) return size;
+    int divisor = pow(base, steps);
+    auto remainder = size % divisor;
+    if (remainder == 0) return size;
+    else                return size + divisor - remainder;
+}
+std::optional<std::array<int, 3>> staticPaddingNewSizes(int n, int m, int q, int baseN, int baseM, int baseQ, int steps) {
+    std::array<int, 3> paddedSizes = {
+        staticPaddingNewSize(n, baseN, steps),
+        staticPaddingNewSize(m, baseM, steps),
+        staticPaddingNewSize(q, baseQ, steps)
+    };
+    if (paddedSizes[0] > n || paddedSizes[1] > m || paddedSizes[2] > q) {
+        return paddedSizes;
+    } else {
+        return std::nullopt;
+    }
+}
 
 enum class BaseOperationType {
     Naive,
@@ -68,13 +94,28 @@ auto strassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int st
 
     return c;
 }
+template<BaseOperationType opType, typename M1, typename M2>
+auto strassenWithStaticPadding(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
+    auto paddedSizesOpt = staticPaddingNewSizes(a.rowCount(), a.columnCount(), b.columnCount(), 2, 2, 2, steps);
+    if (paddedSizesOpt) {
+        auto& paddedSizes = *paddedSizesOpt;
+        auto newA = a.createNew(paddedSizes[0], paddedSizes[1]);
+        auto newB = b.createNew(paddedSizes[1], paddedSizes[2]);
+        newA.copy(a);
+        newB.copy(b);
+        auto result = strassen<opType>(newA, newB, steps);
+        return shrink(result, a.rowCount(), b.columnCount());
+    } else {
+        return strassen<opType>(a, b, steps);
+    }
+}
 template<typename M1, typename M2>
 auto strassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
-    return strassen<BaseOperationType::Naive>(a, b, steps);
+    return strassenWithStaticPadding<BaseOperationType::Naive>(a, b, steps);
 }
 template<typename M1, typename M2>
 auto strassenAvx(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
-    return strassen<BaseOperationType::Avx>(a, b, steps);
+    return strassenWithStaticPadding<BaseOperationType::Avx>(a, b, steps);
 }
 
 template<BaseOperationType opType, int Steps, typename M1, typename M2> auto strassenImpl(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, std::false_type) {
@@ -473,20 +514,55 @@ void lowLevelStrassen(T* a, T* b, int n, int m, int q, int steps, T* c, StackAll
     allocator.dealloc(dA[0][1], halfN*halfM);
     allocator.dealloc(dA[0][0], halfN*halfM);
 }
+
 template<BaseOperationType opType, typename T>
-void lowLevelStrassen(T* result, T* a, T* b, int n, int m, int q, int steps) {
+void lowLevelStrassenWithStaticPadding(T* result, T* a, T* b, int n, int m, int q, int steps) {
     int expected = 0;
     int eN = n;
     int eM = m;
     int eQ = q;
+    
+    auto paddedSizesOpt = staticPaddingNewSizes(n, m, q, 2, 2, 2, steps);
+    if (paddedSizesOpt) {
+        auto& paddedSizes = *paddedSizesOpt;
+        eN = paddedSizes[0];
+        eM = paddedSizes[1];
+        eQ = paddedSizes[2];
+        expected += StackAllocator<T>::Allign(eN*eM);
+        expected += StackAllocator<T>::Allign(eM*eQ);
+        expected += StackAllocator<T>::Allign(eN*eQ);
+    }
+
     for (int i = 0; i < steps; ++i) {
         eN /= 2;
         eM /= 2;
         eQ /= 2;
         expected += 5*StackAllocator<T>::Allign(eN*eM) + 5*StackAllocator<T>::Allign(eM*eQ) + 7*StackAllocator<T>::Allign(eN*eQ);
     }
+
     StackAllocator<T> allocator(expected);
-    lowLevelStrassen<opType>(a, b, n, m, q, steps, result, allocator);
+
+    if (paddedSizesOpt) {
+        auto& paddedSizes = *paddedSizesOpt;
+        auto newA = allocator.alloc(paddedSizes[0] * paddedSizes[1]);
+        auto newB = allocator.alloc(paddedSizes[1] * paddedSizes[2]);
+        auto newResult = allocator.alloc(paddedSizes[0] * paddedSizes[2]);
+        for (int i = 0; i < paddedSizes[0] * paddedSizes[1]; ++i) {
+            newA[i] = 0;
+        }
+        for (int i = 0; i < paddedSizes[1] * paddedSizes[2]; ++i) {
+            newB[i] = 0;
+        }
+        copy(newA, a, n, m, paddedSizes[1], m);
+        copy(newB, b, m, q, paddedSizes[2], q);
+        lowLevelStrassen<opType>(newA, newB, paddedSizes[0], paddedSizes[1], paddedSizes[2], steps, newResult, allocator);
+        copy(result, newResult, n, q, q, paddedSizes[2]);
+        allocator.dealloc(newResult, paddedSizes[0] * paddedSizes[2]);
+        allocator.dealloc(newB, paddedSizes[1] * paddedSizes[2]);
+        allocator.dealloc(newA, paddedSizes[0] * paddedSizes[1]);
+    } else {
+        lowLevelStrassen<opType>(a, b, n, m, q, steps, result, allocator);
+    }
 }
 
 template<int n, int m, int q, BaseOperationType opType, typename T>
@@ -596,7 +672,7 @@ auto lowLevelStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b
         return result;
     } else {
         auto result = a.createNew(a.rowCount(), b.columnCount());
-        lowLevelStrassen<opType>(result.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(), steps);
+        lowLevelStrassenWithStaticPadding<opType>(result.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(), steps);
         return result;
     }
 }
@@ -659,7 +735,7 @@ void minSpaceStrassen(T* c, T* a, T* b, int n, int m, int q, int effC, int effA,
     operation<opType, ArithmeticOperation::Add>(tempA, dA[0][0], dA[1][1], hn, hm, hm, effA, effA);
     operation<opType, ArithmeticOperation::Add>(tempB, dB[0][0], dB[1][1], hm, hq, hq, effB, effB);
     minSpaceStrassen<opType>(dC[0][0], tempA, tempB, hn, hm, hq, effC, hm, hq, steps - 1, allocator);
-    operation<opType, ArithmeticOperation::SubAssign>(dC[1][1], dC[0][0], hn, hq, effC, effC);
+    operation<opType, ArithmeticOperation::Assign>(dC[1][1], dC[0][0], hn, hq, effC, effC);
 
     operation<opType, ArithmeticOperation::Add>(tempA, dA[1][0], dA[1][1], hn, hm, hm, effA, effA);
     minSpaceStrassen<opType>(dC[1][0], tempA, dB[0][0], hn, hm, hq, effC, hm, effB, steps - 1, allocator);
@@ -695,11 +771,23 @@ void minSpaceStrassen(T* c, T* a, T* b, int n, int m, int q, int effC, int effA,
 }
 
 
-template<BaseOperationType opType, typename T> void minSpaceStrassen(T* c, T* a, T* b, int n, int m, int q, int steps) {
+template<BaseOperationType opType, typename T> void minSpaceStrassenWithStaticPadding(T* c, T* a, T* b, int n, int m, int q, int steps) {
     int expected = 0;
     int eN = n;
     int eM = m;
     int eQ = q;
+    
+    auto paddedSizesOpt = staticPaddingNewSizes(n, m, q, 2, 2, 2, steps);
+    if (paddedSizesOpt) {
+        auto& paddedSizes = *paddedSizesOpt;
+        eN = paddedSizes[0];
+        eM = paddedSizes[1];
+        eQ = paddedSizes[2];
+        expected += StackAllocator<T>::Allign(eN*eM);
+        expected += StackAllocator<T>::Allign(eM*eQ);
+        expected += StackAllocator<T>::Allign(eN*eQ);
+    }
+
     for (int i = 0; i < steps; ++i) {
         eN /= 2;
         eM /= 2;
@@ -709,8 +797,30 @@ template<BaseOperationType opType, typename T> void minSpaceStrassen(T* c, T* a,
     if (steps >= 1) {
         expected += std::max(StackAllocator<T>::Allign(eN*eM), StackAllocator<T>::Allign(eM*eQ)) + StackAllocator<T>::Allign(eN*eQ);
     }
+
     StackAllocator<T> allocator(expected);
-    minSpaceStrassen<opType>(c, a, b, n, m, q, q, m, q, steps, allocator);
+
+    if (paddedSizesOpt) {
+        auto& paddedSizes = *paddedSizesOpt;
+        auto newA = allocator.alloc(paddedSizes[0] * paddedSizes[1]);
+        auto newB = allocator.alloc(paddedSizes[1] * paddedSizes[2]);
+        auto newC = allocator.alloc(paddedSizes[0] * paddedSizes[2]);
+        for (int i = 0; i < paddedSizes[0] * paddedSizes[1]; ++i) {
+            newA[i] = 0;
+        }
+        for (int i = 0; i < paddedSizes[1] * paddedSizes[2]; ++i) {
+            newB[i] = 0;
+        }
+        copy(newA, a, n, m, paddedSizes[1], m);
+        copy(newB, b, m, q, paddedSizes[2], q);
+        minSpaceStrassen<opType>(newC, newA, newB, paddedSizes[0], paddedSizes[1], paddedSizes[2], paddedSizes[2], paddedSizes[1], paddedSizes[2], steps, allocator);
+        copy(c, newC, n, q, q, paddedSizes[2]);
+        allocator.dealloc(newC, paddedSizes[0] * paddedSizes[2]);
+        allocator.dealloc(newB, paddedSizes[1] * paddedSizes[2]);
+        allocator.dealloc(newA, paddedSizes[0] * paddedSizes[1]);
+    } else {
+        minSpaceStrassen<opType>(c, a, b, n, m, q, q, m, q, steps, allocator);
+    }
 }
 
 template<int n, int m, int q, int effC, int effA, int effB, BaseOperationType opType, typename T>
@@ -824,7 +934,7 @@ template<int n, int m, int q, int Steps, BaseOperationType opType, typename T> v
 template<BaseOperationType opType, typename M1, typename M2>
 auto minSpaceStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
     auto result = a.createNew(a.rowCount(), b.columnCount());
-    minSpaceStrassen<opType>(result.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(), steps);
+    minSpaceStrassenWithStaticPadding<opType>(result.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(), steps);
     return result;
 }
 template<int Steps, BaseOperationType opType, typename M1, typename M2>
