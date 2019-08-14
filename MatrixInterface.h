@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MATRIX_INTERFACE_H
+#define MATRIX_INTERFACE_H
 
 #include "detect.h"
 #include "types.h"
@@ -272,3 +273,4 @@ public:
         }
     }
 };
+#endif

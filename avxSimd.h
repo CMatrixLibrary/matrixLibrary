@@ -1,4 +1,5 @@
-#pragma once
+#ifndef AVX_SIMD_H
+#define AVX_SIMD_H
 #include <immintrin.h>
 #include <type_traits>
 #include <new>
@@ -12,8 +13,7 @@
 namespace AVX256 {
 #ifdef __AVX2__
     #define AVX2_IS_AVAILABLE
-
-    #if defined(COMPILER_MSVC) || defined(COMPILER_INTEL)
+    #if (defined(COMPILER_MSVC) || defined(COMPILER_INTEL)) && !defined(__FMA__)
         #define __FMA__
     #endif
 
@@ -161,3 +161,5 @@ template<typename T> AVX256Type<T> operator-=(AVX256Type<T>& a, AVX256Type<T> b)
 template<typename T> AVX256Type<T> operator*=(AVX256Type<T>& a, AVX256Type<T> b) {
     return a = a * b;
 }
+
+#endif

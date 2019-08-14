@@ -1,4 +1,5 @@
-#pragma once
+#ifndef STATIC_HEAP_MATRIX_H
+#define STATIC_HEAP_MATRIX_H
 #include "MatrixInterface.h"
 #include <type_traits>
 
@@ -71,3 +72,4 @@ public:
         return *this;
     }
 };
+#endif

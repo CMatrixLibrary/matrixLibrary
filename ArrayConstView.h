@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ARRAY_CONST_VIEW_H
+#define ARRAY_CONST_VIEW_H
 #include "types.h"
 #include "debugAssert.h"
 #include "ArrayView.h"
@@ -42,3 +43,4 @@ private:
     const T* data_;
     mtl::size_t size_;
 };
+#endif

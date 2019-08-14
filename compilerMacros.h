@@ -1,4 +1,5 @@
-#pragma once
+#ifndef COMPILER_MACROS_H
+#define COMPILER_MACROS_H
 
 #if defined(__clang__)
     #define COMPILER_CLANG
@@ -8,4 +9,6 @@
     #define COMPILER_MSVC
 #elif defined(__GNUC__)
     #define COMPILER_GCC
+#endif
+
 #endif

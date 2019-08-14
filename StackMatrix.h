@@ -1,4 +1,5 @@
-#pragma once
+#ifndef STACK_MATRIX_H
+#define STACK_MATRIX_H
 #include "MatrixInterface.h"
 #include <array>
 
@@ -60,3 +61,4 @@ public:
     T* _data()               { return data_.data(); }
     const T* _data()   const { return data_.data(); }
 };
+#endif

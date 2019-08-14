@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MATRIX_CONST_STATIC_SIZE_VIEW_H
+#define MATRIX_CONST_STATIC_SIZE_VIEW_H
 #include "MatrixInterface.h"
 #include "HeapMatrix.h"
 #include "StackMatrix.h"
@@ -42,3 +43,4 @@ public:
     
     mtl::size_t _effectiveColumnCount() const { return effectiveColumnCount_; }
 };
+#endif

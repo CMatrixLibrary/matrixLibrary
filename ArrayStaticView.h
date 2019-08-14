@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ARRAY_STATIC_VIEW_H
+#define ARRAY_STATIC_VIEW_H
 #include "types.h"
 #include "debugAssert.h"
 
@@ -47,3 +48,4 @@ public:
 private:
     T* data_;
 };
+#endif

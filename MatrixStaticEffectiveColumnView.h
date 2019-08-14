@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MATRIX_STATIC_EFFECTIVE_COLUMN_VIEW_H
+#define MATRIX_STATIC_EFFECTIVE_COLUMN_VIEW_H
 #include "MatrixInterface.h"
 
 template<typename T, mtl::size_t EffCol> class MatrixStaticEffectiveColumnView : public MatrixInterface<MatrixStaticEffectiveColumnView<T, EffCol>> {
@@ -34,3 +35,4 @@ public:
         columnCount_(columnCount)
     {}
 };
+#endif

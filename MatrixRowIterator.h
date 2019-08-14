@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MATRIX_ROW_ITERATOR_H
+#define MATRIX_ROW_ITERATOR_H
 #include "ArrayView.h"
 
 template<typename T> class MatrixRowIterator {
@@ -40,3 +41,5 @@ private:
     ArrayView<T> view_;
     mtl::size_t effectiveColumnCount_;
 };
+
+#endif

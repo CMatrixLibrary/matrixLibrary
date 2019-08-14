@@ -1,4 +1,5 @@
-#pragma once
+#ifndef STRASSEN_H
+#define STRASSEN_H
 #include "MatrixInterface.h"
 #include "matrixOperators.h"
 #include "MatrixExtendedFunctions.h"
@@ -968,3 +969,5 @@ auto minSpaceAvxStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>
     if constexpr (AVX256::IsAvailable) return minSpaceStrassen<Steps, BaseOperationType::Avx>(a, b);
     else static_assert(AVX256::IsAvailable && always_false_v<M1>, AVX256_StaticAssertMessage);
 }
+
+#endif

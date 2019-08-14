@@ -1,4 +1,6 @@
-#pragma once
+#ifndef DEBUG_ASSERT_H
+#define DEBUG_ASSERT_H
+
 #include <iostream>
 #include <string>
 
@@ -44,3 +46,5 @@ do {\
 #endif
 
 #define debugAssertOp(value1, oper, value2, ...) debugAssert((value1) oper (value2), '(',value1,") ", #oper, " (",value2,')', "\ntype name  : ", typeid(*this).name(), __VA_ARGS__)
+
+#endif

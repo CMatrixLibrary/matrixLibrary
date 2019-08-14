@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MATRIX_H
+#define MATRIX_H
 #include "StackMatrix.h"
 #include "HeapMatrix.h"
 #include "StaticHeapMatrix.h"
@@ -14,3 +15,5 @@ using Matrix =
         StaticHeapMatrix<T, Rows, Columns>
     >::type
 >::type;
+
+#endif

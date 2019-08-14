@@ -1,4 +1,5 @@
-#pragma once
+#ifndef BENCHMARK_H
+#define BENCHMARK_H
 #include <tuple>
 #include <chrono>
 #include <vector>
@@ -56,3 +57,4 @@ template<typename ReturnType, typename Function, typename... Args>
 std::pair<ReturnType, double> benchmark(int repetitions, Function function, Args... args) {
     return { function(args...), benchmark(repetitions, function, args...) };
 }
+#endif

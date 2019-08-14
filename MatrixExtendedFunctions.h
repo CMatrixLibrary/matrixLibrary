@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MATRIX_EXTENDED_FUNCTIONS_H
+#define MATRIX_EXTENDED_FUNCTIONS_H
 #include "MatrixInterface.h"
 #include <array>
 
@@ -82,3 +83,5 @@ auto matrixDivide(const MatrixInterface<M>& m) {
         return result;
     }
 }
+
+#endif
