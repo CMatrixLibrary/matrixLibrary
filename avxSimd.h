@@ -5,15 +5,25 @@
 #include <cstdint>
 #include "alignedAllocation.h"
 #include "always_false.h"
+#include "compilerMacros.h"
 
 #define AVX256_StaticAssertMessage "avx2 is not available. Maybe you're missing a compilation flag?"
 
 namespace AVX256 {
 #ifdef __AVX2__
-#define AVX2_IS_AVAILABLE
+    #define AVX2_IS_AVAILABLE
+
+    #if defined(COMPILER_MSVC) || defined(COMPILER_INTEL)
+        #define __FMA__
+    #endif
+
     constexpr bool IsAvailable = true;        
 #else
     constexpr bool IsAvailable = false;
+#endif
+
+#ifdef __FMA__
+    #define FMA_IS_AVAILABLE
 #endif
 }
 
@@ -106,10 +116,18 @@ namespace AVX256 {
         return add(mul(a, b), c);
     }
     AVX256Type<float> fma(AVX256Type<float> a, AVX256Type<float> b, AVX256Type<float> c) {
+        #ifdef FMA_IS_AVAILABLE
         return _mm256_fmadd_ps(a, b, c);
+        #else
+        return add(mul(a, b), c);
+        #endif
     }
     AVX256Type<double> fma(AVX256Type<double> a, AVX256Type<double> b, AVX256Type<double> c) {
+        #ifdef FMA_IS_AVAILABLE
         return _mm256_fmadd_pd(a, b, c);
+        #else
+        return add(mul(a, b), c);
+        #endif
     }
 #else
     template<typename T> AVX256Type<T> loadAligned(const T* ptr) { return AVX256Type<T>{}; }

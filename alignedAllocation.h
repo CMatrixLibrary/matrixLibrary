@@ -19,17 +19,18 @@
 #include <utility>
 #include <type_traits>
 #include <algorithm>
+#include "compilerMacros.h"
 
-// General aligned malloc/free working with any C++17 compliant compilator + Intel, Visual and g++ compilers.
+// General aligned malloc/free working with any C++17 compliant compilator + Intel, Visual, g++ and clang compilers.
 void* alignedMalloc(std::size_t size, std::size_t alignment) {
-#if defined(__INTEL_COMPILER) || defined(_MSC_VER) || (defined(__GNUC__) && !defined(__clang__))
+#if defined(COMPILER_INTEL) || defined(COMPILER_MSVC) || defined(COMPILER_GCC) || defined(COMPILER_CLANG)
     return _aligned_malloc(size, alignment);
 #else
     return std::aligned_alloc(alignment, size);
 #endif
 }
 void alignedFree(void* ptr) {
-#if defined(__INTEL_COMPILER) || defined(_MSC_VER)  || (defined(__GNUC__) && !defined(__clang__))
+#if defined(COMPILER_INTEL) || defined(COMPILER_MSVC) || defined(COMPILER_GCC) || defined(COMPILER_CLANG)
     _aligned_free(ptr);
 #else
     std::free(memory);
