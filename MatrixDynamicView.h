@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MATRIX_DYNAMIC_VIEW_H
+#define MATRIX_DYNAMIC_VIEW_H
 #include "MatrixInterface.h"
 
 template<typename T> class HeapMatrix;
@@ -42,3 +43,4 @@ public:
 
     mtl::size_t _effectiveColumnCount() const { return effectiveColumnCount_; }
 };
+#endif

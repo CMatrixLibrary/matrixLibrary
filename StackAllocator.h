@@ -1,4 +1,5 @@
-#pragma once
+#ifndef STACK_ALLOCATOR_H
+#define STACK_ALLOCATOR_H
 #include "alignedAllocation.h"
 #include <utility>
 
@@ -39,3 +40,4 @@ public:
         memory = reinterpret_cast<char*>(ptr);
     }
 };
+#endif

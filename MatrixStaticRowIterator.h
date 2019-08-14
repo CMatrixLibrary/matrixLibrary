@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MATRIX_STATIC_ROW_ITERATOR_H
+#define MATRIX_STATIC_ROW_ITERATOR_H
 #include "ArrayStaticView.h"
 
 template<typename T, mtl::size_t ColumnCount, mtl::size_t EffectiveColumnCount> class MatrixStaticRowIterator {
@@ -30,3 +31,5 @@ public:
 private:
     ArrayStaticView<T, ColumnCount> view_;
 };
+
+#endif

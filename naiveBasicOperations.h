@@ -1,4 +1,5 @@
-#pragma once
+#ifndef NAIVE_BASIC_OPERATIONS_H
+#define NAIVE_BASIC_OPERATIONS_H
 #include "MatrixInterface.h"
 #include "Matrix.h"
 
@@ -110,3 +111,5 @@ auto& naiveScalarMulAssign(MatrixInterface<M>& result, const typename M::ValueTy
     }
     return result;
 }
+
+#endif

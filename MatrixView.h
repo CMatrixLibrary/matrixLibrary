@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MATRIX_VIEW_H
+#define MATRIX_VIEW_H
 #include "MatrixDynamicView.h"
 #include "MatrixStaticSizeView.h"
 #include "MatrixStaticEffectiveColumnView.h"
@@ -36,3 +37,4 @@ using MatrixConstView =
         MatrixConstDynamicView<T>
     >::type>::type
 >::type;
+#endif

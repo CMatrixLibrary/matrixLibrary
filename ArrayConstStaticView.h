@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ARRAY_CONST_STATIC_VIEW_H
+#define ARRAY_CONST_STATIC_VIEW_H
 #include "types.h"
 #include "debugAssert.h"
 #include "ArrayStaticView.h"
@@ -38,3 +39,4 @@ public:
 private:
     const T* data_;
 };
+#endif

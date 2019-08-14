@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RANGE_ZIP_H
+#define RANGE_ZIP_H
 #include <tuple>
 #include <cstddef>
 #include <utility>
@@ -74,3 +75,5 @@ private:
 template<typename... Ts> RangeZip<Ts...> rangeZip(Ts&... values) {
     return RangeZip(values...);
 }
+
+#endif

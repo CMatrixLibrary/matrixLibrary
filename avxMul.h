@@ -1,4 +1,5 @@
-#pragma once
+#ifndef AVX_MUL_H
+#define AVX_MUL_H
 #include "avxSimd.h"
 
 void avxMul2(int* result, const int* a, const int* b, int n, int m, int q) {
@@ -414,3 +415,5 @@ template<int n, int m, int q, typename T> void avxMul7(T* result, const T* a, co
     }
 #endif
 }
+
+#endif

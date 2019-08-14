@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HEAP_MATRIX_H
+#define HEAP_MATRIX_H
 #include "MatrixInterface.h"
 
 template<typename T> class HeapMatrix : public MatrixInterface<HeapMatrix<T>> {
@@ -97,3 +98,4 @@ public:
         return *this;
     }
 };
+#endif

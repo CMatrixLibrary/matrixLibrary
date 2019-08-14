@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MATRIX_STATIC_SIZE_VIEW_H
+#define MATRIX_STATIC_SIZE_VIEW_H
 #include "MatrixInterface.h"
 
 template<typename T, mtl::size_t RowCount_, mtl::size_t ColumnCount_> class MatrixStaticSizeView : public MatrixInterface<MatrixStaticSizeView<T, RowCount_, ColumnCount_>> {
@@ -39,3 +40,4 @@ public:
 
     mtl::size_t _effectiveColumnCount() const { return effectiveColumnCount_; }
 };
+#endif

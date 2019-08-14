@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ALIGNED_ALLOCATION_H
+#define ALIGNED_ALLOCATION_H
 
 // Aligned versions of new, new[], delete, delete[] operators.
 // new and new[] have additional "Construct" versions. Unlike standard versions they force initialization.
@@ -112,3 +113,5 @@ template<typename T> void alignedArrayDelete(T* ptr) {
     }
     detail::alignedSavedSizeFree(ptr);
 }
+
+#endif

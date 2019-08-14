@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MATRIX_CONST_STATIC_VIEW_H
+#define MATRIX_CONST_STATIC_VIEW_H
 #include "MatrixInterface.h"
 #include "HeapMatrix.h"
 #include "StackMatrix.h"
@@ -29,3 +30,4 @@ public:
     template<int RCount, int CCount> MatrixConstStaticView(StaticHeapMatrix<T, RCount, CCount>&&) = delete;
     template<int RCount, int CCount> MatrixConstStaticView(StackMatrix<T, RCount, CCount>&&) = delete;
 };
+#endif

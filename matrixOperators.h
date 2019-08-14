@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MATRIX_OPERATORS_H
+#define MATRIX_OPERATORS_H
 #include "naiveBasicOperations.h"
 #include <iostream>
 #include <iomanip>
@@ -38,3 +39,4 @@ template<typename MT> std::ostream& operator<<(std::ostream& out, const MatrixIn
     }
     return out;
 }
+#endif

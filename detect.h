@@ -1,4 +1,5 @@
-#pragma once
+#ifndef DETECT_H
+#define DETECT_H
 #include <utility>
 #include <type_traits>
 
@@ -11,3 +12,5 @@ struct detect : std::false_type {};
 // Specialization recognizes/validates only types supporting the archetype.
 template <typename T, template <typename> class Op>
 struct detect<T, Op, void_t<Op<T>>> : std::true_type {};
+
+#endif

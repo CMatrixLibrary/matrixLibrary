@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RANGE_H
+#define RANGE_H
 
 template<typename T> class Range {
     class Iterator {
@@ -48,3 +49,5 @@ private:
 template<typename Container> auto indicies(const Container& container) -> Range<decltype(container.size())> {
     return Range<decltype(container.size())>(0, container.size());
 }
+
+#endif

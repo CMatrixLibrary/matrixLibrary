@@ -1,4 +1,5 @@
-#pragma once
+#ifndef AVX_SIMD_H
+#define AVX_SIMD_H
 #include <immintrin.h>
 #include <type_traits>
 #include <new>
@@ -161,3 +162,5 @@ template<typename T> AVX256Type<T> operator-=(AVX256Type<T>& a, AVX256Type<T> b)
 template<typename T> AVX256Type<T> operator*=(AVX256Type<T>& a, AVX256Type<T> b) {
     return a = a * b;
 }
+
+#endif
