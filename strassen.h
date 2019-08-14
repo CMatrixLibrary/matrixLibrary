@@ -40,6 +40,13 @@ enum class BaseOperationType {
     Avx
 };
 
+template<typename ValueType> constexpr BaseOperationType AutomaticBaseOperationType = BaseOperationType::Naive;
+#ifdef AVX2_IS_AVAILABLE
+template<> constexpr BaseOperationType AutomaticBaseOperationType<float> = BaseOperationType::Avx;
+template<> constexpr BaseOperationType AutomaticBaseOperationType<double> = BaseOperationType::Avx;
+template<> constexpr BaseOperationType AutomaticBaseOperationType<int32_t> = BaseOperationType::Avx;
+#endif
+
 enum class ArithmeticOperation {
     Assign,
     Add,
@@ -119,6 +126,10 @@ auto strassenAvx(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int
     if constexpr (AVX256::IsAvailable) return strassenWithStaticPadding<BaseOperationType::Avx>(a, b, steps);
     else static_assert(AVX256::IsAvailable && always_false_v<M1>, AVX256_StaticAssertMessage);
 }
+template<typename M1, typename M2>
+auto strassenAuto(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
+    return strassenWithStaticPadding<AutomaticBaseOperationType<typename M1::ValueType>>(a, b, steps);
+}
 
 template<BaseOperationType opType, int Steps, typename M1, typename M2> auto strassenImpl(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, std::false_type) {
     if constexpr (opType == BaseOperationType::Naive) {
@@ -160,6 +171,9 @@ template<int Steps, typename M1, typename M2> auto strassen(const MatrixInterfac
 template<int Steps, typename M1, typename M2> auto strassenAvx(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
     if constexpr (AVX256::IsAvailable) return strassenImpl<BaseOperationType::Avx, Steps>(a, b);
     else static_assert(AVX256::IsAvailable && always_false_v<M1>, AVX256_StaticAssertMessage);
+}
+template<int Steps, typename M1, typename M2> auto strassenAuto(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
+    return strassenImpl<AutomaticBaseOperationType<typename M1::ValueType>, Steps>(a, b);
 }
 
 template<typename T> void copy(T* dst, T* src, int n, int m, int effDst, int effSrc) {
@@ -688,7 +702,10 @@ auto lowLevelAvxStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>
     if constexpr (AVX256::IsAvailable) return lowLevelStrassen<BaseOperationType::Avx>(a, b, steps);
     else static_assert(AVX256::IsAvailable && always_false_v<M1>, AVX256_StaticAssertMessage);
 }
-
+template<typename M1, typename M2>
+auto lowLevelAutoStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
+    return lowLevelStrassen<AutomaticBaseOperationType<typename M1::ValueType>>(a, b, steps);
+}
 
 template<BaseOperationType opType, typename T>
 void minSpaceStrassenMul(T* c, T* a, T* b, int n, int m, int q, int effC, int effA, int effB, StackAllocator<T>& allocator) {
@@ -960,6 +977,10 @@ auto minSpaceAvxStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>
     if constexpr (AVX256::IsAvailable) return minSpaceStrassen<BaseOperationType::Avx>(a, b, steps);
     else static_assert(AVX256::IsAvailable && always_false_v<M1>, AVX256_StaticAssertMessage);
 }
+template<typename M1, typename M2>
+auto minSpaceAutoStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
+    return minSpaceStrassen<AutomaticBaseOperationType<typename M1::ValueType>>(a, b, steps);
+}
 template<int Steps, typename M1, typename M2>
 auto minSpaceStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
     return minSpaceStrassen<Steps, BaseOperationType::Naive>(a, b);
@@ -968,6 +989,10 @@ template<int Steps, typename M1, typename M2>
 auto minSpaceAvxStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
     if constexpr (AVX256::IsAvailable) return minSpaceStrassen<Steps, BaseOperationType::Avx>(a, b);
     else static_assert(AVX256::IsAvailable && always_false_v<M1>, AVX256_StaticAssertMessage);
+}
+template<int Steps, typename M1, typename M2>
+auto minSpaceAutoStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
+    return minSpaceStrassen<Steps, AutomaticBaseOperationType<typename M1::ValueType>>(a, b);
 }
 
 #endif
