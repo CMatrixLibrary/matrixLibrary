@@ -8,6 +8,7 @@
 #include "MatrixView.h"
 #include "MatrixExtendedFunctions.h"
 #include "naiveBasicOperations.h"
+#include "blasMul.h"
 #include <utility>
 #include <cmath>
 #include <optional>
@@ -38,14 +39,22 @@ std::optional<std::array<int, 3>> staticPaddingNewSizes(int n, int m, int q, int
 
 enum class BaseMulType {
     Naive,
-    Avx
+    Avx,
+    Blas
 };
 
-template<typename ValueType> constexpr BaseMulType AutomaticBaseOperationType = BaseMulType::Naive;
-#ifdef AVX2_IS_AVAILABLE
-template<> constexpr BaseMulType AutomaticBaseOperationType<float> = BaseMulType::Avx;
-template<> constexpr BaseMulType AutomaticBaseOperationType<double> = BaseMulType::Avx;
-template<> constexpr BaseMulType AutomaticBaseOperationType<int32_t> = BaseMulType::Avx;
+template<typename ValueType> constexpr BaseMulType AutomaticBaseMulType = BaseMulType::Naive;
+#if defined(BLAS_IS_AVAILABLE)
+template<> constexpr BaseMulType AutomaticBaseMulType<float> = BaseMulType::Blas;
+template<> constexpr BaseMulType AutomaticBaseMulType<double> = BaseMulType::Blas;
+template<> constexpr BaseMulType AutomaticBaseMulType<std::complex<float>> = BaseMulType::Blas;
+template<> constexpr BaseMulType AutomaticBaseMulType<std::complex<double>> = BaseMulType::Blas;
+#elif defined(AVX2_IS_AVAILABLE)
+template<> constexpr BaseMulType AutomaticBaseMulType<float> = BaseMulType::Avx;
+template<> constexpr BaseMulType AutomaticBaseMulType<double> = BaseMulType::Avx;
+#endif
+#if defined(AVX2_IS_AVAILABLE)
+template<> constexpr BaseMulType AutomaticBaseMulType<int32_t> = BaseMulType::Avx;
 #endif
 
 enum class ArithmeticOperation {
@@ -192,6 +201,9 @@ void mul(T* result, const T* a, const T* b, int n, int m, int q) {
         naiveMul(result, a, b, n, m, q);
     } else if constexpr (opType == BaseMulType::Avx) {
         avxMul7(result, a, b, n, m, q);
+    } else if constexpr (opType == BaseMulType::Blas) {
+        for (int i = 0; i < n*q; ++i) result[i] = 0;
+        blas::mul(result, a, b, n, m, q);
     }
 }
 
@@ -201,6 +213,9 @@ void mul(T* result, const T* a, const T* b) {
         naiveMul<n, m, q>(result, a, b);
     } else if constexpr (opType == BaseMulType::Avx) {
         avxMul7<n, m, q>(result, a, b);
+    } else if constexpr (opType == BaseMulType::Blas) {
+        for (int i = 0; i < n*q; ++i) result[i] = 0;
+        blas::mul(result, a, b, n, m, q);
     }
 }
 
@@ -208,6 +223,7 @@ template<BaseMulType opType, typename M1, typename M2>
 auto mul(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
     if constexpr (opType == BaseMulType::Naive) return naiveMul(a, b);
     if constexpr (opType == BaseMulType::Avx) return avxMul(a, b);
+    if constexpr (opType == BaseMulType::Blas) return blasMul(a, b);
 }
 
 template<BaseMulType opType, typename M1, typename M2>
@@ -262,7 +278,7 @@ auto strassenAvx(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int
 }
 template<typename M1, typename M2>
 auto strassenAuto(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
-    return strassenWithStaticPadding<AutomaticBaseOperationType<typename M1::ValueType>>(a, b, steps);
+    return strassenWithStaticPadding<AutomaticBaseMulType<typename M1::ValueType>>(a, b, steps);
 }
 
 template<BaseMulType opType, int Steps, typename M1, typename M2> auto strassenImpl(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, std::false_type) {
@@ -301,7 +317,7 @@ template<int Steps, typename M1, typename M2> auto strassenAvx(const MatrixInter
     else static_assert(AVX256::IsAvailable && always_false_v<M1>, AVX256_StaticAssertMessage);
 }
 template<int Steps, typename M1, typename M2> auto strassenAuto(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
-    return strassenImpl<AutomaticBaseOperationType<typename M1::ValueType>, Steps>(a, b);
+    return strassenImpl<AutomaticBaseMulType<typename M1::ValueType>, Steps>(a, b);
 }
 
 template<int Rows, int Columns, typename T>
@@ -591,7 +607,7 @@ auto lowLevelAvxStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>
 }
 template<typename M1, typename M2>
 auto lowLevelAutoStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
-    return lowLevelStrassen<AutomaticBaseOperationType<typename M1::ValueType>>(a, b, steps);
+    return lowLevelStrassen<AutomaticBaseMulType<typename M1::ValueType>>(a, b, steps);
 }
 
 template<BaseMulType opType, typename T>
@@ -866,7 +882,7 @@ auto minSpaceAvxStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>
 }
 template<typename M1, typename M2>
 auto minSpaceAutoStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
-    return minSpaceStrassen<AutomaticBaseOperationType<typename M1::ValueType>>(a, b, steps);
+    return minSpaceStrassen<AutomaticBaseMulType<typename M1::ValueType>>(a, b, steps);
 }
 template<int Steps, typename M1, typename M2>
 auto minSpaceStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
@@ -879,7 +895,7 @@ auto minSpaceAvxStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>
 }
 template<int Steps, typename M1, typename M2>
 auto minSpaceAutoStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
-    return minSpaceStrassen<Steps, AutomaticBaseOperationType<typename M1::ValueType>>(a, b);
+    return minSpaceStrassen<Steps, AutomaticBaseMulType<typename M1::ValueType>>(a, b);
 }
 
 #endif
