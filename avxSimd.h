@@ -13,8 +13,7 @@
 namespace AVX256 {
 #ifdef __AVX2__
     #define AVX2_IS_AVAILABLE
-
-    #if defined(COMPILER_MSVC) || defined(COMPILER_INTEL)
+    #if (defined(COMPILER_MSVC) || defined(COMPILER_INTEL)) && !defined(__FMA__)
         #define __FMA__
     #endif
 
