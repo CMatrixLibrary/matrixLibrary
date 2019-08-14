@@ -115,7 +115,8 @@ auto strassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int st
 }
 template<typename M1, typename M2>
 auto strassenAvx(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
-    return strassenWithStaticPadding<BaseOperationType::Avx>(a, b, steps);
+    if constexpr (AVX256::IsAvailable) return strassenWithStaticPadding<BaseOperationType::Avx>(a, b, steps);
+    else static_assert(AVX256::IsAvailable && always_false_v<M1>, AVX256_StaticAssertMessage);
 }
 
 template<BaseOperationType opType, int Steps, typename M1, typename M2> auto strassenImpl(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, std::false_type) {
@@ -156,7 +157,8 @@ template<int Steps, typename M1, typename M2> auto strassen(const MatrixInterfac
     return strassenImpl<BaseOperationType::Naive, Steps>(a, b);
 }
 template<int Steps, typename M1, typename M2> auto strassenAvx(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
-    return strassenImpl<BaseOperationType::Avx, Steps>(a, b);
+    if constexpr (AVX256::IsAvailable) return strassenImpl<BaseOperationType::Avx, Steps>(a, b);
+    else static_assert(AVX256::IsAvailable && always_false_v<M1>, AVX256_StaticAssertMessage);
 }
 
 template<typename T> void copy(T* dst, T* src, int n, int m, int effDst, int effSrc) {
@@ -682,7 +684,8 @@ auto lowLevelStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b
 }
 template<typename M1, typename M2>
 auto lowLevelAvxStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
-    return lowLevelStrassen<BaseOperationType::Avx>(a, b, steps);
+    if constexpr (AVX256::IsAvailable) return lowLevelStrassen<BaseOperationType::Avx>(a, b, steps);
+    else static_assert(AVX256::IsAvailable && always_false_v<M1>, AVX256_StaticAssertMessage);
 }
 
 
@@ -953,7 +956,8 @@ auto minSpaceStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b
 }
 template<typename M1, typename M2>
 auto minSpaceAvxStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
-    return minSpaceStrassen<BaseOperationType::Avx>(a, b, steps);
+    if constexpr (AVX256::IsAvailable) return minSpaceStrassen<BaseOperationType::Avx>(a, b, steps);
+    else static_assert(AVX256::IsAvailable && always_false_v<M1>, AVX256_StaticAssertMessage);
 }
 template<int Steps, typename M1, typename M2>
 auto minSpaceStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
@@ -961,5 +965,6 @@ auto minSpaceStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b
 }
 template<int Steps, typename M1, typename M2>
 auto minSpaceAvxStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
-    return minSpaceStrassen<Steps, BaseOperationType::Avx>(a, b);
+    if constexpr (AVX256::IsAvailable) return minSpaceStrassen<Steps, BaseOperationType::Avx>(a, b);
+    else static_assert(AVX256::IsAvailable && always_false_v<M1>, AVX256_StaticAssertMessage);
 }
