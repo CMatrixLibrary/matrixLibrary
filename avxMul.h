@@ -2,6 +2,7 @@
 #include "avxSimd.h"
 
 void avxMul2(int* result, const int* a, const int* b, int n, int m, int q) {
+#ifdef AVX2_IS_AVAILABLE
     for (int i = 0; i < n; ++i) {
         int j = 0;
         for (; j <= q - 8; j += 8) {
@@ -21,8 +22,10 @@ void avxMul2(int* result, const int* a, const int* b, int n, int m, int q) {
             result[j + i * q] = sum;
         }
     }
+#endif
 }
 void avxMul3(int* result, const int* a, const int* b, int n, int m, int q) {
+#ifdef AVX2_IS_AVAILABLE
     for (int i = 0; i < n; ++i) {
         int j = 0;
         for (; j <= q - 16; j += 16) {
@@ -46,8 +49,10 @@ void avxMul3(int* result, const int* a, const int* b, int n, int m, int q) {
             result[j + i * q] = sum;
         }
     }
+#endif
 }
 void avxMul4(int* result, const int* a, const int* b, int n, int m, int q) {
+#ifdef AVX2_IS_AVAILABLE
     for (int i = 0; i < n; ++i) {
         int j = 0;
         for (; j <= q - 32; j += 32) {
@@ -79,8 +84,10 @@ void avxMul4(int* result, const int* a, const int* b, int n, int m, int q) {
             result[j + i * q] = sum;
         }
     }
+#endif
 }
 void avxMul5(int* result, const int* a, const int* b, int n, int m, int q) {
+#ifdef AVX2_IS_AVAILABLE
     for (int i = 0; i < n*q; ++i) {
         result[i] = 0;
     }
@@ -118,9 +125,11 @@ void avxMul5(int* result, const int* a, const int* b, int n, int m, int q) {
             }
         }
     }
+#endif
 }
 
 void avxMul6(int* result, const int* a, const int* b, int n, int m, int q) {
+#ifdef AVX2_IS_AVAILABLE
     for (int i = 0; i < n*q; ++i) {
         result[i] = 0;
     }
@@ -190,8 +199,10 @@ void avxMul6(int* result, const int* a, const int* b, int n, int m, int q) {
             }
         }
     }
+#endif
 }
 template<typename T> void avxMul7(T* result, const T* a, const T* b, int n, int m, int q) {
+#ifdef AVX2_IS_AVAILABLE
     for (int i = 0; i < n*q; ++i) {
         result[i] = T{};
     }
@@ -265,8 +276,10 @@ template<typename T> void avxMul7(T* result, const T* a, const T* b, int n, int 
             }
         }
     }
+#endif
 }
 template<typename T> void avxMul8(T* result, const T* a, const T* b, int n) {
+#ifdef AVX2_IS_AVAILABLE
     for (int i = 0; i < n*n; ++i) {
         result[i] = T{};
     }
@@ -322,8 +335,10 @@ template<typename T> void avxMul8(T* result, const T* a, const T* b, int n) {
         }
     }
     AVX256::alignedArrayDealloc(mat2);
+#endif
 }
 template<int n, int m, int q, typename T> void avxMul7(T* result, const T* a, const T* b) {
+#ifdef AVX2_IS_AVAILABLE
     for (int i = 0; i < n*q; ++i) {
         result[i] = T{};
     }
@@ -397,4 +412,5 @@ template<int n, int m, int q, typename T> void avxMul7(T* result, const T* a, co
             }
         }
     }
+#endif
 }

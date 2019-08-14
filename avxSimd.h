@@ -4,9 +4,22 @@
 #include <new>
 #include <cstdint>
 #include "alignedAllocation.h"
+#include "always_false.h"
+
+#define AVX256_StaticAssertMessage "avx2 is not available. Maybe you're missing a compilation flag?"
+
+namespace AVX256 {
+#ifdef __AVX2__
+#define AVX2_IS_AVAILABLE
+    constexpr bool IsAvailable = true;        
+#else
+    constexpr bool IsAvailable = false;
+#endif
+}
 
 template<typename ValueType> class AVX256Type;
 
+#ifdef AVX2_IS_AVAILABLE
 template<> class AVX256Type<int32_t> {
     __m256i value;
 public:
@@ -25,6 +38,11 @@ public:
     AVX256Type(__m256d value) : value(value) {}
     operator __m256d() { return value; }
 };
+#else
+template<> class AVX256Type<int32_t> {};
+template<> class AVX256Type<float> {};
+template<> class AVX256Type<double> {};
+#endif
 
 namespace AVX256 {
     template<typename T> constexpr int packedCount() {
@@ -46,6 +64,7 @@ namespace AVX256 {
         alignedFree(ptr);
     }
 
+#ifdef AVX2_IS_AVAILABLE
     AVX256Type<int32_t> loadAligned(const int32_t* ptr) { return _mm256_load_si256((__m256i*)ptr); }
     AVX256Type<float> loadAligned(const float* ptr) { return _mm256_load_ps(ptr); }
     AVX256Type<double> loadAligned(const double* ptr) { return _mm256_load_pd(ptr); }
@@ -92,6 +111,18 @@ namespace AVX256 {
     AVX256Type<double> fma(AVX256Type<double> a, AVX256Type<double> b, AVX256Type<double> c) {
         return _mm256_fmadd_pd(a, b, c);
     }
+#else
+    template<typename T> AVX256Type<T> loadAligned(const T* ptr) { return AVX256Type<T>{}; }
+    template<typename T> AVX256Type<T> loadUnaligned(const T* ptr) { return AVX256Type<T>{}; }
+    template<typename T> void storeAligned(T* dst, AVX256Type<T> src) {}
+    template<typename T> void storeUnaligned(T* dst, AVX256Type<T> src) {}
+    template<typename T> AVX256Type<T> add(AVX256Type<T> a, AVX256Type<T> b) { return AVX256Type<T>{}; }
+    template<typename T> AVX256Type<T> sub(AVX256Type<T> a, AVX256Type<T> b) { return AVX256Type<T>{}; }
+    template<typename T> AVX256Type<T> mul(AVX256Type<T> a, AVX256Type<T> b) { return AVX256Type<T>{}; }
+    template<typename T> AVX256Type<T> zero() { return AVX256Type<T>{}; }
+    template<typename T> AVX256Type<T> setAllElements(T value) { return AVX256Type<T>{}; }
+    template<typename T> AVX256Type<T> fma(AVX256Type<T> a, AVX256Type<T> b, AVX256Type<T> c) { return AVX256Type<T>{}; }
+#endif
 };
 
 template<typename T> AVX256Type<T> operator+(AVX256Type<T> a, AVX256Type<T> b) {
