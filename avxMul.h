@@ -248,6 +248,11 @@ template<typename T> void avxMul7(T* result, const T* a, const T* b, int n, int 
                             sum += a[k + i * m] * b[j + k * q];
                         }
                         result[j + i * q] = sum;
+                        sum = T{};
+                        for (int k = 0; k < m; ++k) {
+                            sum += a[k + (i+1) * m] * b[j + k * q];
+                        }
+                        result[j + (i+1) * q] = sum;
                     }
                 }
                 if (i < lastib) {
