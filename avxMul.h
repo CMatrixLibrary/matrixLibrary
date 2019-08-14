@@ -248,6 +248,11 @@ template<typename T> void avxMul7(T* result, const T* a, const T* b, int n, int 
                             sum += a[k + i * m] * b[j + k * q];
                         }
                         result[j + i * q] = sum;
+                        sum = T{};
+                        for (int k = 0; k < m; ++k) {
+                            sum += a[k + (i+1) * m] * b[j + k * q];
+                        }
+                        result[j + (i+1) * q] = sum;
                     }
                 }
                 if (i < lastib) {
@@ -414,6 +419,23 @@ template<int n, int m, int q, typename T> void avxMul7(T* result, const T* a, co
         }
     }
 #endif
+}
+
+template<typename M1, typename M2>
+auto avxMul(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
+    if constexpr (AVX256::IsAvailable) {
+        if constexpr (M1::HasConstexprRowAndColumnCount() && M2::HasConstexprRowAndColumnCount()) {
+            Matrix<typename M1::ValueType, M1::CRow(), M2::CCol()> result;
+            avxMul7<M1::CRow(), M1::CCol(), M2::CCol()>(result.data(), a.data(), b.data());
+            return result;
+        } else {
+            Matrix<typename M1::ValueType> result(a.rowCount(), b.columnCount());
+            avxMul7(result.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount());
+            return result;
+        }
+    } else {
+        static_assert(AVX256::IsAvailable && always_false_v<M1>, AVX256_StaticAssertMessage);
+    }
 }
 
 #endif

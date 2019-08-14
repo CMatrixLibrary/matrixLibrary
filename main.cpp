@@ -2,6 +2,11 @@
 #include <iomanip>
 #include <fstream>
 #include <vector>
+#if __has_include("mkl.h")
+    #include "mkl.h"
+    #define USE_BLAS
+#endif
+#include "blasUtility.h"
 #include "Matrix.h"
 #include "MatrixView.h"
 #include "naiveBasicOperations.h"
