@@ -16,6 +16,9 @@
 #include "MatrixExtendedFunctions.h"
 #include "benchmark.h"
 #include "strassen.h"
+#include "blockMul.h"
+#include "parallelMul.h"
+#include "blockParallelMul.h"
 
 template<typename T, typename Function> void strassenDynamicBenchmark(std::string label, int n, int steps, Function fun) {
     HeapMatrix<T> a(n, n);
@@ -308,6 +311,63 @@ template<typename T> void strassenSquereBenchmark() {
     strassenSquereBenchmark<T, 8192, 7, false>(outFile, 1);
     strassenSquereBenchmark<T, 8192, 8, false>(outFile, 1);
     std::cout << "\nDONE\n";
+}
+
+template<typename T, int Reps, int N, int NEnd, int Inc, bool UseBlas = true, bool UseAvx = true> void testBaseMul(std::ostream& out);
+
+template<typename T, int Reps, int N, int NEnd, int Inc, bool UseBlas, bool UseAvx>
+struct TestBaseMulImpl {
+    static void TestBaseMul(std::ostream& out) {
+        std::cout << "\rN = " << N << "/" << NEnd-1;
+        HeapMatrix<T> dynamicA(N, N);
+        HeapMatrix<T> dynamicB(N, N);
+        StaticHeapMatrix<T, N, N> staticA;
+        StaticHeapMatrix<T, N, N> staticB;
+        out << N;
+        out << ',' << benchmark(Reps, [&]() { naiveMul(dynamicA, dynamicB); });
+        out << ',' << benchmark(Reps, [&]() { blockMul(dynamicA, dynamicB); });
+        out << ',' << benchmark(Reps, [&]() { parallelMul(dynamicA, dynamicB); });
+        out << ',' << benchmark(Reps, [&]() { blockParallelMul(dynamicA, dynamicB); });
+        if constexpr (UseAvx) out << ',' << benchmark(Reps, [&]() { avxMul(dynamicA, dynamicB); });
+        if constexpr (UseAvx) out << ',' << benchmark(Reps, [&]() { avxParallelMul(dynamicA, dynamicB); });
+        if constexpr (UseBlas) out << ',' << benchmark(Reps, [&]() { blasMul(dynamicA, dynamicB); });
+        out << ',' << benchmark(Reps, [&]() { naiveMul(staticA, staticB); });
+        out << ',' << benchmark(Reps, [&]() { blockMul(staticA, staticB); });
+        out << ',' << benchmark(Reps, [&]() { parallelMul(staticA, staticB); });
+        out << ',' << benchmark(Reps, [&]() { blockParallelMul(staticA, staticB); });
+        if constexpr (UseAvx) out << ',' << benchmark(Reps, [&]() { avxMul(staticA, staticB); });
+        if constexpr (UseAvx) out << ',' << benchmark(Reps, [&]() { avxParallelMul(staticA, staticB); });
+        if constexpr (UseBlas) out << ',' << benchmark(Reps, [&]() { blasMul(staticA, staticB); });
+        out << std::endl;
+        ::testBaseMul<T, Reps, N+Inc, NEnd, Inc, UseBlas, UseAvx>(out);
+    }
+};
+
+template<typename T, int Reps, int N, int Inc, bool UseBlas, bool UseAvx>
+struct TestBaseMulImpl<T, Reps, N, N, Inc, UseBlas, UseAvx> {
+    static void TestBaseMul(std::ostream& out) {}
+};
+
+template<typename T, int Reps, int N, int NEnd, int Inc, bool UseBlas, bool UseAvx>
+void testBaseMul(std::ostream& out) {
+    TestBaseMulImpl<T, Reps, N, NEnd, Inc, UseBlas, UseAvx>::TestBaseMul(out);
+}
+template<typename T, int Reps, int N, int NEnd, int Inc, bool UseBlas=true, bool UseAvx=true>
+void testBaseMul(bool append = false, const std::string& id="") {
+    std::ofstream outFile("BaseMulTest" + id + ".csv", append ? std::ios_base::app : std::ios_base::out);
+    if (!append) {
+        outFile << "N";
+        outFile << ",D_Naive,D_Block,D_Parallel,D_ParallelBlock";
+        if constexpr (UseAvx) outFile << ",D_Avx,D_ParallelAvx";
+        if constexpr (UseBlas) outFile << ",D_Blas";
+        outFile << ",S_Naive,S_Block,S_Parallel,S_ParallelBlock";
+        if constexpr (UseAvx) outFile << ",S_Avx,S_ParallelAvx";
+        if constexpr (UseBlas) outFile << ",S_Blas";
+        outFile << std::endl;
+    }
+    std::cout << '\n';
+    testBaseMul<T, Reps, N, NEnd, Inc, UseBlas, UseAvx>(outFile);
+    std::cout << "\nDone\n";
 }
 
 int main() {
