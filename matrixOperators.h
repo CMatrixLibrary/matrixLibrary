@@ -33,9 +33,9 @@ template<typename M> auto& operator*=(MatrixInterface<M>& m, const typename M::V
 template<typename MT> std::ostream& operator<<(std::ostream& out, const MatrixInterface<MT>& m) {
     for (auto row : m) {
         for (auto value : row) {
-            std::cout << std::setw(6) << value << ' ';
+            out << std::setw(6) << value << ' ';
         }
-        std::cout << '\n';
+        out << '\n';
     }
     return out;
 }
