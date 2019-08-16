@@ -1,8 +1,11 @@
-#pragma once
+#ifndef BLAS_UTILITY_H
+#define BLAS_UTILITY_H
 
 #include <complex>
 #include <type_traits>
 #include "always_false.h"
+
+#define Blas_StaticAssertMessage "blas is not available. Maybe you're missing \"#define USE_BLAS\"?"
 
 namespace blas {
 #ifdef USE_BLAS
@@ -16,7 +19,7 @@ namespace blas {
         if constexpr (IsAvailable) {
             static_assert(always_false_v<T>, "blas function is not available for this type");
         } else {
-            static_assert(always_false_v<T>, "blas functions are not available, missing \"#define USE_BLAS\"?");
+            static_assert(always_false_v<T>, Blas_StaticAssertMessage);
         }
     }
 
@@ -41,3 +44,5 @@ namespace blas {
         mul(c, a, b, n, m, q, q, m, q);
     }
 }
+
+#endif
