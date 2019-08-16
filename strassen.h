@@ -485,10 +485,14 @@ void lowLevelStrassenWithStaticPadding(T* result, T* a, T* b, int n, int m, int 
     }
 }
 
-template<int n, int m, int q, BaseMulType opType, typename T>
-void lowLevelStrassen(T* a, T* b, int steps, T* c, StackAllocator<T>& allocator) {
-    if (steps <= 0) {
-        mul<n, m, q, opType>(c, a, b);
+template<BaseMulType opType, int Steps, int n, int m, int q, typename T>
+void lowLevelStrassen(T* a, T* b, T* c, StackAllocator<T>& allocator, std::false_type) {
+    mul<n, m, q, opType>(c, a, b);
+}
+template<BaseMulType opType, int Steps, int n, int m, int q, typename T>
+void lowLevelStrassen(T* a, T* b, T* c, StackAllocator<T>& allocator, std::true_type unused = std::true_type{}) {
+    if constexpr (Steps <= 0) {
+        lowLevelStrassen<opType, Steps, n, m, q>(a, b, c, allocator, std::false_type{});
         return;
     }
 
@@ -502,41 +506,41 @@ void lowLevelStrassen(T* a, T* b, int steps, T* c, StackAllocator<T>& allocator)
     auto m1 = allocator.alloc(hn * hq);
     auto m1_a = operation<hn, hm, ArithmeticOperation::Add>(dA[0][0], dA[1][1], allocator);
     auto m1_b = operation<hm, hq, ArithmeticOperation::Add>(dB[0][0], dB[1][1], allocator);
-    lowLevelStrassen<hn, hm, hq, opType>(m1_a, m1_b, steps - 1, m1, allocator);
+    lowLevelStrassen<opType, Steps - 1, hn, hm, hq>(m1_a, m1_b, m1, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
     allocator.dealloc(m1_b, hm*hq);
     allocator.dealloc(m1_a, hn*hm);
 
     auto m2 = allocator.alloc(hn * hq);
     auto m2_a = operation<hn, hm, ArithmeticOperation::Add>(dA[1][0], dA[1][1], allocator);
-    lowLevelStrassen<hn, hm, hq, opType>(m2_a, dB[0][0], steps - 1, m2, allocator);
+    lowLevelStrassen<opType, Steps - 1, hn, hm, hq>(m2_a, dB[0][0], m2, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
     allocator.dealloc(m2_a, hn*hm);
 
     auto m3 = allocator.alloc(hn * hq);
     auto m3_b = operation<hm, hq, ArithmeticOperation::Sub>(dB[0][1], dB[1][1], allocator);
-    lowLevelStrassen<hn, hm, hq, opType>(dA[0][0], m3_b, steps - 1, m3, allocator);
+    lowLevelStrassen<opType, Steps - 1, hn, hm, hq>(dA[0][0], m3_b, m3, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
     allocator.dealloc(m3_b, hm*hq);
 
     auto m4 = allocator.alloc(hn * hq);
     auto m4_b = operation<hm, hq, ArithmeticOperation::Sub>(dB[1][0], dB[0][0], allocator);
-    lowLevelStrassen<hn, hm, hq, opType>(dA[1][1], m4_b, steps - 1, m4, allocator);
+    lowLevelStrassen<opType, Steps - 1, hn, hm, hq>(dA[1][1], m4_b, m4, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
     allocator.dealloc(m4_b, hm*hq);
 
     auto m5 = allocator.alloc(hn * hq);
     auto m5_a = operation<hn, hm, ArithmeticOperation::Add>(dA[0][0], dA[0][1], allocator);
-    lowLevelStrassen<hn, hm, hq, opType>(m5_a, dB[1][1], steps - 1, m5, allocator);
+    lowLevelStrassen<opType, Steps - 1, hn, hm, hq>(m5_a, dB[1][1], m5, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
     allocator.dealloc(m5_a, hn*hm);
 
     auto m6 = allocator.alloc(hn * hq);
     auto m6_a = operation<hn, hm, ArithmeticOperation::Sub>(dA[1][0], dA[0][0], allocator);
     auto m6_b = operation<hm, hq, ArithmeticOperation::Add>(dB[0][0], dB[0][1], allocator);
-    lowLevelStrassen<hn, hm, hq, opType>(m6_a, m6_b, steps - 1, m6, allocator);
+    lowLevelStrassen<opType, Steps - 1, hn, hm, hq>(m6_a, m6_b, m6, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
     allocator.dealloc(m6_b, hm*hq);
     allocator.dealloc(m6_a, hn*hm);
 
     auto m7 = allocator.alloc(hn * hq);
     auto m7_a = operation<hn, hm, ArithmeticOperation::Sub>(dA[0][1], dA[1][1], allocator);
     auto m7_b = operation<hm, hq, ArithmeticOperation::Add>(dB[1][0], dB[1][1], allocator);
-    lowLevelStrassen<hn, hm, hq, opType>(m7_a, m7_b, steps - 1, m7, allocator);
+    lowLevelStrassen<opType, Steps - 1, hn, hm, hq>(m7_a, m7_b, m7, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
     allocator.dealloc(m7_b, hm*hq);
     allocator.dealloc(m7_a, hn*hm);
 
@@ -568,31 +572,38 @@ void lowLevelStrassen(T* a, T* b, int steps, T* c, StackAllocator<T>& allocator)
     allocator.dealloc(dA[0][1], hn*hm);
     allocator.dealloc(dA[0][0], hn*hm);
 }
-template<int n, int m, int q, BaseMulType opType, typename T>
-void lowLevelStrassen(T* result, T* a, T* b, int steps) {
+template<BaseMulType opType, int Steps, int n, int m, int q, typename T>
+void lowLevelStrassen(T* result, T* a, T* b) {
     int expected = 0;
     int eN = n;
     int eM = m;
     int eQ = q;
-    for (int i = 0; i < steps; ++i) {
+    for (int i = 0; i < Steps; ++i) {
         eN /= 2;
         eM /= 2;
         eQ /= 2;
         expected += 5*StackAllocator<T>::Allign(eN*eM) + 5*StackAllocator<T>::Allign(eM*eQ) + 7*StackAllocator<T>::Allign(eN*eQ);
     }
     StackAllocator<T> allocator(expected);
-    lowLevelStrassen<n, m, q, opType>(a, b, steps, result, allocator);
+    lowLevelStrassen<opType, Steps, n, m, q>(a, b, result, allocator);
 }
 
 template<BaseMulType opType, typename M1, typename M2>
 auto lowLevelStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
+    auto result = a.createNew(a.rowCount(), b.columnCount());
+    lowLevelStrassenWithStaticPadding<opType>(result.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(), steps);
+    return result;
+}
+template<BaseMulType opType, int Steps, typename M1, typename M2>
+auto lowLevelStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
     if constexpr (M1::HasConstexprRowAndColumnCount() && M2::HasConstexprRowAndColumnCount()) {
         Matrix<typename M1::ValueType, M1::CRow(), M2::CCol()> result;
-        lowLevelStrassen<M1::CRow(), M1::CCol(), M2::CCol(), opType>(result.data(), a.data(), b.data(), steps);
+        lowLevelStrassen<opType, Steps, M1::CRow(), M1::CCol(), M2::CCol()>(result.data(), a.data(), b.data());
         return result;
-    } else {
+    }
+    else {
         auto result = a.createNew(a.rowCount(), b.columnCount());
-        lowLevelStrassenWithStaticPadding<opType>(result.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(), steps);
+        lowLevelStrassenWithStaticPadding<opType>(result.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(), Steps);
         return result;
     }
 }
@@ -608,6 +619,19 @@ auto lowLevelAvxStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>
 template<typename M1, typename M2>
 auto lowLevelAutoStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
     return lowLevelStrassen<AutomaticBaseMulType<typename M1::ValueType>>(a, b, steps);
+}
+template<int Steps, typename M1, typename M2>
+auto lowLevelStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
+    return lowLevelStrassen<BaseMulType::Naive, Steps>(a, b);
+}
+template<int Steps, typename M1, typename M2>
+auto lowLevelAvxStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
+    if constexpr (AVX256::IsAvailable) return lowLevelStrassen<BaseMulType::Avx, Steps>(a, b);
+    else static_assert(AVX256::IsAvailable && always_false_v<M1>, AVX256_StaticAssertMessage);
+}
+template<int Steps, typename M1, typename M2>
+auto lowLevelAutoStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
+    return lowLevelStrassen<AutomaticBaseMulType<typename M1::ValueType>, Steps>(a, b);
 }
 
 template<BaseMulType opType, typename T>
