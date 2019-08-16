@@ -1,4 +1,5 @@
-#pragma once
+#ifndef BLAS_MUL_H
+#define BLAS_MUL_H
 #include "Matrix.h"
 #include "blasUtility.h"
 
@@ -20,3 +21,4 @@ auto blasMul(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
         static_assert(blas::IsAvailable && always_false_v<M1>, "blas is not available");
     }
 }
+#endif
