@@ -99,7 +99,7 @@ namespace AVX256 {
     AVX256Type<float> sub(AVX256Type<float> a, AVX256Type<float> b) { return _mm256_sub_ps(a, b); }
     AVX256Type<double> sub(AVX256Type<double> a, AVX256Type<double> b) { return _mm256_sub_pd(a, b); }
 
-    AVX256Type<int32_t> mul(AVX256Type<int32_t> a, AVX256Type<int32_t> b) { return _mm256_mul_epi32(a, b); }
+    AVX256Type<int32_t> mul(AVX256Type<int32_t> a, AVX256Type<int32_t> b) { return _mm256_mullo_epi32(a, b); }
     AVX256Type<float> mul(AVX256Type<float> a, AVX256Type<float> b) { return _mm256_mul_ps(a, b); }
     AVX256Type<double> mul(AVX256Type<double> a, AVX256Type<double> b) { return _mm256_mul_pd(a, b); }
 
