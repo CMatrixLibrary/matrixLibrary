@@ -9,10 +9,10 @@
 #include "MatrixExtendedFunctions.h"
 #include "naiveBasicOperations.h"
 #include "blasMul.h"
+#include "ThreadPool.h"
 #include <utility>
 #include <cmath>
 #include <optional>
-
 
 double log(double base, double value) {
     return ::log(value) / ::log(base);
@@ -40,7 +40,10 @@ std::optional<std::array<int, 3>> staticPaddingNewSizes(int n, int m, int q, int
 enum class BaseMulType {
     Naive,
     Avx,
-    Blas
+    ParallelAvx,
+    Blas,
+    NaiveEff,
+    AvxEff
 };
 
 template<typename ValueType> constexpr BaseMulType AutomaticBaseMulType = BaseMulType::Naive;
@@ -200,6 +203,8 @@ void mul(T* result, const T* a, const T* b, int n, int m, int q) {
     if constexpr (opType == BaseMulType::Naive) {
         naiveMul(result, a, b, n, m, q);
     } else if constexpr (opType == BaseMulType::Avx) {
+        avxMul7(result, a, b, n, m, q);
+    } else if constexpr (opType == BaseMulType::ParallelAvx) {
         avxParallelMul(result, a, b, n, m, q);
     } else if constexpr (opType == BaseMulType::Blas) {
         for (int i = 0; i < n*q; ++i) result[i] = 0;
@@ -212,6 +217,8 @@ void mul(T* result, const T* a, const T* b) {
     if constexpr (opType == BaseMulType::Naive) {
         naiveMul<n, m, q>(result, a, b);
     } else if constexpr (opType == BaseMulType::Avx) {
+        avxMul<n, m, q>(result, a, b);
+    } else if constexpr (opType == BaseMulType::ParallelAvx) {
         avxParallelMul<n, m, q>(result, a, b);
     } else if constexpr (opType == BaseMulType::Blas) {
         for (int i = 0; i < n*q; ++i) result[i] = 0;
@@ -222,7 +229,8 @@ void mul(T* result, const T* a, const T* b) {
 template<BaseMulType opType, typename M1, typename M2> 
 auto mul(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
     if constexpr (opType == BaseMulType::Naive) return naiveMul(a, b);
-    if constexpr (opType == BaseMulType::Avx) return avxParallelMul(a, b);
+    if constexpr (opType == BaseMulType::Avx) return avxMul(a, b);
+    if constexpr (opType == BaseMulType::ParallelAvx) return avxParallelMul(a, b);
     if constexpr (opType == BaseMulType::Blas) return blasMul(a, b);
 }
 
@@ -243,6 +251,34 @@ auto strassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int st
     auto m6 = strassen<opType>(dA[1][0] - dA[0][0], dB[0][0] + dB[0][1], steps - 1);
     auto m7 = strassen<opType>(dA[0][1] - dA[1][1], dB[1][0] + dB[1][1], steps - 1);
 
+    Matrix<typename M1::ValueType> c(a.rowCount(), b.columnCount());
+    auto dC = matrixDivideView<2, 2>(c);
+    dC[0][0].copy(m1 + m4 - m5 + m7);
+    dC[0][1].copy(m3 + m5);
+    dC[1][0].copy(m2 + m4);
+    dC[1][1].copy(m1 + m3 - m2 + m6);
+
+    return c;
+}
+template<BaseMulType opType, typename M1, typename M2>
+auto strassenPool(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
+    if (steps <= 0) {
+        return mul<opType>(a, b);
+    }
+
+    auto dA = matrixDivide<2, 2>(a);
+    auto dB = matrixDivide<2, 2>(b);
+
+    Matrix<typename M1::ValueType> m1, m2, m3, m4, m5, m6, m7;
+    ThreadPool p;
+    p.addTask([&]() {m1 = strassen<opType>(dA[0][0] + dA[1][1], dB[0][0] + dB[1][1], steps - 1); });
+    p.addTask([&]() {m2 = strassen<opType>(dA[1][0] + dA[1][1], dB[0][0], steps - 1); });
+    p.addTask([&]() {m3 = strassen<opType>(dA[0][0], dB[0][1] - dB[1][1], steps - 1); });
+    p.addTask([&]() {m4 = strassen<opType>(dA[1][1], dB[1][0] - dB[0][0], steps - 1); });
+    p.addTask([&]() {m5 = strassen<opType>(dA[0][0] + dA[0][1], dB[1][1], steps - 1); });
+    p.addTask([&]() {m6 = strassen<opType>(dA[1][0] - dA[0][0], dB[0][0] + dB[0][1], steps - 1); });
+    p.addTask([&]() {m7 = strassen<opType>(dA[0][1] - dA[1][1], dB[1][0] + dB[1][1], steps - 1); });
+    p.completeTasksAndStop();
     Matrix<typename M1::ValueType> c(a.rowCount(), b.columnCount());
     auto dC = matrixDivideView<2, 2>(c);
     dC[0][0].copy(m1 + m4 - m5 + m7);
@@ -636,6 +672,14 @@ auto lowLevelAutoStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2
 
 template<BaseMulType opType, typename T>
 void minSpaceStrassenMul(T* c, T* a, T* b, int n, int m, int q, int effC, int effA, int effB, StackAllocator<T>& allocator) {
+    if constexpr (opType == BaseMulType::NaiveEff) {
+        naiveMul(c, a, b, n, m, q, effC, effA, effB);
+        return;
+    }
+    if constexpr (opType == BaseMulType::AvxEff) {
+        avxParallelMul(c, a, b, n, m, q, effC, effA, effB);
+        return;
+    }
     T* cx = c;
     T* ax = a;
     T* bx = b;
@@ -663,6 +707,7 @@ void minSpaceStrassenMul(T* c, T* a, T* b, int n, int m, int q, int effC, int ef
 
 template<BaseMulType opType, typename T>
 void minSpaceStrassen(T* c, T* a, T* b, int n, int m, int q, int effC, int effA, int effB, int steps, StackAllocator<T>& allocator) {
+    //std::cout << "<" << n << ", " << m << ", " << q << ">\n";
     if (steps <= 0) {
         minSpaceStrassenMul<opType>(c, a, b, n, m, q, effC, effA, effB, allocator);
         return;
@@ -742,7 +787,7 @@ template<BaseMulType opType, typename T> void minSpaceStrassenWithStaticPadding(
         eQ /= 2;
         expected += StackAllocator<T>::Allign(eN*eM) + StackAllocator<T>::Allign(eM*eQ) + StackAllocator<T>::Allign(eN*eQ);
     }
-    if (steps >= 1) {
+    if (steps >= 1 && opType != BaseMulType::NaiveEff && opType != BaseMulType::AvxEff) {
         expected += std::max(StackAllocator<T>::Allign(eN*eM), StackAllocator<T>::Allign(eM*eQ)) + StackAllocator<T>::Allign(eN*eQ);
     }
 
@@ -923,3 +968,299 @@ auto minSpaceAutoStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2
 }
 
 #endif
+
+
+
+
+
+template<typename T> void naiveMul(T* result, const T* a, const T* b, int n, int m, int q, int effR, int effA, int effB) {
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < q; ++j) {
+            T sum{};
+            for (int k = 0; k < m; ++k) {
+                sum += a[k + i * effA] * b[j + k * effB];
+            }
+            result[j + i * effR] = sum;
+        }
+    }
+}
+template<typename T> void peelingMulAdd(T* result, const T* a, const T* b, int n, int m, int q, int effR, int effA, int effB) {
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < q; ++j) {
+            T& sum = result[j + i * effR];
+            for (int k = 0; k < m; ++k) {
+                sum += a[k + i * effA] * b[j + k * effB];
+            }
+        }
+    }
+}
+
+template<BaseMulType opType, typename T>
+void minSpaceStrassenWithDynamicPeeling2(T* c, T* a, T* b, int n, int m, int q, int effC, int effA, int effB, int steps, StackAllocator<T>& allocator);
+
+template<BaseMulType opType, typename T>
+void minSpaceStrassenWithDynamicPeeling(T* c, T* a, T* b, int n, int m, int q, int effC, int effA, int effB, int steps, StackAllocator<T>& allocator) {
+    auto dA = strassenDivideView<2, 2>(a, n, m, effA);
+    auto dB = strassenDivideView<2, 2>(b, m, q, effB);
+    auto dC = strassenDivideView<2, 2>(c, n, q, effC);
+    
+    int hn = n / 2;
+    int hm = m / 2;
+    int hq = q / 2;
+
+    auto tempA = allocator.alloc(hn * hm);
+    auto tempB = allocator.alloc(hm * hq);
+    auto tempC = allocator.alloc(hn * hq);
+
+    operation<ArithmeticOperation::Add>(tempA, dA[0][0], dA[1][1], hn, hm, hm, effA, effA);
+    operation<ArithmeticOperation::Add>(tempB, dB[0][0], dB[1][1], hm, hq, hq, effB, effB);
+    minSpaceStrassenWithDynamicPeeling2<opType>(dC[0][0], tempA, tempB, hn, hm, hq, effC, hm, hq, steps - 1, allocator);
+    operation<ArithmeticOperation::Assign>(dC[1][1], dC[0][0], hn, hq, effC, effC);
+
+    operation<ArithmeticOperation::Add>(tempA, dA[1][0], dA[1][1], hn, hm, hm, effA, effA);
+    minSpaceStrassenWithDynamicPeeling2<opType>(dC[1][0], tempA, dB[0][0], hn, hm, hq, effC, hm, effB, steps - 1, allocator);
+    operation<ArithmeticOperation::SubAssign>(dC[1][1], dC[1][0], hn, hq, effC, effC);
+
+    operation<ArithmeticOperation::Sub>(tempB, dB[0][1], dB[1][1], hm, hq, hq, effB, effB);
+    minSpaceStrassenWithDynamicPeeling2<opType>(dC[0][1], dA[0][0], tempB, hn, hm, hq, effC, effA, hq, steps - 1, allocator);
+    operation<ArithmeticOperation::AddAssign>(dC[1][1], dC[0][1], hn, hq, effC, effC);
+
+    operation<ArithmeticOperation::Sub>(tempB, dB[1][0], dB[0][0], hm, hq, hq, effB, effB);
+    minSpaceStrassenWithDynamicPeeling2<opType>(tempC, dA[1][1], tempB, hn, hm, hq, hq, effA, hq, steps - 1, allocator);
+    operation<ArithmeticOperation::AddAssign>(dC[0][0], tempC, hn, hq, effC, hq);
+    operation<ArithmeticOperation::AddAssign>(dC[1][0], tempC, hn, hq, effC, hq);
+
+    operation<ArithmeticOperation::Add>(tempA, dA[0][0], dA[0][1], hn, hm, hm, effA, effA);
+    minSpaceStrassenWithDynamicPeeling2<opType>(tempC, tempA, dB[1][1], hn, hm, hq, hq, hm, effB, steps - 1, allocator);
+    operation<ArithmeticOperation::SubAssign>(dC[0][0], tempC, hn, hq, effC, hq);
+    operation<ArithmeticOperation::AddAssign>(dC[0][1], tempC, hn, hq, effC, hq);
+
+    operation<ArithmeticOperation::Sub>(tempA, dA[1][0], dA[0][0], hn, hm, hm, effA, effA);
+    operation<ArithmeticOperation::Add>(tempB, dB[0][0], dB[0][1], hm, hq, hq, effB, effB);
+    minSpaceStrassenWithDynamicPeeling2<opType>(tempC, tempA, tempB, hn, hm, hq, hq, hm, hq, steps - 1, allocator);
+    operation<ArithmeticOperation::AddAssign>(dC[1][1], tempC, hn, hq, effC, hq);
+
+    operation<ArithmeticOperation::Sub>(tempA, dA[0][1], dA[1][1], hn, hm, hm, effA, effA);
+    operation<ArithmeticOperation::Add>(tempB, dB[1][0], dB[1][1], hm, hq, hq, effB, effB);
+    minSpaceStrassenWithDynamicPeeling2<opType>(tempC, tempA, tempB, hn, hm, hq, hq, hm, hq, steps - 1, allocator);
+    operation<ArithmeticOperation::AddAssign>(dC[0][0], tempC, hn, hq, effC, hq);
+
+    allocator.dealloc(tempC, hn*hq);
+    allocator.dealloc(tempB, hm*hq);
+    allocator.dealloc(tempA, hn*hm);
+}
+
+template<BaseMulType opType, typename T>
+void minSpaceStrassenWithDynamicPeeling2(T* c, T* a, T* b, int n, int m, int q, int effC, int effA, int effB, int steps, StackAllocator<T>& allocator) {
+    if (steps <= 0) {
+        minSpaceStrassenMul<opType>(c, a, b, n, m, q, effC, effA, effB, allocator);
+        return;
+    }
+    int nPeeled = n;
+    int mPeeled = m;
+    int qPeeled = q;
+    if (n & 1) nPeeled -= 1;
+    if (m & 1) mPeeled -= 1;
+    if (q & 1) qPeeled -= 1;
+    minSpaceStrassenWithDynamicPeeling<opType>(c, a, b, nPeeled, mPeeled, qPeeled, effC, effA, effB, steps, allocator);
+
+    // C11 += A12 * B21
+    peelingMulAdd(c, a+mPeeled, b+effB*mPeeled, nPeeled, m&1, qPeeled, effC, effA, effB);
+
+    // C12 = A11 * B12 + A12 * B22
+    naiveMul(c + qPeeled, a, b + qPeeled, nPeeled, m, q&1, effC, effA, effB);
+
+    // C21 = A21 * B11 + A22 * B21
+    naiveMul(c + effC*nPeeled, a+effA*nPeeled, b, n&1, m, qPeeled, effC, effA, effB);
+
+    // C22 = A21 * B12 + A22 * B22
+    naiveMul(c+ effC*nPeeled+qPeeled, a+effA*nPeeled, b+qPeeled, n&1, m, q&1, effC, effA, effB);
+}
+
+template<BaseMulType opType, typename T> void minSpaceStrassenWithDynamicPeeling(T* c, T* a, T* b, int n, int m, int q, int steps) {
+    int expected = 0;
+    int eN = n;
+    int eM = m;
+    int eQ = q;
+    
+    for (int i = 0; i < steps; ++i) {
+        eN /= 2;
+        eM /= 2;
+        eQ /= 2;
+        expected += StackAllocator<T>::Allign(eN*eM) + StackAllocator<T>::Allign(eM*eQ) + StackAllocator<T>::Allign(eN*eQ);
+    }
+    if (steps >= 1 && opType != BaseMulType::NaiveEff && opType != BaseMulType::AvxEff) {
+        expected += std::max(StackAllocator<T>::Allign(eN*eM), StackAllocator<T>::Allign(eM*eQ)) + StackAllocator<T>::Allign(eN*eQ);
+    }
+    StackAllocator<T> allocator(expected);
+
+    minSpaceStrassenWithDynamicPeeling2<opType>(c, a, b, n, m, q, q, m, q, steps, allocator);
+}
+
+template<BaseMulType opType, typename M1, typename M2>
+auto minSpaceStrassenWithDynamicPeeling(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
+    auto result = a.createNew(a.rowCount(), b.columnCount());
+    minSpaceStrassenWithDynamicPeeling<opType>(result.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(), steps);
+    return result;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+template<BaseMulType opType, typename T> void LowLevelParallelStrassenMinSpace(T* c, T* a, T* b, int n, int m, int q, int effA, int effB, int steps) {
+    int expected = 0;
+    int eN = n;
+    int eM = m;
+    int eQ = q;
+    
+    for (int i = 0; i < steps; ++i) {
+        eN /= 2;
+        eM /= 2;
+        eQ /= 2;
+        expected += StackAllocator<T>::Allign(eN*eM) + StackAllocator<T>::Allign(eM*eQ) + StackAllocator<T>::Allign(eN*eQ);
+    }
+    if (opType != BaseMulType::NaiveEff && opType != BaseMulType::AvxEff) {
+        expected += std::max(StackAllocator<T>::Allign(eN*eM), StackAllocator<T>::Allign(eM*eQ)) + StackAllocator<T>::Allign(eN*eQ);
+    }
+    StackAllocator<T> allocator(expected);
+
+    minSpaceStrassenWithDynamicPeeling2<opType>(c, a, b, n, m, q, q, effA, effB, steps, allocator);
+}
+
+template<BaseMulType opType, typename T>
+void LowLevelParallelStrassen(T* c, T* a, T* b, int n, int m, int q, int effC, int effA, int effB, int steps) {
+    int hn = n / 2;
+    int hm = m / 2;
+    int hq = q / 2;
+
+    StackAllocator<T> allocator(5 * StackAllocator<T>::Allign(hn*hm) + 5 * StackAllocator<T>::Allign(hm*hq) + 7 * StackAllocator<T>::Allign(hn*hq));
+
+    auto dA = strassenDivideView<2, 2>(a, n, m, effA);
+    auto dB = strassenDivideView<2, 2>(b, m, q, effB);
+
+    auto m1 = allocator.alloc(hn * hq);
+    auto m2 = allocator.alloc(hn * hq);
+    auto m3 = allocator.alloc(hn * hq);
+    auto m4 = allocator.alloc(hn * hq);
+    auto m5 = allocator.alloc(hn * hq);
+    auto m6 = allocator.alloc(hn * hq);
+    auto m7 = allocator.alloc(hn * hq);
+    auto m1_a = allocator.alloc(hn*hm);
+    auto m1_b = allocator.alloc(hm*hq);
+    auto m2_a = allocator.alloc(hn*hm);
+    auto m3_b = allocator.alloc(hm*hq);
+    auto m4_b = allocator.alloc(hm*hq);
+    auto m5_a = allocator.alloc(hn*hm);
+    auto m6_a = allocator.alloc(hn*hm);
+    auto m6_b = allocator.alloc(hm*hq);
+    auto m7_a = allocator.alloc(hn*hm);
+    auto m7_b = allocator.alloc(hm*hq);
+    
+    ThreadPool pool;
+
+    pool.addTask([=]() {
+        operation<ArithmeticOperation::Add>(m1_a, dA[0][0], dA[1][1], hn, hm, hm, effA, effA);
+        operation<ArithmeticOperation::Add>(m1_b, dB[0][0], dB[1][1], hm, hq, hq, effB, effB);
+        LowLevelParallelStrassenMinSpace<opType>(m1, m1_a, m1_b, hn, hm, hq, hm, hq, steps - 1);
+    });
+    pool.addTask([=]() {
+        operation<ArithmeticOperation::Add>(m2_a, dA[1][0], dA[1][1], hn, hm, hm, effA, effA);
+        LowLevelParallelStrassenMinSpace<opType>(m2, m2_a, dB[0][0], hn, hm, hq, hm, effB, steps - 1);
+    });
+    pool.addTask([=]() {
+        operation<ArithmeticOperation::Sub>(m3_b, dB[0][1], dB[1][1], hm, hq, hq, effB, effB);
+        LowLevelParallelStrassenMinSpace<opType>(m3, dA[0][0], m3_b, hn, hm, hq, effA, hq, steps - 1);
+    });
+    pool.addTask([=]() {
+        operation<ArithmeticOperation::Sub>(m4_b, dB[1][0], dB[0][0], hm, hq, hq, effB, effB);
+        LowLevelParallelStrassenMinSpace<opType>(m4, dA[1][1], m4_b, hn, hm, hq, effA, hq, steps - 1);
+    });
+    pool.addTask([=]() {
+        operation<ArithmeticOperation::Add>(m5_a, dA[0][0], dA[0][1], hn, hm, hm, effA, effA);
+        LowLevelParallelStrassenMinSpace<opType>(m5, m5_a, dB[1][1], hn, hm, hq, hm, effB, steps - 1);
+    });
+    pool.addTask([=]() {
+        operation<ArithmeticOperation::Sub>(m6_a, dA[1][0], dA[0][0], hn, hm, hm, effA, effA);
+        operation<ArithmeticOperation::Add>(m6_b, dB[0][0], dB[0][1], hm, hq, hq, effB, effB);
+        LowLevelParallelStrassenMinSpace<opType>(m6, m6_a, m6_b, hn, hm, hq, hm, hq, steps - 1);
+    });
+    pool.addTask([=]() {
+        operation<ArithmeticOperation::Sub>(m7_a, dA[0][1], dA[1][1], hn, hm, hm, effA, effA);
+        operation<ArithmeticOperation::Add>(m7_b, dB[1][0], dB[1][1], hm, hq, hq, effB, effB);
+        LowLevelParallelStrassenMinSpace<opType>(m7, m7_a, m7_b, hn, hm, hq, hm, hq, steps - 1);
+    });
+
+    pool.completeTasksAndStop();
+
+    auto dC = strassenDivideView<2, 2>(c, n, q, effC);
+    for (int i = 0; i < hn; ++i) {
+        for (int j = 0; j < hq; ++j) {
+            int dstIndex = j + i * effC;
+            int index = j + i * hq;
+            dC[0][0][dstIndex] = m1[index] + m4[index] - m5[index] + m7[index];
+            dC[0][1][dstIndex] = m3[index] + m5[index];
+            dC[1][0][dstIndex] = m2[index] + m4[index];
+            dC[1][1][dstIndex] = m1[index] + m3[index] - m2[index] + m6[index];
+        }
+    }
+
+    allocator.dealloc(m7_b, hm*hq);
+    allocator.dealloc(m7_a, hn*hm);
+    allocator.dealloc(m6_b, hm*hq);
+    allocator.dealloc(m6_a, hn*hm);
+    allocator.dealloc(m5_a, hn*hm);
+    allocator.dealloc(m4_b, hm*hq);
+    allocator.dealloc(m3_b, hm*hq);
+    allocator.dealloc(m2_a, hn*hm);
+    allocator.dealloc(m1_b, hm*hq);
+    allocator.dealloc(m1_a, hn*hm);
+    allocator.dealloc(m7, hn*hq);
+    allocator.dealloc(m6, hn*hq);
+    allocator.dealloc(m5, hn*hq);
+    allocator.dealloc(m4, hn*hq);
+    allocator.dealloc(m3, hn*hq);
+    allocator.dealloc(m2, hn*hq);
+    allocator.dealloc(m1, hn*hq);
+}
+
+template<BaseMulType opType, typename T>
+void LowLevelParallelStrassenX(T* c, T* a, T* b, int n, int m, int q, int steps) {
+    int nPeeled = n;
+    int mPeeled = m;
+    int qPeeled = q;
+    if (n & 1) nPeeled -= 1;
+    if (m & 1) mPeeled -= 1;
+    if (q & 1) qPeeled -= 1;
+
+    LowLevelParallelStrassen<opType>(c, a, b, nPeeled, mPeeled, qPeeled, q, m, q, steps);
+
+    peelingMulAdd(c, a + mPeeled, b + q * mPeeled, nPeeled, m & 1, qPeeled, q, m, q);
+    naiveMul(c + qPeeled, a, b + qPeeled, nPeeled, m, q & 1, q, m, q);
+    naiveMul(c + q * nPeeled, a + m * nPeeled, b, n & 1, m, qPeeled, q, m, q);
+    naiveMul(c + q * nPeeled + qPeeled, a + m * nPeeled, b + qPeeled, n & 1, m, q & 1, q, m, q);
+}
+
+
+
+template<BaseMulType opType, typename M1, typename M2>
+auto LowLevelParallelStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
+    if (steps <= 0) return mul<opType>(a, b);
+    auto result = a.createNew(a.rowCount(), b.columnCount());
+    LowLevelParallelStrassenX<opType>(result.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(), steps);
+    return result;
+}
+
+
+
+
+
