@@ -10,6 +10,7 @@
 #include "naiveBasicOperations.h"
 #include "blasMul.h"
 #include "ThreadPool.h"
+#include "genericArithmeticOperations.h"
 #include <utility>
 #include <cmath>
 #include <optional>
@@ -60,119 +61,16 @@ template<> constexpr BaseMulType AutomaticBaseMulType<double> = BaseMulType::Avx
 template<> constexpr BaseMulType AutomaticBaseMulType<int32_t> = BaseMulType::Avx;
 #endif
 
-enum class ArithmeticOperation {
-    Assign,
-    Add,
-    Sub,
-    AddAssign,
-    SubAssign
-};
-
-template<ArithmeticOperation op> struct FundamentalOperation {
-    static const auto Value = op;
-};
-template<> struct FundamentalOperation<ArithmeticOperation::AddAssign> {
-    static const auto Value = ArithmeticOperation::Add;
-};
-template<> struct FundamentalOperation<ArithmeticOperation::SubAssign> {
-    static const auto Value = ArithmeticOperation::Sub;
-};
-
-template<ArithmeticOperation op> struct IsAssignOperation {static const auto Value = false;};
-template<> struct IsAssignOperation<ArithmeticOperation::Assign> {static const auto Value = true;};
-template<> struct IsAssignOperation<ArithmeticOperation::AddAssign> {static const auto Value = true;};
-template<> struct IsAssignOperation<ArithmeticOperation::SubAssign> {static const auto Value = true;};
-
-template<ArithmeticOperation op, typename T1, typename T2> inline auto calculate(T1&& a, T2&& b) {
-    if constexpr (op == ArithmeticOperation::Assign) {
-        return a = b;
-    } else if constexpr (op == ArithmeticOperation::Add) {
-        return a + b;
-    } else if constexpr (op == ArithmeticOperation::Sub) {
-        return a - b;
-    } else if constexpr (op == ArithmeticOperation::AddAssign) {
-        return a += b;
-    } else if constexpr (op == ArithmeticOperation::SubAssign) {
-        return a -= b;
-    }
-}
-template<ArithmeticOperation op, typename T1, typename T2, typename T3> inline auto calculate(T1&& dst, T2&& a, T3&& b) {
-    if constexpr (IsAssignOperation<op>::Value) {
-        return calculate<op>(std::forward<T1>(dst), calculate<FundamentalOperation<op>::Value>(std::forward<T2>(a), std::forward<T3>(b)));
-    } else {
-        return dst = calculate<op>(std::forward<T2>(a), std::forward<T3>(b));
-    }
-}
-template<ArithmeticOperation op, typename T> void operation(T* dst, const T* a, const T* b, int n, int m) {
-    static_assert(!IsAssignOperation<op>::Value);
-    for (int i = 0; i < n*m; ++i) {
-        calculate<op>(dst[i], a[i], b[i]);
-    }
-}
-template<ArithmeticOperation op, typename T> void operation(T* dst, const T* src, int n, int m, int effDst, int effSrc) {
-    static_assert(IsAssignOperation<op>::Value);
-    for (int i = 0; i < n; ++i) {
-        auto dstR = &dst[i*effDst];
-        auto srcR = &src[i*effSrc];
-        for (int j = 0; j < m; ++j) {
-            calculate<op>(dstR[j], srcR[j]);
-        }
-    }
-}
-template<ArithmeticOperation op, typename T> void operation(T* dst, const T* a, const T* b, int n, int m, int effDst, int effA, int effB) {
-    static_assert(!IsAssignOperation<op>::Value);
-    for (int i = 0; i < n; ++i) {
-        auto dstR = &dst[i*effDst];
-        auto aR = &a[i*effA];
-        auto bR = &b[i*effB];
-        for (int j = 0; j < m; ++j) {
-            calculate<op>(dstR[j], aR[j], bR[j]);
-        }
-    }
-}
-template<int n, int m, ArithmeticOperation op, typename T> void operation(T* dst, const T* a, const T* b) {
-    static_assert(!IsAssignOperation<op>::Value);
-    for (int i = 0; i < n*m; ++i) {
-        calculate<op>(dst[i], a[i], b[i]);
-    }
-}
-template<int n, int m, int effDst, int effSrc, ArithmeticOperation op, typename T> void operation(T* dst, const T* src) {
-    static_assert(IsAssignOperation<op>::Value);
-    for (int i = 0; i < n; ++i) {
-        auto dstR = &dst[i*effDst];
-        auto srcR = &src[i*effSrc];
-        for (int j = 0; j < m; ++j) {
-            calculate<op>(dstR[j], srcR[j]);
-        }
-    }
-}
-template<int n, int m, int effDst, int effA, int effB, ArithmeticOperation op, typename T> void operation(T* dst, const T* a, const T* b) {
-    static_assert(!IsAssignOperation<op>::Value);
-    for (int i = 0; i < n; ++i) {
-        auto dstR = &dst[i*effDst];
-        auto aR = &a[i*effA];
-        auto bR = &b[i*effB];
-        for (int j = 0; j < m; ++j) {
-            calculate<op>(dstR[j], aR[j], bR[j]);
-        }
-    }
-}
-
-template<ArithmeticOperation op, typename T> T* operation(const T* a, const T* b, int n, int m, StackAllocator<T>& allocator) {
-    T* result = allocator.alloc(n*m);
-    operation<op>(result, a, b, n, m);
+template<ArithmeticOperation::OpType... ops, typename T, typename... Ts> T* operationWithAlloc(StackAllocator<T>& allocator, int n, int m, const T* arg, Ts&&... args) {
+    auto result = allocator.alloc(n*m);
+    operation<ops...>(n, m, result, arg, args...);
     return result;
 }
-template<int n, int m, ArithmeticOperation op, typename T> T* operation(const T* a, const T* b, StackAllocator<T>& allocator) {
-    T* result = allocator.alloc(n*m);
-    operation<n, m, op>(result, a, b);
+
+template<int n, int m, ArithmeticOperation::OpType... ops, typename T, typename... Ts> T* operationWithAlloc(StackAllocator<T>& allocator, const T* arg, Ts&&... args) {
+    auto result = allocator.alloc(n*m);
+    operation<n, m, ops...>(result, arg, args...);
     return result;
-}
-template<ArithmeticOperation op, typename T> void operation(MatrixView<T> dst, MatrixConstView<T> src) {
-    return operation<op>(dst.data(), src.data(), dst.rowCount(), dst.columnCount(), dst.effectiveColumnCount(), src.effectiveColumnCount());
-}
-template<ArithmeticOperation op, typename T> void operation(MatrixView<T> dst, MatrixConstView<T> a, MatrixConstView<T> b) {
-    return operation<op>(dst.data(), a.data(), b.data(), dst.rowCount(), dst.columnCount(), dst.effectiveColumnCount(), a.effectiveColumnCount(), b.effectiveColumnCount());
 }
 
 template<typename T> void naiveMul(T* result, const T* a, const T* b, int n, int m, int q) {
@@ -217,7 +115,7 @@ void mul(T* result, const T* a, const T* b) {
     if constexpr (opType == BaseMulType::Naive) {
         naiveMul<n, m, q>(result, a, b);
     } else if constexpr (opType == BaseMulType::Avx) {
-        avxMul<n, m, q>(result, a, b);
+        avxMul7<n, m, q>(result, a, b);
     } else if constexpr (opType == BaseMulType::ParallelAvx) {
         avxParallelMul<n, m, q>(result, a, b);
     } else if constexpr (opType == BaseMulType::Blas) {
@@ -364,7 +262,7 @@ std::array<std::array<T*, Columns>, Rows> strassenDivide(T* a, int n, int m, Sta
     for (int y = 0; y < Rows; ++y) {
         for (int x = 0; x < Columns; ++x) {
             result[y][x] = allocator.alloc(rowSize*columnSize);
-            operation<ArithmeticOperation::Assign>(result[y][x], a + x * columnSize + y * rowSize*m, rowSize, columnSize, columnSize, m);
+            operationEff<ArithmeticOperation::Assign>(rowSize, columnSize, columnSize, m, result[y][x], a + x * columnSize + y * rowSize*m);
         }
     }
     return result;
@@ -389,6 +287,7 @@ std::array<std::array<T*, Columns>, Rows> strassenDivideView(T* a, int n, int m)
 
 template<BaseMulType opType, typename T>
 void lowLevelStrassen(T* a, T* b, int n, int m, int q, int steps, T* c, StackAllocator<T>& allocator) {
+    using namespace ArithmeticOperation;
     if (steps <= 0) {
         mul<opType>(c, a, b, n, m, q);
         return;
@@ -402,42 +301,42 @@ void lowLevelStrassen(T* a, T* b, int n, int m, int q, int steps, T* c, StackAll
     int halfQ = q / 2;
 
     auto m1 = allocator.alloc(halfN * halfQ);
-    auto m1_a = operation<ArithmeticOperation::Add>(dA[0][0], dA[1][1], halfN, halfM, allocator);
-    auto m1_b = operation<ArithmeticOperation::Add>(dB[0][0], dB[1][1], halfM, halfQ, allocator);
+    auto m1_a = operationWithAlloc<Add>(allocator, halfN, halfM, dA[0][0], dA[1][1]);
+    auto m1_b = operationWithAlloc<Add>(allocator, halfM, halfQ, dB[0][0], dB[1][1]);
     lowLevelStrassen<opType>(m1_a, m1_b, halfN, halfM, halfQ, steps - 1, m1, allocator);
     allocator.dealloc(m1_b, halfM*halfQ);
     allocator.dealloc(m1_a, halfN*halfM);
 
     auto m2 = allocator.alloc(halfN * halfQ);
-    auto m2_a = operation<ArithmeticOperation::Add>(dA[1][0], dA[1][1], halfN, halfM, allocator);
+    auto m2_a = operationWithAlloc<Add>(allocator, halfN, halfM, dA[1][0], dA[1][1]);
     lowLevelStrassen<opType>(m2_a, dB[0][0], halfN, halfM, halfQ, steps - 1, m2, allocator);
     allocator.dealloc(m2_a, halfN*halfM);
 
     auto m3 = allocator.alloc(halfN * halfQ);
-    auto m3_b = operation<ArithmeticOperation::Sub>(dB[0][1], dB[1][1], halfM, halfQ, allocator);
+    auto m3_b = operationWithAlloc<Sub>(allocator, halfM, halfQ, dB[0][1], dB[1][1]);
     lowLevelStrassen<opType>(dA[0][0], m3_b, halfN, halfM, halfQ, steps - 1, m3, allocator);
     allocator.dealloc(m3_b, halfM*halfQ);
 
     auto m4 = allocator.alloc(halfN * halfQ);
-    auto m4_b = operation<ArithmeticOperation::Sub>(dB[1][0], dB[0][0], halfM, halfQ, allocator);
+    auto m4_b = operationWithAlloc<Sub>(allocator, halfM, halfQ, dB[1][0], dB[0][0]);
     lowLevelStrassen<opType>(dA[1][1], m4_b, halfN, halfM, halfQ, steps - 1, m4, allocator);
     allocator.dealloc(m4_b, halfM*halfQ);
 
     auto m5 = allocator.alloc(halfN * halfQ);
-    auto m5_a = operation<ArithmeticOperation::Add>(dA[0][0], dA[0][1], halfN, halfM, allocator);
+    auto m5_a = operationWithAlloc<Add>(allocator, halfN, halfM, dA[0][0], dA[0][1]);
     lowLevelStrassen<opType>(m5_a, dB[1][1], halfN, halfM, halfQ, steps - 1, m5, allocator);
     allocator.dealloc(m5_a, halfN*halfM);
 
     auto m6 = allocator.alloc(halfN * halfQ);
-    auto m6_a = operation<ArithmeticOperation::Sub>(dA[1][0], dA[0][0], halfN, halfM, allocator);
-    auto m6_b = operation<ArithmeticOperation::Add>(dB[0][0], dB[0][1], halfM, halfQ, allocator);
+    auto m6_a = operationWithAlloc<Sub>(allocator, halfN, halfM, dA[1][0], dA[0][0]);
+    auto m6_b = operationWithAlloc<Add>(allocator, halfM, halfQ, dB[0][0], dB[0][1]);
     lowLevelStrassen<opType>(m6_a, m6_b, halfN, halfM, halfQ, steps - 1, m6, allocator);
     allocator.dealloc(m6_b, halfM*halfQ);
     allocator.dealloc(m6_a, halfN*halfM);
 
     auto m7 = allocator.alloc(halfN * halfQ);
-    auto m7_a = operation<ArithmeticOperation::Sub>(dA[0][1], dA[1][1], halfN, halfM, allocator);
-    auto m7_b = operation<ArithmeticOperation::Add>(dB[1][0], dB[1][1], halfM, halfQ, allocator);
+    auto m7_a = operationWithAlloc<Sub>(allocator, halfN, halfM, dA[0][1], dA[1][1]);
+    auto m7_b = operationWithAlloc<Add>(allocator, halfM, halfQ, dB[1][0], dB[1][1]);
     lowLevelStrassen<opType>(m7_a, m7_b, halfN, halfM, halfQ, steps - 1, m7, allocator);
     allocator.dealloc(m7_b, halfM*halfQ);
     allocator.dealloc(m7_a, halfN*halfM);
@@ -509,10 +408,10 @@ void lowLevelStrassenWithStaticPadding(T* result, T* a, T* b, int n, int m, int 
         for (int i = 0; i < paddedSizes[1] * paddedSizes[2]; ++i) {
             newB[i] = T{};
         }
-        operation<ArithmeticOperation::Assign>(newA, a, n, m, paddedSizes[1], m);
-        operation<ArithmeticOperation::Assign>(newB, b, m, q, paddedSizes[2], q);
+        operationEff<ArithmeticOperation::Assign>(n, m, paddedSizes[1], m, newA, a);
+        operationEff<ArithmeticOperation::Assign>(m, q, paddedSizes[2], q, newB, b);
         lowLevelStrassen<opType>(newA, newB, paddedSizes[0], paddedSizes[1], paddedSizes[2], steps, newResult, allocator);
-        operation<ArithmeticOperation::Assign>(result, newResult, n, q, q, paddedSizes[2]);
+        operationEff<ArithmeticOperation::Assign>(n, q, q, paddedSizes[2], result, newResult);
         allocator.dealloc(newResult, paddedSizes[0] * paddedSizes[2]);
         allocator.dealloc(newB, paddedSizes[1] * paddedSizes[2]);
         allocator.dealloc(newA, paddedSizes[0] * paddedSizes[1]);
@@ -527,6 +426,7 @@ void lowLevelStrassen(T* a, T* b, T* c, StackAllocator<T>& allocator, std::false
 }
 template<BaseMulType opType, int Steps, int n, int m, int q, typename T>
 void lowLevelStrassen(T* a, T* b, T* c, StackAllocator<T>& allocator, std::true_type unused = std::true_type{}) {
+    using namespace ArithmeticOperation;
     if constexpr (Steps <= 0) {
         lowLevelStrassen<opType, Steps, n, m, q>(a, b, c, allocator, std::false_type{});
         return;
@@ -540,42 +440,42 @@ void lowLevelStrassen(T* a, T* b, T* c, StackAllocator<T>& allocator, std::true_
     constexpr int hq = q / 2;
 
     auto m1 = allocator.alloc(hn * hq);
-    auto m1_a = operation<hn, hm, ArithmeticOperation::Add>(dA[0][0], dA[1][1], allocator);
-    auto m1_b = operation<hm, hq, ArithmeticOperation::Add>(dB[0][0], dB[1][1], allocator);
+    auto m1_a = operationWithAlloc<hn, hm, Add>(allocator, dA[0][0], dA[1][1]);
+    auto m1_b = operationWithAlloc<hm, hq, Add>(allocator, dB[0][0], dB[1][1]);
     lowLevelStrassen<opType, Steps - 1, hn, hm, hq>(m1_a, m1_b, m1, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
     allocator.dealloc(m1_b, hm*hq);
     allocator.dealloc(m1_a, hn*hm);
 
     auto m2 = allocator.alloc(hn * hq);
-    auto m2_a = operation<hn, hm, ArithmeticOperation::Add>(dA[1][0], dA[1][1], allocator);
+    auto m2_a = operationWithAlloc<hn, hm, Add>(allocator, dA[1][0], dA[1][1]);
     lowLevelStrassen<opType, Steps - 1, hn, hm, hq>(m2_a, dB[0][0], m2, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
     allocator.dealloc(m2_a, hn*hm);
 
     auto m3 = allocator.alloc(hn * hq);
-    auto m3_b = operation<hm, hq, ArithmeticOperation::Sub>(dB[0][1], dB[1][1], allocator);
+    auto m3_b = operationWithAlloc<hm, hq, Sub>(allocator, dB[0][1], dB[1][1]);
     lowLevelStrassen<opType, Steps - 1, hn, hm, hq>(dA[0][0], m3_b, m3, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
     allocator.dealloc(m3_b, hm*hq);
 
     auto m4 = allocator.alloc(hn * hq);
-    auto m4_b = operation<hm, hq, ArithmeticOperation::Sub>(dB[1][0], dB[0][0], allocator);
+    auto m4_b = operationWithAlloc<hm, hq, Sub>(allocator, dB[1][0], dB[0][0]);
     lowLevelStrassen<opType, Steps - 1, hn, hm, hq>(dA[1][1], m4_b, m4, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
     allocator.dealloc(m4_b, hm*hq);
 
     auto m5 = allocator.alloc(hn * hq);
-    auto m5_a = operation<hn, hm, ArithmeticOperation::Add>(dA[0][0], dA[0][1], allocator);
+    auto m5_a = operationWithAlloc<hn, hm, Add>(allocator, dA[0][0], dA[0][1]);
     lowLevelStrassen<opType, Steps - 1, hn, hm, hq>(m5_a, dB[1][1], m5, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
     allocator.dealloc(m5_a, hn*hm);
 
     auto m6 = allocator.alloc(hn * hq);
-    auto m6_a = operation<hn, hm, ArithmeticOperation::Sub>(dA[1][0], dA[0][0], allocator);
-    auto m6_b = operation<hm, hq, ArithmeticOperation::Add>(dB[0][0], dB[0][1], allocator);
+    auto m6_a = operationWithAlloc<hn, hm, Sub>(allocator, dA[1][0], dA[0][0]);
+    auto m6_b = operationWithAlloc<hm, hq, Add>(allocator, dB[0][0], dB[0][1]);
     lowLevelStrassen<opType, Steps - 1, hn, hm, hq>(m6_a, m6_b, m6, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
     allocator.dealloc(m6_b, hm*hq);
     allocator.dealloc(m6_a, hn*hm);
 
     auto m7 = allocator.alloc(hn * hq);
-    auto m7_a = operation<hn, hm, ArithmeticOperation::Sub>(dA[0][1], dA[1][1], allocator);
-    auto m7_b = operation<hm, hq, ArithmeticOperation::Add>(dB[1][0], dB[1][1], allocator);
+    auto m7_a = operationWithAlloc<hn, hm, Sub>(allocator, dA[0][1], dA[1][1]);
+    auto m7_b = operationWithAlloc<hm, hq, Add>(allocator, dB[1][0], dB[1][1]);
     lowLevelStrassen<opType, Steps - 1, hn, hm, hq>(m7_a, m7_b, m7, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
     allocator.dealloc(m7_b, hm*hq);
     allocator.dealloc(m7_a, hn*hm);
@@ -685,11 +585,11 @@ void minSpaceStrassenMul(T* c, T* a, T* b, int n, int m, int q, int effC, int ef
     T* bx = b;
     if (effA != m) {
         ax = allocator.alloc(n*m);
-        operation<ArithmeticOperation::Assign>(ax, a, n, m, m, effA);
+        operationEff<ArithmeticOperation::Assign>(n, m, m, effA, ax, a);
     }
     if (effB != q) {
         bx = allocator.alloc(m*q);
-        operation<ArithmeticOperation::Assign>(bx, b, m, q, q, effB);
+        operationEff<ArithmeticOperation::Assign>(m, q, q, effB, bx, b);
     }
     if (effC != q) {
         cx = allocator.alloc(n*q);
@@ -698,7 +598,7 @@ void minSpaceStrassenMul(T* c, T* a, T* b, int n, int m, int q, int effC, int ef
     mul<opType>(cx, ax, bx, n, m, q);
 
     if (effC != q) {
-        operation<ArithmeticOperation::Assign>(c, cx, n, q, effC, q);
+        operationEff<ArithmeticOperation::Assign>(n, q, effC, q, c, cx);
         allocator.dealloc(cx, n*q);
     }
     if (effB != q) allocator.dealloc(bx, m*q);
@@ -707,7 +607,7 @@ void minSpaceStrassenMul(T* c, T* a, T* b, int n, int m, int q, int effC, int ef
 
 template<BaseMulType opType, typename T>
 void minSpaceStrassen(T* c, T* a, T* b, int n, int m, int q, int effC, int effA, int effB, int steps, StackAllocator<T>& allocator) {
-    //std::cout << "<" << n << ", " << m << ", " << q << ">\n";
+    using namespace ArithmeticOperation;
     if (steps <= 0) {
         minSpaceStrassenMul<opType>(c, a, b, n, m, q, effC, effA, effB, allocator);
         return;
@@ -725,38 +625,38 @@ void minSpaceStrassen(T* c, T* a, T* b, int n, int m, int q, int effC, int effA,
     auto tempB = allocator.alloc(hm * hq);
     auto tempC = allocator.alloc(hn * hq);
 
-    operation<ArithmeticOperation::Add>(tempA, dA[0][0], dA[1][1], hn, hm, hm, effA, effA);
-    operation<ArithmeticOperation::Add>(tempB, dB[0][0], dB[1][1], hm, hq, hq, effB, effB);
+    operationEff<Add>(hn, hm, hm, effA, tempA, dA[0][0], dA[1][1]);
+    operationEff<Add>(hm, hq, hq, effB, tempB, dB[0][0], dB[1][1]);
     minSpaceStrassen<opType>(dC[0][0], tempA, tempB, hn, hm, hq, effC, hm, hq, steps - 1, allocator);
-    operation<ArithmeticOperation::Assign>(dC[1][1], dC[0][0], hn, hq, effC, effC);
+    operationEff<Assign>(hn, hq, effC, effC, dC[1][1], dC[0][0]);
 
-    operation<ArithmeticOperation::Add>(tempA, dA[1][0], dA[1][1], hn, hm, hm, effA, effA);
+    operationEff<Add>(hn, hm, hm, effA, tempA, dA[1][0], dA[1][1]);
     minSpaceStrassen<opType>(dC[1][0], tempA, dB[0][0], hn, hm, hq, effC, hm, effB, steps - 1, allocator);
-    operation<ArithmeticOperation::SubAssign>(dC[1][1], dC[1][0], hn, hq, effC, effC);
+    operationEff<SubAssign>(hn, hq, effC, effC, dC[1][1], dC[1][0]);
 
-    operation<ArithmeticOperation::Sub>(tempB, dB[0][1], dB[1][1], hm, hq, hq, effB, effB);
+    operationEff<Sub>(hm, hq, hq, effB, tempB, dB[0][1], dB[1][1]);
     minSpaceStrassen<opType>(dC[0][1], dA[0][0], tempB, hn, hm, hq, effC, effA, hq, steps - 1, allocator);
-    operation<ArithmeticOperation::AddAssign>(dC[1][1], dC[0][1], hn, hq, effC, effC);
+    operationEff<AddAssign>(hn, hq, effC, effC, dC[1][1], dC[0][1]);
 
-    operation<ArithmeticOperation::Sub>(tempB, dB[1][0], dB[0][0], hm, hq, hq, effB, effB);
+    operationEff<Sub>(hm, hq, hq, effB, tempB, dB[1][0], dB[0][0]);
     minSpaceStrassen<opType>(tempC, dA[1][1], tempB, hn, hm, hq, hq, effA, hq, steps - 1, allocator);
-    operation<ArithmeticOperation::AddAssign>(dC[0][0], tempC, hn, hq, effC, hq);
-    operation<ArithmeticOperation::AddAssign>(dC[1][0], tempC, hn, hq, effC, hq);
+    operationEff<AddAssign>(hn, hq, effC, hq, dC[0][0], tempC);
+    operationEff<AddAssign>(hn, hq, effC, hq, dC[1][0], tempC);
 
-    operation<ArithmeticOperation::Add>(tempA, dA[0][0], dA[0][1], hn, hm, hm, effA, effA);
+    operationEff<Add>(hn, hm, hm, effA, tempA, dA[0][0], dA[0][1]);
     minSpaceStrassen<opType>(tempC, tempA, dB[1][1], hn, hm, hq, hq, hm, effB, steps - 1, allocator);
-    operation<ArithmeticOperation::SubAssign>(dC[0][0], tempC, hn, hq, effC, hq);
-    operation<ArithmeticOperation::AddAssign>(dC[0][1], tempC, hn, hq, effC, hq);
+    operationEff<SubAssign>(hn, hq, effC, hq, dC[0][0], tempC);
+    operationEff<AddAssign>(hn, hq, effC, hq, dC[0][1], tempC);
 
-    operation<ArithmeticOperation::Sub>(tempA, dA[1][0], dA[0][0], hn, hm, hm, effA, effA);
-    operation<ArithmeticOperation::Add>(tempB, dB[0][0], dB[0][1], hm, hq, hq, effB, effB);
+    operationEff<Sub>(hn, hm, hm, effA, tempA, dA[1][0], dA[0][0]);
+    operationEff<Add>(hm, hq, hq, effB, tempB, dB[0][0], dB[0][1]);
     minSpaceStrassen<opType>(tempC, tempA, tempB, hn, hm, hq, hq, hm, hq, steps - 1, allocator);
-    operation<ArithmeticOperation::AddAssign>(dC[1][1], tempC, hn, hq, effC, hq);
+    operationEff<AddAssign>(hn, hq, effC, hq, dC[1][1], tempC);
 
-    operation<ArithmeticOperation::Sub>(tempA, dA[0][1], dA[1][1], hn, hm, hm, effA, effA);
-    operation<ArithmeticOperation::Add>(tempB, dB[1][0], dB[1][1], hm, hq, hq, effB, effB);
+    operationEff<Sub>(hn, hm, hm, effA, tempA, dA[0][1], dA[1][1]);
+    operationEff<Add>(hm, hq, hq, effB, tempB, dB[1][0], dB[1][1]);
     minSpaceStrassen<opType>(tempC, tempA, tempB, hn, hm, hq, hq, hm, hq, steps - 1, allocator);
-    operation<ArithmeticOperation::AddAssign>(dC[0][0], tempC, hn, hq, effC, hq);
+    operationEff<AddAssign>(hn, hq, effC, hq, dC[0][0], tempC);
 
     allocator.dealloc(tempC, hn*hq);
     allocator.dealloc(tempB, hm*hq);
@@ -804,10 +704,10 @@ template<BaseMulType opType, typename T> void minSpaceStrassenWithStaticPadding(
         for (int i = 0; i < paddedSizes[1] * paddedSizes[2]; ++i) {
             newB[i] = T{};
         }
-        operation<ArithmeticOperation::Assign>(newA, a, n, m, paddedSizes[1], m);
-        operation<ArithmeticOperation::Assign>(newB, b, m, q, paddedSizes[2], q);
+        operationEff<ArithmeticOperation::Assign>(n, m, paddedSizes[1], m, newA, a);
+        operationEff<ArithmeticOperation::Assign>(m, q, paddedSizes[2], q, newB, b);
         minSpaceStrassen<opType>(newC, newA, newB, paddedSizes[0], paddedSizes[1], paddedSizes[2], paddedSizes[2], paddedSizes[1], paddedSizes[2], steps, allocator);
-        operation<ArithmeticOperation::Assign>(c, newC, n, q, q, paddedSizes[2]);
+        operationEff<ArithmeticOperation::Assign>(n, q, q, paddedSizes[2], c, newC);
         allocator.dealloc(newC, paddedSizes[0] * paddedSizes[2]);
         allocator.dealloc(newB, paddedSizes[1] * paddedSizes[2]);
         allocator.dealloc(newA, paddedSizes[0] * paddedSizes[1]);
@@ -823,11 +723,11 @@ void minSpaceStrassenMul(T* c, T* a, T* b, StackAllocator<T>& allocator) {
     T* bx = b;
     if (effA != m) {
         ax = allocator.alloc(n*m);
-        operation<n, m, m, effA, ArithmeticOperation::Assign>(ax, a);
+        operationEff<n, m, m, effA, ArithmeticOperation::Assign>(ax, a);
     }
     if (effB != q) {
         bx = allocator.alloc(m*q);
-        operation<m, q, q, effB, ArithmeticOperation::Assign>(bx, b);
+        operationEff<m, q, q, effB, ArithmeticOperation::Assign>(bx, b);
     }
     if (effC != q) {
         cx = allocator.alloc(n*q);
@@ -836,7 +736,7 @@ void minSpaceStrassenMul(T* c, T* a, T* b, StackAllocator<T>& allocator) {
     mul<opType>(cx, ax, bx, n, m, q);
 
     if (effC != q) {
-        operation<n, q, effC, q, ArithmeticOperation::Assign>(c, cx);
+        operationEff<n, q, effC, q, ArithmeticOperation::Assign>(c, cx);
         allocator.dealloc(cx, n*q);
     }
     if (effB != q) allocator.dealloc(bx, m*q);
@@ -850,6 +750,7 @@ void minSpaceStrassen(T* c, T* a, T* b, StackAllocator<T>& allocator, std::false
 }
 template<int n, int m, int q, int effC, int effA, int effB, int Steps, BaseMulType opType, typename T>
 void minSpaceStrassen(T* c, T* a, T* b, StackAllocator<T>& allocator, std::true_type unused = std::true_type()) {
+    using namespace ArithmeticOperation;
     if constexpr (Steps <= 0) {
         minSpaceStrassen<n, m, q, effC, effA, effB, Steps, opType>(c, a, b, allocator, std::false_type{});
         return;
@@ -867,38 +768,38 @@ void minSpaceStrassen(T* c, T* a, T* b, StackAllocator<T>& allocator, std::true_
     auto tempB = allocator.alloc(hm * hq);
     auto tempC = allocator.alloc(hn * hq);
 
-    operation<hn, hm, hm, effA, effA, ArithmeticOperation::Add>(tempA, dA[0][0], dA[1][1]);
-    operation<hm, hq, hq, effB, effB, ArithmeticOperation::Add>(tempB, dB[0][0], dB[1][1]);
+    operationEff<hn, hm, hm, effA, Add>(tempA, dA[0][0], dA[1][1]);
+    operationEff<hm, hq, hq, effB, Add>(tempB, dB[0][0], dB[1][1]);
     minSpaceStrassen<hn, hm, hq, effC, hm, hq, Steps - 1, opType>(dC[0][0], tempA, tempB, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
-    operation<hn, hq, effC, effC, ArithmeticOperation::SubAssign>(dC[1][1], dC[0][0]);
+    operationEff<hn, hq, effC, effC, Assign>(dC[1][1], dC[0][0]);
 
-    operation<hn, hm, hm, effA, effA, ArithmeticOperation::Add>(tempA, dA[1][0], dA[1][1]);
+    operationEff<hn, hm, hm, effA, Add>(tempA, dA[1][0], dA[1][1]);
     minSpaceStrassen<hn, hm, hq, effC, hm, effB, Steps - 1, opType>(dC[1][0], tempA, dB[0][0], allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
-    operation<hn, hq, effC, effC, ArithmeticOperation::SubAssign>(dC[1][1], dC[1][0]);
+    operationEff<hn, hq, effC, effC, SubAssign>(dC[1][1], dC[1][0]);
 
-    operation<hm, hq, hq, effB, effB, ArithmeticOperation::Sub>(tempB, dB[0][1], dB[1][1]);
+    operationEff<hm, hq, hq, effB, Sub>(tempB, dB[0][1], dB[1][1]);
     minSpaceStrassen<hn, hm, hq, effC, effA, hq, Steps - 1, opType>(dC[0][1], dA[0][0], tempB, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
-    operation<hn, hq, effC, effC, ArithmeticOperation::AddAssign>(dC[1][1], dC[0][1]);
+    operationEff<hn, hq, effC, effC, AddAssign>(dC[1][1], dC[0][1]);
 
-    operation<hm, hq, hq, effB, effB, ArithmeticOperation::Sub>(tempB, dB[1][0], dB[0][0]);
+    operationEff<hm, hq, hq, effB, Sub>(tempB, dB[1][0], dB[0][0]);
     minSpaceStrassen<hn, hm, hq, hq, effA, hq, Steps - 1, opType>(tempC, dA[1][1], tempB, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
-    operation<hn, hq, effC, hq, ArithmeticOperation::AddAssign>(dC[0][0], tempC);
-    operation<hn, hq, effC, hq, ArithmeticOperation::AddAssign>(dC[1][0], tempC);
+    operationEff<hn, hq, effC, hq, AddAssign>(dC[0][0], tempC);
+    operationEff<hn, hq, effC, hq, AddAssign>(dC[1][0], tempC);
 
-    operation<hn, hm, hm, effA, effA, ArithmeticOperation::Add>(tempA, dA[0][0], dA[0][1]);
+    operationEff<hn, hm, hm, effA, Add>(tempA, dA[0][0], dA[0][1]);
     minSpaceStrassen<hn, hm, hq, hq, hm, effB, Steps - 1, opType>(tempC, tempA, dB[1][1], allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
-    operation<hn, hq, effC, hq, ArithmeticOperation::SubAssign>(dC[0][0], tempC);
-    operation<hn, hq, effC, hq, ArithmeticOperation::AddAssign>(dC[0][1], tempC);
+    operationEff<hn, hq, effC, hq, SubAssign>(dC[0][0], tempC);
+    operationEff<hn, hq, effC, hq, AddAssign>(dC[0][1], tempC);
 
-    operation<hn, hm, hm, effA, effA, ArithmeticOperation::Sub>(tempA, dA[1][0], dA[0][0]);
-    operation<hm, hq, hq, effB, effB, ArithmeticOperation::Add>(tempB, dB[0][0], dB[0][1]);
+    operationEff<hn, hm, hm, effA, Sub>(tempA, dA[1][0], dA[0][0]);
+    operationEff<hm, hq, hq, effB, Add>(tempB, dB[0][0], dB[0][1]);
     minSpaceStrassen< hn, hm, hq, hq, hm, hq, Steps - 1, opType>(tempC, tempA, tempB, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
-    operation<hn, hq, effC, hq, ArithmeticOperation::AddAssign>(dC[1][1], tempC);
+    operationEff<hn, hq, effC, hq, AddAssign>(dC[1][1], tempC);
 
-    operation<hn, hm, hm, effA, effA, ArithmeticOperation::Sub>(tempA, dA[0][1], dA[1][1]);
-    operation<hm, hq, hq, effB, effB, ArithmeticOperation::Add>(tempB, dB[1][0], dB[1][1]);
+    operationEff<hn, hm, hm, effA, Sub>(tempA, dA[0][1], dA[1][1]);
+    operationEff<hm, hq, hq, effB, Add>(tempB, dB[1][0], dB[1][1]);
     minSpaceStrassen<hn, hm, hq, hq, hm, hq, Steps - 1, opType>(tempC, tempA, tempB, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
-    operation<hn, hq, effC, hq, ArithmeticOperation::AddAssign>(dC[0][0], tempC);
+    operationEff<hn, hq, effC, hq, AddAssign>(dC[0][0], tempC);
 
     allocator.dealloc(tempC, hn*hq);
     allocator.dealloc(tempB, hm*hq);
@@ -1000,6 +901,7 @@ void minSpaceStrassenWithDynamicPeeling2(T* c, T* a, T* b, int n, int m, int q, 
 
 template<BaseMulType opType, typename T>
 void minSpaceStrassenWithDynamicPeeling(T* c, T* a, T* b, int n, int m, int q, int effC, int effA, int effB, int steps, StackAllocator<T>& allocator) {
+    using namespace ArithmeticOperation;
     auto dA = strassenDivideView<2, 2>(a, n, m, effA);
     auto dB = strassenDivideView<2, 2>(b, m, q, effB);
     auto dC = strassenDivideView<2, 2>(c, n, q, effC);
@@ -1012,38 +914,38 @@ void minSpaceStrassenWithDynamicPeeling(T* c, T* a, T* b, int n, int m, int q, i
     auto tempB = allocator.alloc(hm * hq);
     auto tempC = allocator.alloc(hn * hq);
 
-    operation<ArithmeticOperation::Add>(tempA, dA[0][0], dA[1][1], hn, hm, hm, effA, effA);
-    operation<ArithmeticOperation::Add>(tempB, dB[0][0], dB[1][1], hm, hq, hq, effB, effB);
+    operationEff<Add>(hn, hm, hm, effA, tempA, dA[0][0], dA[1][1]);
+    operationEff<Add>(hm, hq, hq, effB, tempB, dB[0][0], dB[1][1]);
     minSpaceStrassenWithDynamicPeeling2<opType>(dC[0][0], tempA, tempB, hn, hm, hq, effC, hm, hq, steps - 1, allocator);
-    operation<ArithmeticOperation::Assign>(dC[1][1], dC[0][0], hn, hq, effC, effC);
+    operationEff<Assign>(hn, hq, effC, effC, dC[1][1], dC[0][0]);
 
-    operation<ArithmeticOperation::Add>(tempA, dA[1][0], dA[1][1], hn, hm, hm, effA, effA);
+    operationEff<Add>(hn, hm, hm, effA, tempA, dA[1][0], dA[1][1]);
     minSpaceStrassenWithDynamicPeeling2<opType>(dC[1][0], tempA, dB[0][0], hn, hm, hq, effC, hm, effB, steps - 1, allocator);
-    operation<ArithmeticOperation::SubAssign>(dC[1][1], dC[1][0], hn, hq, effC, effC);
+    operationEff<SubAssign>(hn, hq, effC, effC, dC[1][1], dC[1][0]);
 
-    operation<ArithmeticOperation::Sub>(tempB, dB[0][1], dB[1][1], hm, hq, hq, effB, effB);
+    operationEff<Sub>(hm, hq, hq, effB, tempB, dB[0][1], dB[1][1]);
     minSpaceStrassenWithDynamicPeeling2<opType>(dC[0][1], dA[0][0], tempB, hn, hm, hq, effC, effA, hq, steps - 1, allocator);
-    operation<ArithmeticOperation::AddAssign>(dC[1][1], dC[0][1], hn, hq, effC, effC);
+    operationEff<AddAssign>(hn, hq, effC, effC, dC[1][1], dC[0][1]);
 
-    operation<ArithmeticOperation::Sub>(tempB, dB[1][0], dB[0][0], hm, hq, hq, effB, effB);
+    operationEff<Sub>(hm, hq, hq, effB, tempB, dB[1][0], dB[0][0]);
     minSpaceStrassenWithDynamicPeeling2<opType>(tempC, dA[1][1], tempB, hn, hm, hq, hq, effA, hq, steps - 1, allocator);
-    operation<ArithmeticOperation::AddAssign>(dC[0][0], tempC, hn, hq, effC, hq);
-    operation<ArithmeticOperation::AddAssign>(dC[1][0], tempC, hn, hq, effC, hq);
+    operationEff<AddAssign>(hn, hq, effC, hq, dC[0][0], tempC);
+    operationEff<AddAssign>(hn, hq, effC, hq, dC[1][0], tempC);
 
-    operation<ArithmeticOperation::Add>(tempA, dA[0][0], dA[0][1], hn, hm, hm, effA, effA);
+    operationEff<Add>(hn, hm, hm, effA, tempA, dA[0][0], dA[0][1]);
     minSpaceStrassenWithDynamicPeeling2<opType>(tempC, tempA, dB[1][1], hn, hm, hq, hq, hm, effB, steps - 1, allocator);
-    operation<ArithmeticOperation::SubAssign>(dC[0][0], tempC, hn, hq, effC, hq);
-    operation<ArithmeticOperation::AddAssign>(dC[0][1], tempC, hn, hq, effC, hq);
+    operationEff<SubAssign>(hn, hq, effC, hq, dC[0][0], tempC);
+    operationEff<AddAssign>(hn, hq, effC, hq, dC[0][1], tempC);
 
-    operation<ArithmeticOperation::Sub>(tempA, dA[1][0], dA[0][0], hn, hm, hm, effA, effA);
-    operation<ArithmeticOperation::Add>(tempB, dB[0][0], dB[0][1], hm, hq, hq, effB, effB);
+    operationEff<Sub>(hn, hm, hm, effA, tempA, dA[1][0], dA[0][0]);
+    operationEff<Add>(hm, hq, hq, effB, tempB, dB[0][0], dB[0][1]);
     minSpaceStrassenWithDynamicPeeling2<opType>(tempC, tempA, tempB, hn, hm, hq, hq, hm, hq, steps - 1, allocator);
-    operation<ArithmeticOperation::AddAssign>(dC[1][1], tempC, hn, hq, effC, hq);
+    operationEff<AddAssign>(hn, hq, effC, hq, dC[1][1], tempC);
 
-    operation<ArithmeticOperation::Sub>(tempA, dA[0][1], dA[1][1], hn, hm, hm, effA, effA);
-    operation<ArithmeticOperation::Add>(tempB, dB[1][0], dB[1][1], hm, hq, hq, effB, effB);
+    operationEff<Sub>(hn, hm, hm, effA, tempA, dA[0][1], dA[1][1]);
+    operationEff<Add>(hm, hq, hq, effB, tempB, dB[1][0], dB[1][1]);
     minSpaceStrassenWithDynamicPeeling2<opType>(tempC, tempA, tempB, hn, hm, hq, hq, hm, hq, steps - 1, allocator);
-    operation<ArithmeticOperation::AddAssign>(dC[0][0], tempC, hn, hq, effC, hq);
+    operationEff<AddAssign>(hn, hq, effC, hq, dC[0][0], tempC);
 
     allocator.dealloc(tempC, hn*hq);
     allocator.dealloc(tempB, hm*hq);
@@ -1139,6 +1041,8 @@ template<BaseMulType opType, typename T> void LowLevelParallelStrassenMinSpace(T
 
 template<BaseMulType opType, typename T>
 void LowLevelParallelStrassen(T* c, T* a, T* b, int n, int m, int q, int effC, int effA, int effB, int steps) {
+    using namespace ArithmeticOperation;
+    
     int hn = n / 2;
     int hm = m / 2;
     int hq = q / 2;
@@ -1169,34 +1073,34 @@ void LowLevelParallelStrassen(T* c, T* a, T* b, int n, int m, int q, int effC, i
     ThreadPool pool;
 
     pool.addTask([=]() {
-        operation<ArithmeticOperation::Add>(m1_a, dA[0][0], dA[1][1], hn, hm, hm, effA, effA);
-        operation<ArithmeticOperation::Add>(m1_b, dB[0][0], dB[1][1], hm, hq, hq, effB, effB);
+        operationEff<Add>(hn, hm, hm, effA, m1_a, dA[0][0], dA[1][1]);
+        operationEff<Add>(hm, hq, hq, effB, m1_b, dB[0][0], dB[1][1]);
         LowLevelParallelStrassenMinSpace<opType>(m1, m1_a, m1_b, hn, hm, hq, hm, hq, steps - 1);
     });
     pool.addTask([=]() {
-        operation<ArithmeticOperation::Add>(m2_a, dA[1][0], dA[1][1], hn, hm, hm, effA, effA);
+        operationEff<Add>(hn, hm, hm, effA, m2_a, dA[1][0], dA[1][1]);
         LowLevelParallelStrassenMinSpace<opType>(m2, m2_a, dB[0][0], hn, hm, hq, hm, effB, steps - 1);
     });
     pool.addTask([=]() {
-        operation<ArithmeticOperation::Sub>(m3_b, dB[0][1], dB[1][1], hm, hq, hq, effB, effB);
+        operationEff<Sub>(hm, hq, hq, effB, m3_b, dB[0][1], dB[1][1]);
         LowLevelParallelStrassenMinSpace<opType>(m3, dA[0][0], m3_b, hn, hm, hq, effA, hq, steps - 1);
     });
     pool.addTask([=]() {
-        operation<ArithmeticOperation::Sub>(m4_b, dB[1][0], dB[0][0], hm, hq, hq, effB, effB);
+        operationEff<Sub>(hm, hq, hq, effB, m4_b, dB[1][0], dB[0][0]);
         LowLevelParallelStrassenMinSpace<opType>(m4, dA[1][1], m4_b, hn, hm, hq, effA, hq, steps - 1);
     });
     pool.addTask([=]() {
-        operation<ArithmeticOperation::Add>(m5_a, dA[0][0], dA[0][1], hn, hm, hm, effA, effA);
+        operationEff<Add>(hn, hm, hm, effA, m5_a, dA[0][0], dA[0][1]);
         LowLevelParallelStrassenMinSpace<opType>(m5, m5_a, dB[1][1], hn, hm, hq, hm, effB, steps - 1);
     });
     pool.addTask([=]() {
-        operation<ArithmeticOperation::Sub>(m6_a, dA[1][0], dA[0][0], hn, hm, hm, effA, effA);
-        operation<ArithmeticOperation::Add>(m6_b, dB[0][0], dB[0][1], hm, hq, hq, effB, effB);
+        operationEff<Sub>(hn, hm, hm, effA, m6_a, dA[1][0], dA[0][0]);
+        operationEff<Add>(hm, hq, hq, effB, m6_b, dB[0][0], dB[0][1]);
         LowLevelParallelStrassenMinSpace<opType>(m6, m6_a, m6_b, hn, hm, hq, hm, hq, steps - 1);
     });
     pool.addTask([=]() {
-        operation<ArithmeticOperation::Sub>(m7_a, dA[0][1], dA[1][1], hn, hm, hm, effA, effA);
-        operation<ArithmeticOperation::Add>(m7_b, dB[1][0], dB[1][1], hm, hq, hq, effB, effB);
+        operationEff<Sub>(hn, hm, hm, effA, m7_a, dA[0][1], dA[1][1]);
+        operationEff<Add>(hm, hq, hq, effB, m7_b, dB[1][0], dB[1][1]);
         LowLevelParallelStrassenMinSpace<opType>(m7, m7_a, m7_b, hn, hm, hq, hm, hq, steps - 1);
     });
 
