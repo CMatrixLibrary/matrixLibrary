@@ -23,18 +23,30 @@ namespace blas {
         }
     }
 
+    template<typename T> void setToZero(T* a, int n, int m, int effM) {
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < m; ++j) {
+                a[j + i * effM] = T{};
+            }
+        }
+    }
+
 #ifdef USE_BLAS
     template<> void mul<float>(float* c, const float* a, const float* b, int n, int m, int q, int effC, int effA, int effB) {
+        setToZero(c, n, m, effC);
         cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, n, q, m, 1, a, effA, b, effB, 1, c, effC);
     }
     template<> void mul<double>(double* c, const double* a, const double* b, int n, int m, int q, int effC, int effA, int effB) {
+        setToZero(c, n, m, effC);
         cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, n, q, m, 1, a, effA, b, effB, 1, c, effC);
     }
     template<> void mul<std::complex<float>>(std::complex<float>* c, const std::complex<float>* a, const std::complex<float>* b, int n, int m, int q, int effC, int effA, int effB) {
+        setToZero(c, n, m, effC);
         auto one = std::complex<float>(1);
         cblas_cgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, n, q, m, &one, a, effA, b, effB, &one, c, effC);
     }
     template<> void mul<std::complex<double>>(std::complex<double>* c, const std::complex<double>* a, const std::complex<double>* b, int n, int m, int q, int effC, int effA, int effB) {
+        setToZero(c, n, m, effC);
         auto one = std::complex<double>(1);
         cblas_zgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, n, q, m, &one, a, effA, b, effB, &one, c, effC);
     }
