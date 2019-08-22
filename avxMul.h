@@ -10,13 +10,13 @@ void avxMul2(int* result, const int* a, const int* b, int n, int m, int q) {
     for (int i = 0; i < n; ++i) {
         int j = 0;
         for (; j <= q - 8; j += 8) {
-            auto sum = AVX256::zero<int>();
+            auto sum = avx::zero<int>();
             for (int k = 0; k < m; ++k) {
-                auto aValue = AVX256::setAllElements(a[k + i * m]);
-                auto bVectr = AVX256::loadUnaligned(&b[j + k * q]);
+                auto aValue = avx::setAllElements(a[k + i * m]);
+                auto bVectr = avx::loadUnaligned(&b[j + k * q]);
                 sum += aValue * bVectr;
             }
-            AVX256::storeUnaligned(&result[j + i * q], sum);
+            avx::storeUnaligned(&result[j + i * q], sum);
         }
         for (; j < q; ++j) {
             int sum = 0;
@@ -33,17 +33,17 @@ void avxMul3(int* result, const int* a, const int* b, int n, int m, int q) {
     for (int i = 0; i < n; ++i) {
         int j = 0;
         for (; j <= q - 16; j += 16) {
-            auto sum1 = AVX256::zero<int>();
-            auto sum2 = AVX256::zero<int>();
+            auto sum1 = avx::zero<int>();
+            auto sum2 = avx::zero<int>();
             for (int k = 0; k < m; ++k) {
-                auto aValue = AVX256::setAllElements(a[k + i * m]);
-                auto bVectr1 = AVX256::loadUnaligned(&b[j + k * q]);
+                auto aValue = avx::setAllElements(a[k + i * m]);
+                auto bVectr1 = avx::loadUnaligned(&b[j + k * q]);
                 sum1 += aValue * bVectr1;
-                auto bVectr2 = AVX256::loadUnaligned(&b[8 + j + k * q]);
+                auto bVectr2 = avx::loadUnaligned(&b[8 + j + k * q]);
                 sum2 += aValue * bVectr2;
             }
-            AVX256::storeUnaligned(&result[j + i * q], sum1);
-            AVX256::storeUnaligned(&result[8 + j + i * q], sum2);
+            avx::storeUnaligned(&result[j + i * q], sum1);
+            avx::storeUnaligned(&result[8 + j + i * q], sum2);
         }
         for (; j < q; ++j) {
             int sum = 0;
@@ -60,25 +60,25 @@ void avxMul4(int* result, const int* a, const int* b, int n, int m, int q) {
     for (int i = 0; i < n; ++i) {
         int j = 0;
         for (; j <= q - 32; j += 32) {
-            auto sum1 = AVX256::zero<int>();
-            auto sum2 = AVX256::zero<int>();
-            auto sum3 = AVX256::zero<int>();
-            auto sum4 = AVX256::zero<int>();
+            auto sum1 = avx::zero<int>();
+            auto sum2 = avx::zero<int>();
+            auto sum3 = avx::zero<int>();
+            auto sum4 = avx::zero<int>();
             for (int k = 0; k < m; ++k) {
-                auto aValue = AVX256::setAllElements(a[k + i * m]);
-                auto bVectr1 = AVX256::loadUnaligned(&b[j + k * q]);
+                auto aValue = avx::setAllElements(a[k + i * m]);
+                auto bVectr1 = avx::loadUnaligned(&b[j + k * q]);
                 sum1 += aValue * bVectr1;
-                auto bVectr2 = AVX256::loadUnaligned(&b[8 + j + k * q]);
+                auto bVectr2 = avx::loadUnaligned(&b[8 + j + k * q]);
                 sum2 += aValue * bVectr2;
-                auto bVectr3 = AVX256::loadUnaligned(&b[16 + j + k * q]);
+                auto bVectr3 = avx::loadUnaligned(&b[16 + j + k * q]);
                 sum3 += aValue * bVectr3;
-                auto bVectr4 = AVX256::loadUnaligned(&b[24 + j + k * q]);
+                auto bVectr4 = avx::loadUnaligned(&b[24 + j + k * q]);
                 sum4 += aValue * bVectr4;
             }
-            AVX256::storeUnaligned(&result[j + i * q], sum1);
-            AVX256::storeUnaligned(&result[8 + j + i * q], sum2);
-            AVX256::storeUnaligned(&result[16 + j + i * q], sum3);
-            AVX256::storeUnaligned(&result[24 + j + i * q], sum4);
+            avx::storeUnaligned(&result[j + i * q], sum1);
+            avx::storeUnaligned(&result[8 + j + i * q], sum2);
+            avx::storeUnaligned(&result[16 + j + i * q], sum3);
+            avx::storeUnaligned(&result[24 + j + i * q], sum4);
         }
         for (; j < q; ++j) {
             int sum = 0;
@@ -107,17 +107,17 @@ void avxMul5(int* result, const int* a, const int* b, int n, int m, int q) {
                 int j = jj;
                 int jEnd = lastjb-16;
                 for (; j <= jEnd; j += 16) {
-                    auto sum1 = AVX256::loadUnaligned(&result[j + i * q]);
-                    auto sum2 = AVX256::loadUnaligned(&result[8 + j + i * q]);
+                    auto sum1 = avx::loadUnaligned(&result[j + i * q]);
+                    auto sum2 = avx::loadUnaligned(&result[8 + j + i * q]);
                     for (int k = kk; k < lastKb; ++k) {
-                        auto aValue = AVX256::setAllElements(a[k + i * m]);
-                        auto bVectr1 = AVX256::loadUnaligned(&b[j + k * q]);
+                        auto aValue = avx::setAllElements(a[k + i * m]);
+                        auto bVectr1 = avx::loadUnaligned(&b[j + k * q]);
                         sum1 += aValue * bVectr1;
-                        auto bVectr2 = AVX256::loadUnaligned(&b[8 + j + k * q]);
+                        auto bVectr2 = avx::loadUnaligned(&b[8 + j + k * q]);
                         sum2 += aValue * bVectr2;
                     }
-                    AVX256::storeUnaligned(&result[j + i * q], sum1);
-                    AVX256::storeUnaligned(&result[8 + j + i * q], sum2);
+                    avx::storeUnaligned(&result[j + i * q], sum1);
+                    avx::storeUnaligned(&result[8 + j + i * q], sum2);
                 }
                 for (; j < lastjb; ++j) {
                     int sum = 0;
@@ -150,24 +150,24 @@ void avxMul6(int* result, const int* a, const int* b, int n, int m, int q) {
                 int j = jj;
                 int jEnd = lastjb-16;
                 for (; j <= jEnd; j += 16) {
-                    auto sum1i1 = AVX256::loadUnaligned(&result[j + i * q]);
-                    auto sum1i2 = AVX256::loadUnaligned(&result[8 + j + i * q]);
-                    auto sum2i1 = AVX256::loadUnaligned(&result[j + (i+1) * q]);
-                    auto sum2i2 = AVX256::loadUnaligned(&result[8 + j + (i+1) * q]);
+                    auto sum1i1 = avx::loadUnaligned(&result[j + i * q]);
+                    auto sum1i2 = avx::loadUnaligned(&result[8 + j + i * q]);
+                    auto sum2i1 = avx::loadUnaligned(&result[j + (i+1) * q]);
+                    auto sum2i2 = avx::loadUnaligned(&result[8 + j + (i+1) * q]);
                     for (int k = kk; k < lastKb; ++k) {
-                        auto aValue1 = AVX256::setAllElements(a[k + i * m]);
-                        auto bVectr1 = AVX256::loadUnaligned(&b[j + k * q]);
+                        auto aValue1 = avx::setAllElements(a[k + i * m]);
+                        auto bVectr1 = avx::loadUnaligned(&b[j + k * q]);
                         sum1i1 += aValue1 * bVectr1;
-                        auto bVectr2 = AVX256::loadUnaligned(&b[8 + j + k * q]);
+                        auto bVectr2 = avx::loadUnaligned(&b[8 + j + k * q]);
                         sum1i2 += aValue1 * bVectr2;
-                        auto aValue2 = AVX256::setAllElements(a[k + (i + 1) * m]);
+                        auto aValue2 = avx::setAllElements(a[k + (i + 1) * m]);
                         sum2i1 += aValue2 * bVectr1;
                         sum2i2 += aValue2 * bVectr2;
                     }
-                    AVX256::storeUnaligned(&result[j + i * q], sum1i1);
-                    AVX256::storeUnaligned(&result[8 + j + i * q], sum1i2);
-                    AVX256::storeUnaligned(&result[j + (i+1) * q], sum1i1);
-                    AVX256::storeUnaligned(&result[8 + j + (i+1) * q], sum1i2);
+                    avx::storeUnaligned(&result[j + i * q], sum1i1);
+                    avx::storeUnaligned(&result[8 + j + i * q], sum1i2);
+                    avx::storeUnaligned(&result[j + (i+1) * q], sum1i1);
+                    avx::storeUnaligned(&result[8 + j + (i+1) * q], sum1i2);
                 }
                 for (; j < lastjb; ++j) {
                     int sum = 0;
@@ -181,17 +181,17 @@ void avxMul6(int* result, const int* a, const int* b, int n, int m, int q) {
                 int j = jj;
                 int jEnd = lastjb - 16;
                 for (; j <= jEnd; j += 16) {
-                    auto sum1 = AVX256::loadUnaligned(&result[j + i * q]);
-                    auto sum2 = AVX256::loadUnaligned(&result[8 + j + i * q]);
+                    auto sum1 = avx::loadUnaligned(&result[j + i * q]);
+                    auto sum2 = avx::loadUnaligned(&result[8 + j + i * q]);
                     for (int k = kk; k < lastKb; ++k) {
-                        auto aValue = AVX256::setAllElements(a[k + i * m]);
-                        auto bVectr1 = AVX256::loadUnaligned(&b[j + k * q]);
+                        auto aValue = avx::setAllElements(a[k + i * m]);
+                        auto bVectr1 = avx::loadUnaligned(&b[j + k * q]);
                         sum1 += aValue * bVectr1;
-                        auto bVectr2 = AVX256::loadUnaligned(&b[8 + j + k * q]);
+                        auto bVectr2 = avx::loadUnaligned(&b[8 + j + k * q]);
                         sum2 += aValue * bVectr2;
                     }
-                    AVX256::storeUnaligned(&result[j + i * q], sum1);
-                    AVX256::storeUnaligned(&result[8 + j + i * q], sum2);
+                    avx::storeUnaligned(&result[j + i * q], sum1);
+                    avx::storeUnaligned(&result[8 + j + i * q], sum2);
                 }
                 for (; j < lastjb; ++j) {
                     int sum = 0;
@@ -224,25 +224,25 @@ template<typename T> void avxMul7(T* result, const T* a, const T* b, int n, int 
                 int i = ii;
                 for (; i <= iEnd - 2; i += 2) {
                     int j = jj;
-                    for (; j <= jEnd - 2*AVX256::packedCount<T>(); j += 2*AVX256::packedCount<T>()) {
-                        auto sum1i1 = AVX256::loadUnaligned(&result[j + i * q]);
-                        auto sum1i2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + i * q]);
-                        auto sum2i1 = AVX256::loadUnaligned(&result[j + (i + 1) * q]);
-                        auto sum2i2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + (i + 1) * q]);
+                    for (; j <= jEnd - 2*avx::packedCount<T>(); j += 2*avx::packedCount<T>()) {
+                        auto sum1i1 = avx::loadUnaligned(&result[j + i * q]);
+                        auto sum1i2 = avx::loadUnaligned(&result[avx::packedCount<T>() + j + i * q]);
+                        auto sum2i1 = avx::loadUnaligned(&result[j + (i + 1) * q]);
+                        auto sum2i2 = avx::loadUnaligned(&result[avx::packedCount<T>() + j + (i + 1) * q]);
                         for (int k = kk; k < kEnd; ++k) {
-                            auto aValue1 = AVX256::setAllElements(a[k + i * m]);
-                            auto bVectr1 = AVX256::loadUnaligned(&b[j + k * q]);
-                            sum1i1 = AVX256::fma(aValue1, bVectr1, sum1i1);
-                            auto bVectr2 = AVX256::loadUnaligned(&b[AVX256::packedCount<T>() + j + k * q]);
-                            sum1i2 = AVX256::fma(aValue1, bVectr2, sum1i2);
-                            auto aValue2 = AVX256::setAllElements(a[k + (i + 1) * m]);
-                            sum2i1 = AVX256::fma(aValue2, bVectr1, sum2i1);
-                            sum2i2 = AVX256::fma(aValue2, bVectr2, sum2i2);
+                            auto aValue1 = avx::setAllElements(a[k + i * m]);
+                            auto bVectr1 = avx::loadUnaligned(&b[j + k * q]);
+                            sum1i1 = avx::fma(aValue1, bVectr1, sum1i1);
+                            auto bVectr2 = avx::loadUnaligned(&b[avx::packedCount<T>() + j + k * q]);
+                            sum1i2 = avx::fma(aValue1, bVectr2, sum1i2);
+                            auto aValue2 = avx::setAllElements(a[k + (i + 1) * m]);
+                            sum2i1 = avx::fma(aValue2, bVectr1, sum2i1);
+                            sum2i2 = avx::fma(aValue2, bVectr2, sum2i2);
                         }
-                        AVX256::storeUnaligned(&result[j + i * q], sum1i1);
-                        AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + i * q], sum1i2);
-                        AVX256::storeUnaligned(&result[j + (i + 1) * q], sum2i1);
-                        AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + (i + 1) * q], sum2i2);
+                        avx::storeUnaligned(&result[j + i * q], sum1i1);
+                        avx::storeUnaligned(&result[avx::packedCount<T>() + j + i * q], sum1i2);
+                        avx::storeUnaligned(&result[j + (i + 1) * q], sum2i1);
+                        avx::storeUnaligned(&result[avx::packedCount<T>() + j + (i + 1) * q], sum2i2);
                     }
                     for (; j < jEnd; ++j) {
                         T& sum1 = result[j + i * q];
@@ -257,18 +257,18 @@ template<typename T> void avxMul7(T* result, const T* a, const T* b, int n, int 
                 }
                 if (i < iEnd) {
                     int j = jj;
-                    for (; j <= jEnd - 2*AVX256::packedCount<T>(); j += 2*AVX256::packedCount<T>()) {
-                        auto sum1 = AVX256::loadUnaligned(&result[j + i * q]);
-                        auto sum2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + i * q]);
+                    for (; j <= jEnd - 2*avx::packedCount<T>(); j += 2*avx::packedCount<T>()) {
+                        auto sum1 = avx::loadUnaligned(&result[j + i * q]);
+                        auto sum2 = avx::loadUnaligned(&result[avx::packedCount<T>() + j + i * q]);
                         for (int k = kk; k < kEnd; ++k) {
-                            auto aValue = AVX256::setAllElements(a[k + i * m]);
-                            auto bVectr1 = AVX256::loadUnaligned(&b[j + k * q]);
-                            sum1 = AVX256::fma(aValue, bVectr1, sum1);
-                            auto bVectr2 = AVX256::loadUnaligned(&b[AVX256::packedCount<T>() + j + k * q]);
-                            sum2 = AVX256::fma(aValue, bVectr2, sum2);
+                            auto aValue = avx::setAllElements(a[k + i * m]);
+                            auto bVectr1 = avx::loadUnaligned(&b[j + k * q]);
+                            sum1 = avx::fma(aValue, bVectr1, sum1);
+                            auto bVectr2 = avx::loadUnaligned(&b[avx::packedCount<T>() + j + k * q]);
+                            sum2 = avx::fma(aValue, bVectr2, sum2);
                         }
-                        AVX256::storeUnaligned(&result[j + i * q], sum1);
-                        AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + i * q], sum2);
+                        avx::storeUnaligned(&result[j + i * q], sum1);
+                        avx::storeUnaligned(&result[avx::packedCount<T>() + j + i * q], sum2);
                     }
                     for (; j < jEnd; ++j) {
                         T& sum = result[j + i * q];
@@ -303,25 +303,25 @@ template<typename T> void avxMul7(T* result, const T* a, const T* b, int n, int 
                 int i = ii;
                 for (; i <= iEnd - 2; i += 2) {
                     int j = jj;
-                    for (; j <= jEnd - 2*AVX256::packedCount<T>(); j += 2*AVX256::packedCount<T>()) {
-                        auto sum1i1 = AVX256::loadUnaligned(&result[j + i * effC]);
-                        auto sum1i2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + i * effC]);
-                        auto sum2i1 = AVX256::loadUnaligned(&result[j + (i + 1) * effC]);
-                        auto sum2i2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + (i + 1) * effC]);
+                    for (; j <= jEnd - 2*avx::packedCount<T>(); j += 2*avx::packedCount<T>()) {
+                        auto sum1i1 = avx::loadUnaligned(&result[j + i * effC]);
+                        auto sum1i2 = avx::loadUnaligned(&result[avx::packedCount<T>() + j + i * effC]);
+                        auto sum2i1 = avx::loadUnaligned(&result[j + (i + 1) * effC]);
+                        auto sum2i2 = avx::loadUnaligned(&result[avx::packedCount<T>() + j + (i + 1) * effC]);
                         for (int k = kk; k < kEnd; ++k) {
-                            auto aValue1 = AVX256::setAllElements(a[k + i * effA]);
-                            auto bVectr1 = AVX256::loadUnaligned(&b[j + k * effB]);
-                            sum1i1 = AVX256::fma(aValue1, bVectr1, sum1i1);
-                            auto bVectr2 = AVX256::loadUnaligned(&b[AVX256::packedCount<T>() + j + k * effB]);
-                            sum1i2 = AVX256::fma(aValue1, bVectr2, sum1i2);
-                            auto aValue2 = AVX256::setAllElements(a[k + (i + 1) * effA]);
-                            sum2i1 = AVX256::fma(aValue2, bVectr1, sum2i1);
-                            sum2i2 = AVX256::fma(aValue2, bVectr2, sum2i2);
+                            auto aValue1 = avx::setAllElements(a[k + i * effA]);
+                            auto bVectr1 = avx::loadUnaligned(&b[j + k * effB]);
+                            sum1i1 = avx::fma(aValue1, bVectr1, sum1i1);
+                            auto bVectr2 = avx::loadUnaligned(&b[avx::packedCount<T>() + j + k * effB]);
+                            sum1i2 = avx::fma(aValue1, bVectr2, sum1i2);
+                            auto aValue2 = avx::setAllElements(a[k + (i + 1) * effA]);
+                            sum2i1 = avx::fma(aValue2, bVectr1, sum2i1);
+                            sum2i2 = avx::fma(aValue2, bVectr2, sum2i2);
                         }
-                        AVX256::storeUnaligned(&result[j + i * effC], sum1i1);
-                        AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + i * effC], sum1i2);
-                        AVX256::storeUnaligned(&result[j + (i + 1) * effC], sum2i1);
-                        AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + (i + 1) * effC], sum2i2);
+                        avx::storeUnaligned(&result[j + i * effC], sum1i1);
+                        avx::storeUnaligned(&result[avx::packedCount<T>() + j + i * effC], sum1i2);
+                        avx::storeUnaligned(&result[j + (i + 1) * effC], sum2i1);
+                        avx::storeUnaligned(&result[avx::packedCount<T>() + j + (i + 1) * effC], sum2i2);
                     }
                     for (; j < jEnd; ++j) {
                         T& sum1 = result[j + i * effC];
@@ -336,18 +336,18 @@ template<typename T> void avxMul7(T* result, const T* a, const T* b, int n, int 
                 }
                 if (i < iEnd) {
                     int j = jj;
-                    for (; j <= jEnd - 2*AVX256::packedCount<T>(); j += 2*AVX256::packedCount<T>()) {
-                        auto sum1 = AVX256::loadUnaligned(&result[j + i * effC]);
-                        auto sum2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + i * effC]);
+                    for (; j <= jEnd - 2*avx::packedCount<T>(); j += 2*avx::packedCount<T>()) {
+                        auto sum1 = avx::loadUnaligned(&result[j + i * effC]);
+                        auto sum2 = avx::loadUnaligned(&result[avx::packedCount<T>() + j + i * effC]);
                         for (int k = kk; k < kEnd; ++k) {
-                            auto aValue = AVX256::setAllElements(a[k + i * effA]);
-                            auto bVectr1 = AVX256::loadUnaligned(&b[j + k * effB]);
-                            sum1 = AVX256::fma(aValue, bVectr1, sum1);
-                            auto bVectr2 = AVX256::loadUnaligned(&b[AVX256::packedCount<T>() + j + k * effB]);
-                            sum2 = AVX256::fma(aValue, bVectr2, sum2);
+                            auto aValue = avx::setAllElements(a[k + i * effA]);
+                            auto bVectr1 = avx::loadUnaligned(&b[j + k * effB]);
+                            sum1 = avx::fma(aValue, bVectr1, sum1);
+                            auto bVectr2 = avx::loadUnaligned(&b[avx::packedCount<T>() + j + k * effB]);
+                            sum2 = avx::fma(aValue, bVectr2, sum2);
                         }
-                        AVX256::storeUnaligned(&result[j + i * effC], sum1);
-                        AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + i * effC], sum2);
+                        avx::storeUnaligned(&result[j + i * effC], sum1);
+                        avx::storeUnaligned(&result[avx::packedCount<T>() + j + i * effC], sum2);
                     }
                     for (; j < jEnd; ++j) {
                         T& sum = result[j + i * effC];
@@ -373,17 +373,17 @@ template<typename T> void avxMul8(T* result, const T* a, const T* b, int n) {
     int jb = std::min(512, n);
     int kb = std::min(16, n);
 
-    T* mat2 = AVX256::alignedArrayAlloc<T>(n*n);
+    T* mat2 = avx::alignedArrayAlloc<T>(n*n);
     int m2idx = 0;
     for (int jj = 0; jj < n; jj += jb) {
         for (int kk = 0; kk < n; kk += kb) {
-            for (int j = jj; j < jj + jb; j += 2 * AVX256::packedCount<T>()) {
+            for (int j = jj; j < jj + jb; j += 2 * avx::packedCount<T>()) {
                 for (int k = kk; k < kk + kb; k++) {
-                    auto vecA_mat2 = AVX256::loadUnaligned(&b[j + k * n]);
-                    auto vecB_mat2 = AVX256::loadUnaligned(&b[AVX256::packedCount<T>() + j + k * n]);
-                    AVX256::storeUnaligned(&mat2[m2idx], vecA_mat2);
-                    AVX256::storeUnaligned(&mat2[m2idx + AVX256::packedCount<T>()], vecB_mat2);
-                    m2idx += 2 * AVX256::packedCount<T>();
+                    auto vecA_mat2 = avx::loadUnaligned(&b[j + k * n]);
+                    auto vecB_mat2 = avx::loadUnaligned(&b[avx::packedCount<T>() + j + k * n]);
+                    avx::storeUnaligned(&mat2[m2idx], vecA_mat2);
+                    avx::storeUnaligned(&mat2[m2idx + avx::packedCount<T>()], vecB_mat2);
+                    m2idx += 2 * avx::packedCount<T>();
                 }
             }
         }
@@ -393,33 +393,33 @@ template<typename T> void avxMul8(T* result, const T* a, const T* b, int n) {
         for (int jj = 0; jj < n; jj += jb) {
             for (int kk = 0; kk < n; kk += kb) {
                 for (int i = ii; i < ii + ib; i += 2) {
-                    for (int j = jj; j < jj + jb; j += 2 * AVX256::packedCount<T>()) {
+                    for (int j = jj; j < jj + jb; j += 2 * avx::packedCount<T>()) {
                         int m2idx = (j - jj) * kb + kk * jb + jj * n;
-                        auto sumA_1 = AVX256::loadUnaligned(&result[i*n + j]);
-                        auto sumB_1 = AVX256::loadUnaligned(&result[i*n + j + AVX256::packedCount<T>()]);
-                        auto sumA_2 = AVX256::loadUnaligned(&result[(i + 1)*n + j]);
-                        auto sumB_2 = AVX256::loadUnaligned(&result[(i + 1)*n + j + AVX256::packedCount<T>()]);
+                        auto sumA_1 = avx::loadUnaligned(&result[i*n + j]);
+                        auto sumB_1 = avx::loadUnaligned(&result[i*n + j + avx::packedCount<T>()]);
+                        auto sumA_2 = avx::loadUnaligned(&result[(i + 1)*n + j]);
+                        auto sumB_2 = avx::loadUnaligned(&result[(i + 1)*n + j + avx::packedCount<T>()]);
                         for (int k = kk; k < kk + kb; k++) {
-                            auto bc_mat1_1 = AVX256::setAllElements(a[i*n + k]);
-                            auto vecA_mat2 = AVX256::loadUnaligned(&mat2[m2idx]);
-                            auto vecB_mat2 = AVX256::loadUnaligned(&mat2[m2idx + AVX256::packedCount<T>()]);
+                            auto bc_mat1_1 = avx::setAllElements(a[i*n + k]);
+                            auto vecA_mat2 = avx::loadUnaligned(&mat2[m2idx]);
+                            auto vecB_mat2 = avx::loadUnaligned(&mat2[m2idx + avx::packedCount<T>()]);
                             sumA_1 += bc_mat1_1 * vecA_mat2;
                             sumB_1 += bc_mat1_1 * vecB_mat2;
-                            auto bc_mat1_2 = AVX256::setAllElements(a[(i+1)*n + k]);
+                            auto bc_mat1_2 = avx::setAllElements(a[(i+1)*n + k]);
                             sumA_2 += bc_mat1_2 * vecA_mat2;
                             sumB_2 += bc_mat1_2 * vecB_mat2;
-                            m2idx += 2 * AVX256::packedCount<T>();
+                            m2idx += 2 * avx::packedCount<T>();
                         }
-                        AVX256::storeUnaligned(&result[i*n + j], sumA_1);
-                        AVX256::storeUnaligned(&result[i*n + j + AVX256::packedCount<T>()], sumB_1);
-                        AVX256::storeUnaligned(&result[(i + 1)*n + j], sumA_2);
-                        AVX256::storeUnaligned(&result[(i + 1) * n + j + AVX256::packedCount<T>()], sumB_2);
+                        avx::storeUnaligned(&result[i*n + j], sumA_1);
+                        avx::storeUnaligned(&result[i*n + j + avx::packedCount<T>()], sumB_1);
+                        avx::storeUnaligned(&result[(i + 1)*n + j], sumA_2);
+                        avx::storeUnaligned(&result[(i + 1) * n + j + avx::packedCount<T>()], sumB_2);
                     }
                 }
             }
         }
     }
-    AVX256::alignedArrayDealloc(mat2);
+    avx::alignedArrayDealloc(mat2);
 #endif
 }
 template<int n, int m, int q, typename T> void avxMul7(T* result, const T* a, const T* b) {
@@ -441,25 +441,25 @@ template<int n, int m, int q, typename T> void avxMul7(T* result, const T* a, co
                 int i = ii;
                 for (; i <= iEnd - 2; i += 2) {
                     int j = jj;
-                    for (; j <= jEnd - 2 * AVX256::packedCount<T>(); j += 2 * AVX256::packedCount<T>()) {
-                        auto sum1i1 = AVX256::loadUnaligned(&result[j + i * q]);
-                        auto sum1i2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + i * q]);
-                        auto sum2i1 = AVX256::loadUnaligned(&result[j + (i + 1) * q]);
-                        auto sum2i2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + (i + 1) * q]);
+                    for (; j <= jEnd - 2 * avx::packedCount<T>(); j += 2 * avx::packedCount<T>()) {
+                        auto sum1i1 = avx::loadUnaligned(&result[j + i * q]);
+                        auto sum1i2 = avx::loadUnaligned(&result[avx::packedCount<T>() + j + i * q]);
+                        auto sum2i1 = avx::loadUnaligned(&result[j + (i + 1) * q]);
+                        auto sum2i2 = avx::loadUnaligned(&result[avx::packedCount<T>() + j + (i + 1) * q]);
                         for (int k = kk; k < kEnd; ++k) {
-                            auto aValue1 = AVX256::setAllElements(a[k + i * m]);
-                            auto bVectr1 = AVX256::loadUnaligned(&b[j + k * q]);
-                            sum1i1 = AVX256::fma(aValue1, bVectr1, sum1i1);
-                            auto bVectr2 = AVX256::loadUnaligned(&b[AVX256::packedCount<T>() + j + k * q]);
-                            sum1i2 = AVX256::fma(aValue1, bVectr2, sum1i2);
-                            auto aValue2 = AVX256::setAllElements(a[k + (i + 1) * m]);
-                            sum2i1 = AVX256::fma(aValue2, bVectr1, sum2i1);
-                            sum2i2 = AVX256::fma(aValue2, bVectr2, sum2i2);
+                            auto aValue1 = avx::setAllElements(a[k + i * m]);
+                            auto bVectr1 = avx::loadUnaligned(&b[j + k * q]);
+                            sum1i1 = avx::fma(aValue1, bVectr1, sum1i1);
+                            auto bVectr2 = avx::loadUnaligned(&b[avx::packedCount<T>() + j + k * q]);
+                            sum1i2 = avx::fma(aValue1, bVectr2, sum1i2);
+                            auto aValue2 = avx::setAllElements(a[k + (i + 1) * m]);
+                            sum2i1 = avx::fma(aValue2, bVectr1, sum2i1);
+                            sum2i2 = avx::fma(aValue2, bVectr2, sum2i2);
                         }
-                        AVX256::storeUnaligned(&result[j + i * q], sum1i1);
-                        AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + i * q], sum1i2);
-                        AVX256::storeUnaligned(&result[j + (i + 1) * q], sum2i1);
-                        AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + (i + 1) * q], sum2i2);
+                        avx::storeUnaligned(&result[j + i * q], sum1i1);
+                        avx::storeUnaligned(&result[avx::packedCount<T>() + j + i * q], sum1i2);
+                        avx::storeUnaligned(&result[j + (i + 1) * q], sum2i1);
+                        avx::storeUnaligned(&result[avx::packedCount<T>() + j + (i + 1) * q], sum2i2);
                     }
                     for (; j < jEnd; ++j) {
                         T& sum1 = result[j + i * q];
@@ -474,18 +474,18 @@ template<int n, int m, int q, typename T> void avxMul7(T* result, const T* a, co
                 }
                 if (i < iEnd) {
                     int j = jj;
-                    for (; j <= jEnd - 2 * AVX256::packedCount<T>(); j += 2 * AVX256::packedCount<T>()) {
-                        auto sum1 = AVX256::loadUnaligned(&result[j + i * q]);
-                        auto sum2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + i * q]);
+                    for (; j <= jEnd - 2 * avx::packedCount<T>(); j += 2 * avx::packedCount<T>()) {
+                        auto sum1 = avx::loadUnaligned(&result[j + i * q]);
+                        auto sum2 = avx::loadUnaligned(&result[avx::packedCount<T>() + j + i * q]);
                         for (int k = kk; k < kEnd; ++k) {
-                            auto aValue = AVX256::setAllElements(a[k + i * m]);
-                            auto bVectr1 = AVX256::loadUnaligned(&b[j + k * q]);
-                            sum1 = AVX256::fma(aValue, bVectr1, sum1);
-                            auto bVectr2 = AVX256::loadUnaligned(&b[AVX256::packedCount<T>() + j + k * q]);
-                            sum2 = AVX256::fma(aValue, bVectr2, sum2);
+                            auto aValue = avx::setAllElements(a[k + i * m]);
+                            auto bVectr1 = avx::loadUnaligned(&b[j + k * q]);
+                            sum1 = avx::fma(aValue, bVectr1, sum1);
+                            auto bVectr2 = avx::loadUnaligned(&b[avx::packedCount<T>() + j + k * q]);
+                            sum2 = avx::fma(aValue, bVectr2, sum2);
                         }
-                        AVX256::storeUnaligned(&result[j + i * q], sum1);
-                        AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + i * q], sum2);
+                        avx::storeUnaligned(&result[j + i * q], sum1);
+                        avx::storeUnaligned(&result[avx::packedCount<T>() + j + i * q], sum2);
                     }
                     for (; j < jEnd; ++j) {
                         T& sum = result[j + i * q];
@@ -502,7 +502,7 @@ template<int n, int m, int q, typename T> void avxMul7(T* result, const T* a, co
 
 template<typename M1, typename M2>
 auto avxMul(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
-    if constexpr (AVX256::IsAvailable) {
+    if constexpr (avx::IsAvailable) {
         if constexpr (M1::HasConstexprRowAndColumnCount() && M2::HasConstexprRowAndColumnCount()) {
             Matrix<typename M1::ValueType, M1::CRow(), M2::CCol()> result;
             avxMul7<M1::CRow(), M1::CCol(), M2::CCol()>(result.data(), a.data(), b.data());
@@ -513,7 +513,7 @@ auto avxMul(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
             return result;
         }
     } else {
-        static_assert(AVX256::IsAvailable && always_false_v<M1>, AVX256_StaticAssertMessage);
+        static_assert(avx::IsAvailable && always_false_v<M1>, avx_StaticAssertMessage);
     }
 }
 
@@ -538,25 +538,25 @@ template<typename T> void avxParallelMul2(T* result, const T* a, const T* b, int
                 int i = ii;
                 for (; i <= iEnd - 2; i += 2) {
                     int j = jj;
-                    for (; j <= jEnd - 2*AVX256::packedCount<T>(); j += 2*AVX256::packedCount<T>()) {
-                        auto sum1i1 = AVX256::loadUnaligned(&result[j + i * q]);
-                        auto sum1i2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + i * q]);
-                        auto sum2i1 = AVX256::loadUnaligned(&result[j + (i + 1) * q]);
-                        auto sum2i2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + (i + 1) * q]);
+                    for (; j <= jEnd - 2*avx::packedCount<T>(); j += 2*avx::packedCount<T>()) {
+                        auto sum1i1 = avx::loadUnaligned(&result[j + i * q]);
+                        auto sum1i2 = avx::loadUnaligned(&result[avx::packedCount<T>() + j + i * q]);
+                        auto sum2i1 = avx::loadUnaligned(&result[j + (i + 1) * q]);
+                        auto sum2i2 = avx::loadUnaligned(&result[avx::packedCount<T>() + j + (i + 1) * q]);
                         for (int k = kk; k < kEnd; ++k) {
-                            auto aValue1 = AVX256::setAllElements(a[k + i * m]);
-                            auto bVectr1 = AVX256::loadUnaligned(&b[j + k * q]);
-                            sum1i1 = AVX256::fma(aValue1, bVectr1, sum1i1);
-                            auto bVectr2 = AVX256::loadUnaligned(&b[AVX256::packedCount<T>() + j + k * q]);
-                            sum1i2 = AVX256::fma(aValue1, bVectr2, sum1i2);
-                            auto aValue2 = AVX256::setAllElements(a[k + (i + 1) * m]);
-                            sum2i1 = AVX256::fma(aValue2, bVectr1, sum2i1);
-                            sum2i2 = AVX256::fma(aValue2, bVectr2, sum2i2);
+                            auto aValue1 = avx::setAllElements(a[k + i * m]);
+                            auto bVectr1 = avx::loadUnaligned(&b[j + k * q]);
+                            sum1i1 = avx::fma(aValue1, bVectr1, sum1i1);
+                            auto bVectr2 = avx::loadUnaligned(&b[avx::packedCount<T>() + j + k * q]);
+                            sum1i2 = avx::fma(aValue1, bVectr2, sum1i2);
+                            auto aValue2 = avx::setAllElements(a[k + (i + 1) * m]);
+                            sum2i1 = avx::fma(aValue2, bVectr1, sum2i1);
+                            sum2i2 = avx::fma(aValue2, bVectr2, sum2i2);
                         }
-                        AVX256::storeUnaligned(&result[j + i * q], sum1i1);
-                        AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + i * q], sum1i2);
-                        AVX256::storeUnaligned(&result[j + (i + 1) * q], sum2i1);
-                        AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + (i + 1) * q], sum2i2);
+                        avx::storeUnaligned(&result[j + i * q], sum1i1);
+                        avx::storeUnaligned(&result[avx::packedCount<T>() + j + i * q], sum1i2);
+                        avx::storeUnaligned(&result[j + (i + 1) * q], sum2i1);
+                        avx::storeUnaligned(&result[avx::packedCount<T>() + j + (i + 1) * q], sum2i2);
                     }
                     for (; j < jEnd; ++j) {
                         T& sum1 = result[j + i * q];
@@ -571,18 +571,18 @@ template<typename T> void avxParallelMul2(T* result, const T* a, const T* b, int
                 }
                 if (i < iEnd) {
                     int j = jj;
-                    for (; j <= jEnd - 2*AVX256::packedCount<T>(); j += 2*AVX256::packedCount<T>()) {
-                        auto sum1 = AVX256::loadUnaligned(&result[j + i * q]);
-                        auto sum2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + i * q]);
+                    for (; j <= jEnd - 2*avx::packedCount<T>(); j += 2*avx::packedCount<T>()) {
+                        auto sum1 = avx::loadUnaligned(&result[j + i * q]);
+                        auto sum2 = avx::loadUnaligned(&result[avx::packedCount<T>() + j + i * q]);
                         for (int k = kk; k < kEnd; ++k) {
-                            auto aValue = AVX256::setAllElements(a[k + i * m]);
-                            auto bVectr1 = AVX256::loadUnaligned(&b[j + k * q]);
-                            sum1 = AVX256::fma(aValue, bVectr1, sum1);
-                            auto bVectr2 = AVX256::loadUnaligned(&b[AVX256::packedCount<T>() + j + k * q]);
-                            sum2 = AVX256::fma(aValue, bVectr2, sum2);
+                            auto aValue = avx::setAllElements(a[k + i * m]);
+                            auto bVectr1 = avx::loadUnaligned(&b[j + k * q]);
+                            sum1 = avx::fma(aValue, bVectr1, sum1);
+                            auto bVectr2 = avx::loadUnaligned(&b[avx::packedCount<T>() + j + k * q]);
+                            sum2 = avx::fma(aValue, bVectr2, sum2);
                         }
-                        AVX256::storeUnaligned(&result[j + i * q], sum1);
-                        AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + i * q], sum2);
+                        avx::storeUnaligned(&result[j + i * q], sum1);
+                        avx::storeUnaligned(&result[avx::packedCount<T>() + j + i * q], sum2);
                     }
                     for (; j < jEnd; ++j) {
                         T& sum = result[j + i * q];
@@ -608,25 +608,25 @@ template<typename T> void avxParallelMulTask(T* result, const T* a, const T* b, 
             int i = ii;
             for (; i <= iEnd - 2; i += 2) {
                 int j = jj;
-                for (; j <= jEnd - 2 * AVX256::packedCount<T>(); j += 2 * AVX256::packedCount<T>()) {
-                    auto sum1i1 = AVX256::loadUnaligned(&result[j + i * q]);
-                    auto sum1i2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + i * q]);
-                    auto sum2i1 = AVX256::loadUnaligned(&result[j + (i + 1) * q]);
-                    auto sum2i2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + (i + 1) * q]);
+                for (; j <= jEnd - 2 * avx::packedCount<T>(); j += 2 * avx::packedCount<T>()) {
+                    auto sum1i1 = avx::loadUnaligned(&result[j + i * q]);
+                    auto sum1i2 = avx::loadUnaligned(&result[avx::packedCount<T>() + j + i * q]);
+                    auto sum2i1 = avx::loadUnaligned(&result[j + (i + 1) * q]);
+                    auto sum2i2 = avx::loadUnaligned(&result[avx::packedCount<T>() + j + (i + 1) * q]);
                     for (int k = kk; k < kEnd; ++k) {
-                        auto aValue1 = AVX256::setAllElements(a[k + i * m]);
-                        auto bVectr1 = AVX256::loadUnaligned(&b[j + k * q]);
-                        sum1i1 = AVX256::fma(aValue1, bVectr1, sum1i1);
-                        auto bVectr2 = AVX256::loadUnaligned(&b[AVX256::packedCount<T>() + j + k * q]);
-                        sum1i2 = AVX256::fma(aValue1, bVectr2, sum1i2);
-                        auto aValue2 = AVX256::setAllElements(a[k + (i + 1) * m]);
-                        sum2i1 = AVX256::fma(aValue2, bVectr1, sum2i1);
-                        sum2i2 = AVX256::fma(aValue2, bVectr2, sum2i2);
+                        auto aValue1 = avx::setAllElements(a[k + i * m]);
+                        auto bVectr1 = avx::loadUnaligned(&b[j + k * q]);
+                        sum1i1 = avx::fma(aValue1, bVectr1, sum1i1);
+                        auto bVectr2 = avx::loadUnaligned(&b[avx::packedCount<T>() + j + k * q]);
+                        sum1i2 = avx::fma(aValue1, bVectr2, sum1i2);
+                        auto aValue2 = avx::setAllElements(a[k + (i + 1) * m]);
+                        sum2i1 = avx::fma(aValue2, bVectr1, sum2i1);
+                        sum2i2 = avx::fma(aValue2, bVectr2, sum2i2);
                     }
-                    AVX256::storeUnaligned(&result[j + i * q], sum1i1);
-                    AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + i * q], sum1i2);
-                    AVX256::storeUnaligned(&result[j + (i + 1) * q], sum2i1);
-                    AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + (i + 1) * q], sum2i2);
+                    avx::storeUnaligned(&result[j + i * q], sum1i1);
+                    avx::storeUnaligned(&result[avx::packedCount<T>() + j + i * q], sum1i2);
+                    avx::storeUnaligned(&result[j + (i + 1) * q], sum2i1);
+                    avx::storeUnaligned(&result[avx::packedCount<T>() + j + (i + 1) * q], sum2i2);
                 }
                 for (; j < jEnd; ++j) {
                     T& sum1 = result[j + i * q];
@@ -641,18 +641,18 @@ template<typename T> void avxParallelMulTask(T* result, const T* a, const T* b, 
             }
             if (i < iEnd) {
                 int j = jj;
-                for (; j <= jEnd - 2 * AVX256::packedCount<T>(); j += 2 * AVX256::packedCount<T>()) {
-                    auto sum1 = AVX256::loadUnaligned(&result[j + i * q]);
-                    auto sum2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + i * q]);
+                for (; j <= jEnd - 2 * avx::packedCount<T>(); j += 2 * avx::packedCount<T>()) {
+                    auto sum1 = avx::loadUnaligned(&result[j + i * q]);
+                    auto sum2 = avx::loadUnaligned(&result[avx::packedCount<T>() + j + i * q]);
                     for (int k = kk; k < kEnd; ++k) {
-                        auto aValue = AVX256::setAllElements(a[k + i * m]);
-                        auto bVectr1 = AVX256::loadUnaligned(&b[j + k * q]);
-                        sum1 = AVX256::fma(aValue, bVectr1, sum1);
-                        auto bVectr2 = AVX256::loadUnaligned(&b[AVX256::packedCount<T>() + j + k * q]);
-                        sum2 = AVX256::fma(aValue, bVectr2, sum2);
+                        auto aValue = avx::setAllElements(a[k + i * m]);
+                        auto bVectr1 = avx::loadUnaligned(&b[j + k * q]);
+                        sum1 = avx::fma(aValue, bVectr1, sum1);
+                        auto bVectr2 = avx::loadUnaligned(&b[avx::packedCount<T>() + j + k * q]);
+                        sum2 = avx::fma(aValue, bVectr2, sum2);
                     }
-                    AVX256::storeUnaligned(&result[j + i * q], sum1);
-                    AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + i * q], sum2);
+                    avx::storeUnaligned(&result[j + i * q], sum1);
+                    avx::storeUnaligned(&result[avx::packedCount<T>() + j + i * q], sum2);
                 }
                 for (; j < jEnd; ++j) {
                     T& sum = result[j + i * q];
@@ -692,25 +692,25 @@ template<typename T> void avxParallelMulTask(T* result, const T* a, const T* b, 
             int i = ii;
             for (; i <= iEnd - 2; i += 2) {
                 int j = jj;
-                for (; j <= jEnd - 2 * AVX256::packedCount<T>(); j += 2 * AVX256::packedCount<T>()) {
-                    auto sum1i1 = AVX256::loadUnaligned(&result[j + i * effR]);
-                    auto sum1i2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + i * effR]);
-                    auto sum2i1 = AVX256::loadUnaligned(&result[j + (i + 1) * effR]);
-                    auto sum2i2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + (i + 1) * effR]);
+                for (; j <= jEnd - 2 * avx::packedCount<T>(); j += 2 * avx::packedCount<T>()) {
+                    auto sum1i1 = avx::loadUnaligned(&result[j + i * effR]);
+                    auto sum1i2 = avx::loadUnaligned(&result[avx::packedCount<T>() + j + i * effR]);
+                    auto sum2i1 = avx::loadUnaligned(&result[j + (i + 1) * effR]);
+                    auto sum2i2 = avx::loadUnaligned(&result[avx::packedCount<T>() + j + (i + 1) * effR]);
                     for (int k = kk; k < kEnd; ++k) {
-                        auto aValue1 = AVX256::setAllElements(a[k + i * effA]);
-                        auto bVectr1 = AVX256::loadUnaligned(&b[j + k * effB]);
-                        sum1i1 = AVX256::fma(aValue1, bVectr1, sum1i1);
-                        auto bVectr2 = AVX256::loadUnaligned(&b[AVX256::packedCount<T>() + j + k * effB]);
-                        sum1i2 = AVX256::fma(aValue1, bVectr2, sum1i2);
-                        auto aValue2 = AVX256::setAllElements(a[k + (i + 1) * effA]);
-                        sum2i1 = AVX256::fma(aValue2, bVectr1, sum2i1);
-                        sum2i2 = AVX256::fma(aValue2, bVectr2, sum2i2);
+                        auto aValue1 = avx::setAllElements(a[k + i * effA]);
+                        auto bVectr1 = avx::loadUnaligned(&b[j + k * effB]);
+                        sum1i1 = avx::fma(aValue1, bVectr1, sum1i1);
+                        auto bVectr2 = avx::loadUnaligned(&b[avx::packedCount<T>() + j + k * effB]);
+                        sum1i2 = avx::fma(aValue1, bVectr2, sum1i2);
+                        auto aValue2 = avx::setAllElements(a[k + (i + 1) * effA]);
+                        sum2i1 = avx::fma(aValue2, bVectr1, sum2i1);
+                        sum2i2 = avx::fma(aValue2, bVectr2, sum2i2);
                     }
-                    AVX256::storeUnaligned(&result[j + i * effR], sum1i1);
-                    AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + i * effR], sum1i2);
-                    AVX256::storeUnaligned(&result[j + (i + 1) * effR], sum2i1);
-                    AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + (i + 1) * effR], sum2i2);
+                    avx::storeUnaligned(&result[j + i * effR], sum1i1);
+                    avx::storeUnaligned(&result[avx::packedCount<T>() + j + i * effR], sum1i2);
+                    avx::storeUnaligned(&result[j + (i + 1) * effR], sum2i1);
+                    avx::storeUnaligned(&result[avx::packedCount<T>() + j + (i + 1) * effR], sum2i2);
                 }
                 for (; j < jEnd; ++j) {
                     T& sum1 = result[j + i * effR];
@@ -725,18 +725,18 @@ template<typename T> void avxParallelMulTask(T* result, const T* a, const T* b, 
             }
             if (i < iEnd) {
                 int j = jj;
-                for (; j <= jEnd - 2 * AVX256::packedCount<T>(); j += 2 * AVX256::packedCount<T>()) {
-                    auto sum1 = AVX256::loadUnaligned(&result[j + i * effR]);
-                    auto sum2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + i * effR]);
+                for (; j <= jEnd - 2 * avx::packedCount<T>(); j += 2 * avx::packedCount<T>()) {
+                    auto sum1 = avx::loadUnaligned(&result[j + i * effR]);
+                    auto sum2 = avx::loadUnaligned(&result[avx::packedCount<T>() + j + i * effR]);
                     for (int k = kk; k < kEnd; ++k) {
-                        auto aValue = AVX256::setAllElements(a[k + i * effA]);
-                        auto bVectr1 = AVX256::loadUnaligned(&b[j + k * effB]);
-                        sum1 = AVX256::fma(aValue, bVectr1, sum1);
-                        auto bVectr2 = AVX256::loadUnaligned(&b[AVX256::packedCount<T>() + j + k * effB]);
-                        sum2 = AVX256::fma(aValue, bVectr2, sum2);
+                        auto aValue = avx::setAllElements(a[k + i * effA]);
+                        auto bVectr1 = avx::loadUnaligned(&b[j + k * effB]);
+                        sum1 = avx::fma(aValue, bVectr1, sum1);
+                        auto bVectr2 = avx::loadUnaligned(&b[avx::packedCount<T>() + j + k * effB]);
+                        sum2 = avx::fma(aValue, bVectr2, sum2);
                     }
-                    AVX256::storeUnaligned(&result[j + i * effR], sum1);
-                    AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + i * effR], sum2);
+                    avx::storeUnaligned(&result[j + i * effR], sum1);
+                    avx::storeUnaligned(&result[avx::packedCount<T>() + j + i * effR], sum2);
                 }
                 for (; j < jEnd; ++j) {
                     T& sum = result[j + i * effR];
@@ -786,25 +786,25 @@ template<int n, int m, int q, typename T> void avxParallelMul(T* result, const T
                 int i = ii;
                 for (; i <= iEnd - 2; i += 2) {
                     int j = jj;
-                    for (; j <= jEnd - 2*AVX256::packedCount<T>(); j += 2*AVX256::packedCount<T>()) {
-                        auto sum1i1 = AVX256::loadUnaligned(&result[j + i * q]);
-                        auto sum1i2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + i * q]);
-                        auto sum2i1 = AVX256::loadUnaligned(&result[j + (i + 1) * q]);
-                        auto sum2i2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + (i + 1) * q]);
+                    for (; j <= jEnd - 2*avx::packedCount<T>(); j += 2*avx::packedCount<T>()) {
+                        auto sum1i1 = avx::loadUnaligned(&result[j + i * q]);
+                        auto sum1i2 = avx::loadUnaligned(&result[avx::packedCount<T>() + j + i * q]);
+                        auto sum2i1 = avx::loadUnaligned(&result[j + (i + 1) * q]);
+                        auto sum2i2 = avx::loadUnaligned(&result[avx::packedCount<T>() + j + (i + 1) * q]);
                         for (int k = kk; k < kEnd; ++k) {
-                            auto aValue1 = AVX256::setAllElements(a[k + i * m]);
-                            auto bVectr1 = AVX256::loadUnaligned(&b[j + k * q]);
-                            sum1i1 = AVX256::fma(aValue1, bVectr1, sum1i1);
-                            auto bVectr2 = AVX256::loadUnaligned(&b[AVX256::packedCount<T>() + j + k * q]);
-                            sum1i2 = AVX256::fma(aValue1, bVectr2, sum1i2);
-                            auto aValue2 = AVX256::setAllElements(a[k + (i + 1) * m]);
-                            sum2i1 = AVX256::fma(aValue2, bVectr1, sum2i1);
-                            sum2i2 = AVX256::fma(aValue2, bVectr2, sum2i2);
+                            auto aValue1 = avx::setAllElements(a[k + i * m]);
+                            auto bVectr1 = avx::loadUnaligned(&b[j + k * q]);
+                            sum1i1 = avx::fma(aValue1, bVectr1, sum1i1);
+                            auto bVectr2 = avx::loadUnaligned(&b[avx::packedCount<T>() + j + k * q]);
+                            sum1i2 = avx::fma(aValue1, bVectr2, sum1i2);
+                            auto aValue2 = avx::setAllElements(a[k + (i + 1) * m]);
+                            sum2i1 = avx::fma(aValue2, bVectr1, sum2i1);
+                            sum2i2 = avx::fma(aValue2, bVectr2, sum2i2);
                         }
-                        AVX256::storeUnaligned(&result[j + i * q], sum1i1);
-                        AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + i * q], sum1i2);
-                        AVX256::storeUnaligned(&result[j + (i + 1) * q], sum2i1);
-                        AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + (i + 1) * q], sum2i2);
+                        avx::storeUnaligned(&result[j + i * q], sum1i1);
+                        avx::storeUnaligned(&result[avx::packedCount<T>() + j + i * q], sum1i2);
+                        avx::storeUnaligned(&result[j + (i + 1) * q], sum2i1);
+                        avx::storeUnaligned(&result[avx::packedCount<T>() + j + (i + 1) * q], sum2i2);
                     }
                     for (; j < jEnd; ++j) {
                         T& sum1 = result[j + i * q];
@@ -819,18 +819,18 @@ template<int n, int m, int q, typename T> void avxParallelMul(T* result, const T
                 }
                 if (i < iEnd) {
                     int j = jj;
-                    for (; j <= jEnd - 2*AVX256::packedCount<T>(); j += 2*AVX256::packedCount<T>()) {
-                        auto sum1 = AVX256::loadUnaligned(&result[j + i * q]);
-                        auto sum2 = AVX256::loadUnaligned(&result[AVX256::packedCount<T>() + j + i * q]);
+                    for (; j <= jEnd - 2*avx::packedCount<T>(); j += 2*avx::packedCount<T>()) {
+                        auto sum1 = avx::loadUnaligned(&result[j + i * q]);
+                        auto sum2 = avx::loadUnaligned(&result[avx::packedCount<T>() + j + i * q]);
                         for (int k = kk; k < kEnd; ++k) {
-                            auto aValue = AVX256::setAllElements(a[k + i * m]);
-                            auto bVectr1 = AVX256::loadUnaligned(&b[j + k * q]);
-                            sum1 = AVX256::fma(aValue, bVectr1, sum1);
-                            auto bVectr2 = AVX256::loadUnaligned(&b[AVX256::packedCount<T>() + j + k * q]);
-                            sum2 = AVX256::fma(aValue, bVectr2, sum2);
+                            auto aValue = avx::setAllElements(a[k + i * m]);
+                            auto bVectr1 = avx::loadUnaligned(&b[j + k * q]);
+                            sum1 = avx::fma(aValue, bVectr1, sum1);
+                            auto bVectr2 = avx::loadUnaligned(&b[avx::packedCount<T>() + j + k * q]);
+                            sum2 = avx::fma(aValue, bVectr2, sum2);
                         }
-                        AVX256::storeUnaligned(&result[j + i * q], sum1);
-                        AVX256::storeUnaligned(&result[AVX256::packedCount<T>() + j + i * q], sum2);
+                        avx::storeUnaligned(&result[j + i * q], sum1);
+                        avx::storeUnaligned(&result[avx::packedCount<T>() + j + i * q], sum2);
                     }
                     for (; j < jEnd; ++j) {
                         T& sum = result[j + i * q];
@@ -847,7 +847,7 @@ template<int n, int m, int q, typename T> void avxParallelMul(T* result, const T
 
 template<typename M1, typename M2>
 auto avxParallelMul(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
-    if constexpr (AVX256::IsAvailable) {
+    if constexpr (avx::IsAvailable) {
         if constexpr (M1::HasConstexprRowAndColumnCount() && M2::HasConstexprRowAndColumnCount()) {
             Matrix<typename M1::ValueType, M1::CRow(), M2::CCol()> result;
             avxParallelMul<M1::CRow(), M1::CCol(), M2::CCol()>(result.data(), a.data(), b.data());
@@ -858,7 +858,7 @@ auto avxParallelMul(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) 
             return result;
         }
     } else {
-        static_assert(AVX256::IsAvailable && always_false_v<M1>, AVX256_StaticAssertMessage);
+        static_assert(avx::IsAvailable && always_false_v<M1>, avx_StaticAssertMessage);
     }
 }
 
