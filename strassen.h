@@ -101,9 +101,9 @@ void mul(T* result, const T* a, const T* b, int n, int m, int q) {
     if constexpr (opType == BaseMulType::Naive) {
         naiveMul(result, a, b, n, m, q);
     } else if constexpr (opType == BaseMulType::Avx) {
-        avxMul7(result, a, b, n, m, q);
+        avx::mul(result, a, b, n, m, q);
     } else if constexpr (opType == BaseMulType::ParallelAvx) {
-        avxParallelMul(result, a, b, n, m, q);
+        avx::parallelMul(result, a, b, n, m, q);
     } else if constexpr (opType == BaseMulType::Blas) {
         for (int i = 0; i < n*q; ++i) result[i] = 0;
         blas::mul(result, a, b, n, m, q);
@@ -115,9 +115,9 @@ void mul(T* result, const T* a, const T* b) {
     if constexpr (opType == BaseMulType::Naive) {
         naiveMul<n, m, q>(result, a, b);
     } else if constexpr (opType == BaseMulType::Avx) {
-        avxMul7<n, m, q>(result, a, b);
+        avx::mul<n, m, q, q, m, q>(result, a, b);
     } else if constexpr (opType == BaseMulType::ParallelAvx) {
-        avxParallelMul<n, m, q>(result, a, b);
+        avx::parallelMul<n, m, q, q, m, q>(result, a, b);
     } else if constexpr (opType == BaseMulType::Blas) {
         for (int i = 0; i < n*q; ++i) result[i] = 0;
         blas::mul(result, a, b, n, m, q);
@@ -127,8 +127,8 @@ void mul(T* result, const T* a, const T* b) {
 template<BaseMulType opType, typename M1, typename M2> 
 auto mul(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
     if constexpr (opType == BaseMulType::Naive) return naiveMul(a, b);
-    if constexpr (opType == BaseMulType::Avx) return avxMul(a, b);
-    if constexpr (opType == BaseMulType::ParallelAvx) return avxParallelMul(a, b);
+    if constexpr (opType == BaseMulType::Avx) return avx::mul(a, b);
+    if constexpr (opType == BaseMulType::ParallelAvx) return avx::parallelMul(a, b);
     if constexpr (opType == BaseMulType::Blas) return blasMul(a, b);
 }
 

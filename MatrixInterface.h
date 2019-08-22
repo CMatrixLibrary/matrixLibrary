@@ -69,6 +69,9 @@ public:
     static constexpr bool HasConstexprRowAndColumnCount() {
         return ConstexprColumnCount() != DynamicValue && ConstexprRowCount() != DynamicValue;
     }
+    static constexpr bool HasConstexprSizes() {
+        return ConstexprColumnCount() != DynamicValue && ConstexprRowCount() != DynamicValue && ConstexprEffectiveColumnCount() != DynamicValue;
+    }
 
     auto createNew() const {
         auto& it = static_cast<const MatrixType&>(*this);

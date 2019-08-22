@@ -201,8 +201,8 @@ namespace fmm::detail {
         if constexpr (Method & BaseMulType::Parallel)      parallelMul(c, a, b, n, m, p);
         if constexpr (Method & BaseMulType::Block)         blockMul(c, a, b, n, m, p);
         if constexpr (Method & BaseMulType::BlockParallel) blockParallelMul(c, a, b, n, m, p);
-        if constexpr (Method & BaseMulType::Avx)           avxMul7(c, a, b, n, m, p);
-        if constexpr (Method & BaseMulType::AvxParallel)   avxParallelMul(c, a, b, n, m, p);
+        if constexpr (Method & BaseMulType::Avx)           avx::mul(c, a, b, n, m, p);
+        if constexpr (Method & BaseMulType::AvxParallel)   avx::parallelMul(c, a, b, n, m, p);
         if constexpr (Method & BaseMulType::Blas)          blas::mul(c, a, b, n, m, p);
     }
 
@@ -212,8 +212,8 @@ namespace fmm::detail {
         if constexpr (Method & BaseMulType::Parallel)      parallelMul(c, a, b, n, m, p, effC, effA, effB);
         if constexpr (Method & BaseMulType::Block)         blockMul(c, a, b, n, m, p, effC, effA, effB);
         if constexpr (Method & BaseMulType::BlockParallel) blockParallelMul(c, a, b, n, m, p, effC, effA, effB);
-        if constexpr (Method & BaseMulType::Avx)           avxMul7(c, a, b, n, m, p, effC, effA, effB);
-        if constexpr (Method & BaseMulType::AvxParallel)   avxParallelMul(c, a, b, n, m, p, effC, effA, effB);
+        if constexpr (Method & BaseMulType::Avx)           avx::mul(c, a, b, n, m, p, effC, effA, effB);
+        if constexpr (Method & BaseMulType::AvxParallel)   avx::parallelMul(c, a, b, n, m, p, effC, effA, effB);
         if constexpr (Method & BaseMulType::Blas)          blas::mul(c, a, b, n, m, p, effC, effA, effB);
     }
 
