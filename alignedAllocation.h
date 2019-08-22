@@ -65,14 +65,15 @@ namespace detail {
     }
 }
 
+
 // allocate + construct
 template<typename T, typename... Args> T* alignedConstructNew(std::size_t alignment, Args&&... args) {
     return new(alignedMalloc<T>(alignment)) T(std::forward<Args>(args)...);
 }
 template<typename T, typename... Args> T* alignedArrayConstructNew(std::size_t size, std::size_t alignment, Args&&... args) {
-    auto memory = detail::alignedSavedSizeMalloc<T>(size, alignment);
+    auto memory = alignedMalloc<T>(size, alignment);
     for (std::size_t i = 0; i < size; ++i) {
-        new(&memory[i]) T(std::forward<Args>(args)...);
+        new(&memory[i]) T(args...);
     }
     return memory;
 }
@@ -91,7 +92,7 @@ template<typename T, typename... Args> T* alignedArrayNew(std::size_t size, std:
     if constexpr (std::is_class_v<T> || sizeof...(Args) != 0) {
         return alignedArrayConstructNew<T>(size, alignment, std::forward<Args>(args)...);
     } else {
-        return detail::alignedSavedSizeMalloc<T>(size, alignment);
+        return alignedMalloc<T>(size, alignment);
     }
 }
 
@@ -104,7 +105,34 @@ template<typename T> void alignedDelete(T* ptr) {
 }
 
 // "operator delete[]" counterpart
-template<typename T> void alignedArrayDelete(T* ptr) {
+template<typename T> void alignedArrayDelete(T* ptr, std::size_t size) {
+    if constexpr (std::is_class_v<T>) {
+        for (std::size_t i = 0; i < size; ++i) {
+            ptr[i].~T();
+        }
+    }
+    alignedFree(ptr);
+}
+
+
+// aligned array new/delete version with saved size
+template<typename T, typename... Args> T* alignedArraySavedSizeConstructNew(std::size_t size, std::size_t alignment, Args&&... args) {
+    auto memory = detail::alignedSavedSizeMalloc<T>(size, alignment);
+    for (std::size_t i = 0; i < size; ++i) {
+        new(&memory[i]) T(std::forward<Args>(args)...);
+    }
+    return memory;
+}
+
+template<typename T, typename... Args> T* alignedArraySavedSizeNew(std::size_t size, std::size_t alignment, Args&&... args) {
+    if constexpr (std::is_class_v<T> || sizeof...(Args) != 0) {
+        return alignedArraySavedSizeConstructNew<T>(size, alignment, std::forward<Args>(args)...);
+    } else {
+        return detail::alignedSavedSizeMalloc<T>(size, alignment);
+    }
+}
+
+template<typename T> void alignedArraySavedSizeDelete(T* ptr) {
     if constexpr (std::is_class_v<T>) {
         auto size = detail::alignedSavedSizeGetSize(ptr);
         for (std::size_t i = 0; i < size; ++i) {
