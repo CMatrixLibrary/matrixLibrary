@@ -5,9 +5,11 @@
 #include "StackAllocator.h"
 #include "genericArithmeticOperations.h"
 #include "avxMul.h"
+#include "blasUtility.h"
 #include <algorithm>
 #include <optional>
 #include <tuple>
+#include <cmath>
 
 namespace fmm {
 
@@ -420,7 +422,6 @@ namespace fmm::detail {
 namespace fmm::detail {
     template<int Method, int BaseN, int BaseM, int BaseP, typename T>
     void minSpaceRecursive(T* c, T* a, T* b, int n, int m, int p, int effC, int effA, int effB, int steps, StackAllocator<T>& allocator) {
-        auto start = MyTime();
         using namespace ArithmeticOperation;
 
         auto[dn, dm, dp] = divideSizes<BaseN, BaseM, BaseP>(n, m, p);
@@ -553,7 +554,6 @@ namespace fmm::detail {
 namespace fmm::detail {
     template<int Method, int BaseN, int BaseM, int BaseP, typename T>
     void lowLevelParallelRecursive(T* c, T* a, T* b, int n, int m, int p, int effC, int effA, int effB, int steps, StackAllocator<T>& allocator) {
-        auto start = MyTime();
         using namespace ArithmeticOperation;
 
         auto[dn, dm, dp] = divideSizes<BaseN, BaseM, BaseP>(n, m, p);
