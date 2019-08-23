@@ -4,6 +4,97 @@
 #include "MatrixInterface.h"
 #include "Matrix.h"
 
+template<typename T> void blockMul(T* c, const T* a, const T* b, int n, int m, int p, int effC, int effA, int effB) {
+    constexpr int ib = 16;
+    constexpr int jb = 16;
+    constexpr int kb = 16;
+
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < p; ++j) {
+            c[j + i*effC] = T{};
+        }
+    }
+
+    for (int ii = 0; ii < n; ii += ib) {
+        int iEnd = std::min(ii + ib, n);
+        for (int jj = 0; jj < m; jj += jb) {
+            int jEnd = std::min(jj + jb, m);
+            for (int kk = 0; kk < p; kk += kb) {
+                int kEnd = std::min(kk + kb, p);
+                for (auto i = ii; i < iEnd; ++i) {
+                    for (auto j = jj; j < jEnd; ++j) {
+                        for (auto k = kk; k < kEnd; ++k) {
+                            c[j + i * effC] += a[k + i * effA] * b[j + k * effB];
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+template<typename T> void blockMul(T* c, const T* a, const T* b, int n, int m, int p) {
+    constexpr int ib = 16;
+    constexpr int jb = 16;
+    constexpr int kb = 16;
+
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < p; ++j) {
+            c[j + i*p] = T{};
+        }
+    }
+
+    for (int ii = 0; ii < n; ii += ib) {
+        int iEnd = std::min(ii + ib, n);
+        for (int jj = 0; jj < m; jj += jb) {
+            int jEnd = std::min(jj + jb, m);
+            for (int kk = 0; kk < p; kk += kb) {
+                int kEnd = std::min(kk + kb, p);
+                for (auto i = ii; i < iEnd; ++i) {
+                    for (auto j = jj; j < jEnd; ++j) {
+                        for (auto k = kk; k < kEnd; ++k) {
+                            c[j + i * p] += a[k + i * m] * b[j + k * p];
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+template<int n, int m, int p, int effC, int effA, int effB, typename T> void blockMul(T* c, const  T* a, const T* b) {
+    constexpr int ib = 16;
+    constexpr int jb = 16;
+    constexpr int kb = 16;
+
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < p; ++j) {
+            c.at(i, j) = T{};
+        }
+    }
+
+    for (int ii = 0; ii < n; ii += ib) {
+        int iEnd = std::min(ii + ib, n);
+        for (int jj = 0; jj < m; jj += jb) {
+            int jEnd = std::min(jj + jb, m);
+            for (int kk = 0; kk < p; kk += kb) {
+                int kEnd = std::min(kk + kb, p);
+                for (auto i = ii; i < iEnd; ++i) {
+                    for (auto j = jj; j < jEnd; ++j) {
+                        for (auto k = kk; k < kEnd; ++k) {
+                            c[j + i * effC] += a[k + i * effA] * b[j + k * effB];
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+template<int n, int m, int p, typename T> void blockMul(T* c, const T* a, const T* b) {
+    return blockMul<n, m, p, p, m, p>(c, a, b);
+}
+
 template<typename MR, typename M1, typename M2>
 void blockMul(MatrixInterface<MR>& r, const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
     constexpr mtl::size_t ib = 16;

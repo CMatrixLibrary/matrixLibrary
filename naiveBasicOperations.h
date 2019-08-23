@@ -13,32 +13,6 @@ template<typename M> auto transpose(const MatrixInterface<M>& matrix) {
     return result;
 }
 
-template<typename MR, typename M1, typename M2>
-void naiveMul(MatrixInterface<MR>& r, const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
-    for (mtl::size_t i = 0; i < a.rowCount(); ++i) {
-        for (mtl::size_t j = 0; j < b.columnCount(); ++j) {
-            typename MR::ValueType sum{};
-            for (mtl::size_t k = 0; k < a.columnCount(); ++k) {
-                sum += a.at(i, k) * b.at(k, j);
-            }
-            r.at(i, j) = sum;
-        }
-    }
-}
-
-template<typename M1, typename M2>
-auto naiveMul(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
-    if constexpr (M1::HasConstexprRowAndColumnCount() && M2::HasConstexprRowAndColumnCount()) {
-        Matrix<typename M1::ValueType, M1::CRow(), M2::CCol()> result;
-        naiveMul(result, a, b);
-        return result;
-    } else {
-        Matrix<typename M1::ValueType> result(a.rowCount(), b.columnCount());
-        naiveMul(result, a, b);
-        return result;
-    }
-}
-
 template<typename M1, typename M2>
 auto naiveAdd(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
     auto result = a.createNew();
