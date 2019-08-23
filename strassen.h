@@ -11,6 +11,7 @@
 #include "blasMul.h"
 #include "ThreadPool.h"
 #include "genericArithmeticOperations.h"
+#include "naiveMul.h"
 #include <utility>
 #include <cmath>
 #include <optional>
@@ -71,29 +72,6 @@ template<int n, int m, ArithmeticOperation::OpType... ops, typename T, typename.
     auto result = allocator.alloc(n*m);
     operation<n, m, ops...>(result, arg, args...);
     return result;
-}
-
-template<typename T> void naiveMul(T* result, const T* a, const T* b, int n, int m, int q) {
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < q; ++j) {
-            T sum{};
-            for (int k = 0; k < m; ++k) {
-                sum += a[k + i * m] * b[j + k * q];
-            }
-            result[j + i * q] = sum;
-        }
-    }
-}
-template<int n, int m, int q, typename T> void naiveMul(T* result, const T* a, const T* b) {
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < q; ++j) {
-            T sum{};
-            for (int k = 0; k < m; ++k) {
-                sum += a[k + i * m] * b[j + k * q];
-            }
-            result[j + i * q] = sum;
-        }
-    }
 }
 
 template<BaseMulType opType, typename T>
@@ -874,17 +852,7 @@ auto minSpaceAutoStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2
 
 
 
-template<typename T> void naiveMul(T* result, const T* a, const T* b, int n, int m, int q, int effR, int effA, int effB) {
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < q; ++j) {
-            T sum{};
-            for (int k = 0; k < m; ++k) {
-                sum += a[k + i * effA] * b[j + k * effB];
-            }
-            result[j + i * effR] = sum;
-        }
-    }
-}
+
 template<typename T> void peelingMulAdd(T* result, const T* a, const T* b, int n, int m, int q, int effR, int effA, int effB) {
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < q; ++j) {

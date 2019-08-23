@@ -18,7 +18,7 @@
 #include "strassen.h"
 #include "blockMul.h"
 #include "parallelMul.h"
-#include "blockParallelMul.h"
+#include "parallelBlockMul.h"
 
 template<typename T, typename Function> void strassenDynamicBenchmark(std::string label, int n, int steps, Function fun) {
     HeapMatrix<T> a(n, n);
@@ -327,14 +327,14 @@ struct TestBaseMulImpl {
         out << ',' << benchmark(Reps, [&]() { naiveMul(dynamicA, dynamicB); });
         out << ',' << benchmark(Reps, [&]() { blockMul(dynamicA, dynamicB); });
         out << ',' << benchmark(Reps, [&]() { parallelMul(dynamicA, dynamicB); });
-        out << ',' << benchmark(Reps, [&]() { blockParallelMul(dynamicA, dynamicB); });
+        out << ',' << benchmark(Reps, [&]() { parallelBlockMul(dynamicA, dynamicB); });
         if constexpr (UseAvx) out << ',' << benchmark(Reps, [&]() { avx::mul(dynamicA, dynamicB); });
         if constexpr (UseAvx) out << ',' << benchmark(Reps, [&]() { avx::parallelMul(dynamicA, dynamicB); });
         if constexpr (UseBlas) out << ',' << benchmark(Reps, [&]() { blas::mul(dynamicA, dynamicB); });
         out << ',' << benchmark(Reps, [&]() { naiveMul(staticA, staticB); });
         out << ',' << benchmark(Reps, [&]() { blockMul(staticA, staticB); });
         out << ',' << benchmark(Reps, [&]() { parallelMul(staticA, staticB); });
-        out << ',' << benchmark(Reps, [&]() { blockParallelMul(staticA, staticB); });
+        out << ',' << benchmark(Reps, [&]() { parallelBlockMul(staticA, staticB); });
         if constexpr (UseAvx) out << ',' << benchmark(Reps, [&]() { avx::mul(staticA, staticB); });
         if constexpr (UseAvx) out << ',' << benchmark(Reps, [&]() { avx::parallelMul(staticA, staticB); });
         if constexpr (UseBlas) out << ',' << benchmark(Reps, [&]() { blas::mul(staticA, staticB); });

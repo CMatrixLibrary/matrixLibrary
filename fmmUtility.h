@@ -6,6 +6,10 @@
 #include "genericArithmeticOperations.h"
 #include "avxMul.h"
 #include "blasMul.h"
+#include "naiveMul.h"
+#include "parallelMul.h"
+#include "blockMul.h"
+#include "parallelBlockMul.h"
 #include <algorithm>
 #include <optional>
 #include <tuple>
@@ -30,9 +34,9 @@ namespace fmm {
         Naive                   = 0x01'00,
         Parallel                = 0x02'00,
         Block                   = 0x04'00,
-        BlockParallel           = 0x08'00,
+        ParallelBlock           = 0x08'00,
         Avx                     = 0x10'00,
-        AvxParallel             = 0x20'00,
+        ParallelAvx             = 0x20'00,
         Blas                    = 0x40'00,
         BaseMulTypeMASK         = 0xff'00
     };
@@ -200,9 +204,9 @@ namespace fmm::detail {
         if constexpr (Method & BaseMulType::Naive)         naiveMul(c, a, b, n, m, p);
         if constexpr (Method & BaseMulType::Parallel)      parallelMul(c, a, b, n, m, p);
         if constexpr (Method & BaseMulType::Block)         blockMul(c, a, b, n, m, p);
-        if constexpr (Method & BaseMulType::BlockParallel) blockParallelMul(c, a, b, n, m, p);
+        if constexpr (Method & BaseMulType::ParallelBlock) parallelBlockMul(c, a, b, n, m, p);
         if constexpr (Method & BaseMulType::Avx)           avx::mul(c, a, b, n, m, p);
-        if constexpr (Method & BaseMulType::AvxParallel)   avx::parallelMul(c, a, b, n, m, p);
+        if constexpr (Method & BaseMulType::ParallelAvx)   avx::parallelMul(c, a, b, n, m, p);
         if constexpr (Method & BaseMulType::Blas)          blas::mul(c, a, b, n, m, p);
     }
 
@@ -211,9 +215,9 @@ namespace fmm::detail {
         if constexpr (Method & BaseMulType::Naive)         naiveMul(c, a, b, n, m, p, effC, effA, effB);
         if constexpr (Method & BaseMulType::Parallel)      parallelMul(c, a, b, n, m, p, effC, effA, effB);
         if constexpr (Method & BaseMulType::Block)         blockMul(c, a, b, n, m, p, effC, effA, effB);
-        if constexpr (Method & BaseMulType::BlockParallel) blockParallelMul(c, a, b, n, m, p, effC, effA, effB);
+        if constexpr (Method & BaseMulType::ParallelBlock) parallelBlockMul(c, a, b, n, m, p, effC, effA, effB);
         if constexpr (Method & BaseMulType::Avx)           avx::mul(c, a, b, n, m, p, effC, effA, effB);
-        if constexpr (Method & BaseMulType::AvxParallel)   avx::parallelMul(c, a, b, n, m, p, effC, effA, effB);
+        if constexpr (Method & BaseMulType::ParallelAvx)   avx::parallelMul(c, a, b, n, m, p, effC, effA, effB);
         if constexpr (Method & BaseMulType::Blas)          blas::mul(c, a, b, n, m, p, effC, effA, effB);
     }
 
