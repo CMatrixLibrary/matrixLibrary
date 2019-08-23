@@ -6,7 +6,7 @@
     #include "mkl.h"
     #define USE_BLAS
 #endif
-#include "blasUtility.h"
+#include "blasMul.h"
 #include "Matrix.h"
 #include "MatrixView.h"
 #include "naiveBasicOperations.h"
@@ -328,16 +328,16 @@ struct TestBaseMulImpl {
         out << ',' << benchmark(Reps, [&]() { blockMul(dynamicA, dynamicB); });
         out << ',' << benchmark(Reps, [&]() { parallelMul(dynamicA, dynamicB); });
         out << ',' << benchmark(Reps, [&]() { blockParallelMul(dynamicA, dynamicB); });
-        if constexpr (UseAvx) out << ',' << benchmark(Reps, [&]() { avxMul(dynamicA, dynamicB); });
-        if constexpr (UseAvx) out << ',' << benchmark(Reps, [&]() { avxParallelMul(dynamicA, dynamicB); });
-        if constexpr (UseBlas) out << ',' << benchmark(Reps, [&]() { blasMul(dynamicA, dynamicB); });
+        if constexpr (UseAvx) out << ',' << benchmark(Reps, [&]() { avx::mul(dynamicA, dynamicB); });
+        if constexpr (UseAvx) out << ',' << benchmark(Reps, [&]() { avx::parallelMul(dynamicA, dynamicB); });
+        if constexpr (UseBlas) out << ',' << benchmark(Reps, [&]() { blas::mul(dynamicA, dynamicB); });
         out << ',' << benchmark(Reps, [&]() { naiveMul(staticA, staticB); });
         out << ',' << benchmark(Reps, [&]() { blockMul(staticA, staticB); });
         out << ',' << benchmark(Reps, [&]() { parallelMul(staticA, staticB); });
         out << ',' << benchmark(Reps, [&]() { blockParallelMul(staticA, staticB); });
-        if constexpr (UseAvx) out << ',' << benchmark(Reps, [&]() { avxMul(staticA, staticB); });
-        if constexpr (UseAvx) out << ',' << benchmark(Reps, [&]() { avxParallelMul(staticA, staticB); });
-        if constexpr (UseBlas) out << ',' << benchmark(Reps, [&]() { blasMul(staticA, staticB); });
+        if constexpr (UseAvx) out << ',' << benchmark(Reps, [&]() { avx::mul(staticA, staticB); });
+        if constexpr (UseAvx) out << ',' << benchmark(Reps, [&]() { avx::parallelMul(staticA, staticB); });
+        if constexpr (UseBlas) out << ',' << benchmark(Reps, [&]() { blas::mul(staticA, staticB); });
         out << std::endl;
         ::testBaseMul<T, Reps, N+Inc, NEnd, Inc, UseBlas, UseAvx>(out);
     }
