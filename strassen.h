@@ -129,7 +129,7 @@ auto mul(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
     if constexpr (opType == BaseMulType::Naive) return naiveMul(a, b);
     if constexpr (opType == BaseMulType::Avx) return avx::mul(a, b);
     if constexpr (opType == BaseMulType::ParallelAvx) return avx::parallelMul(a, b);
-    if constexpr (opType == BaseMulType::Blas) return blasMul(a, b);
+    if constexpr (opType == BaseMulType::Blas) return blas::mul(a, b);
 }
 
 template<BaseMulType opType, typename M1, typename M2>
