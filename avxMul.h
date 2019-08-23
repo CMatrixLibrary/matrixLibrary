@@ -437,8 +437,10 @@ namespace avx::detail {
 
     template<typename T> void parallelMul7(T* result, const T* a, const T* b, int n, int m, int q, int effR, int effA, int effB) {
 #ifdef AVX2_IS_AVAILABLE
-        for (int i = 0; i < n*q; ++i) {
-            result[i] = T{};
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < q; ++j) {
+                result[j + i * effR] = T{};
+            }
         }
 
         constexpr int ib = 256;
@@ -452,8 +454,10 @@ namespace avx::detail {
     }
     template<typename T> void mul7(T* result, const T* a, const T* b, int n, int m, int q, int effR, int effA, int effB) {
 #ifdef AVX2_IS_AVAILABLE
-        for (int i = 0; i < n*q; ++i) {
-            result[i] = T{};
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < q; ++j) {
+                result[j + i * effR] = T{};
+            }
         }
 
         constexpr int ib = 256;
@@ -467,8 +471,10 @@ namespace avx::detail {
 
     template<int n, int m, int q, int effR, int effA, int effB, typename T> void mul7(T* result, const T* a, const T* b) {
 #ifdef AVX2_IS_AVAILABLE
-        for (int i = 0; i < n*q; ++i) {
-            result[i] = T{};
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < q; ++j) {
+                result[j + i * effR] = T{};
+            }
         }
 
         constexpr int ib = 256;
@@ -613,8 +619,10 @@ namespace avx::detail {
 
     template<int n, int m, int q, int effR, int effA, int effB, typename T> void parallelMul7(T* result, const T* a, const T* b) {
 #ifdef AVX2_IS_AVAILABLE
-        for (int i = 0; i < n*q; ++i) {
-            result[i] = T{};
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < q; ++j) {
+                result[j + i * effR] = T{};
+            }
         }
 
         constexpr int ib = 256;
