@@ -5,7 +5,7 @@
 #include "StackAllocator.h"
 #include "genericArithmeticOperations.h"
 #include "avxMul.h"
-#include "blasUtility.h"
+#include "blasMul.h"
 #include <algorithm>
 #include <optional>
 #include <tuple>

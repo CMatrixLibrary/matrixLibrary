@@ -543,7 +543,7 @@ namespace avx::detail {
 #endif
     }
 
-    template<int n, int m, int q, int effR, int effA, int effB, typename T> void parallelMul7Task(T* result, const T* a, const T* b) {
+    template<int n, int m, int q, int effR, int effA, int effB, typename T> void parallelMul7Task(T* result, const T* a, const T* b, int ii, int iEnd) {
         constexpr int jb = 512;
         constexpr int kb = 16;
 
