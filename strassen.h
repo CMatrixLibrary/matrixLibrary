@@ -1136,3 +1136,124 @@ auto LowLevelParallelStrassen(const MatrixInterface<M1>& a, const MatrixInterfac
 
 
 
+
+
+
+
+
+
+template<int n, int m, int effM, ArithmeticOperation::OpType op, typename T> 
+T* operationEffV2(StackAllocator<T>& allocator, T* a, T* b) {
+    auto c = allocator.alloc(n*m);
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < m; ++j) {
+            calculate<op>(c[j + i*m], a[j + i*effM], b[j + i*effM]);
+        }
+    }
+    return c;
+}
+
+template<BaseMulType opType, int Steps, int n, int m, int q, int effC, int effA, int effB, typename T>
+void lowLevelStrassenV2(T* a, T* b, T* c, StackAllocator<T>& allocator, std::false_type) {
+    naiveMul<n, m, q, effC, effA, effB>(c, a, b);
+}
+template<BaseMulType opType, int Steps, int n, int m, int q, int effC, int effA, int effB, typename T>
+void lowLevelStrassenV2(T* a, T* b, T* c, StackAllocator<T>& allocator, std::true_type unused = std::true_type{}) {
+    using namespace ArithmeticOperation;
+    if constexpr (Steps <= 0) {
+        lowLevelStrassenV2<opType, Steps, n, m, q, effC, effA, effB>(a, b, c, allocator, std::false_type{});
+        return;
+    }
+
+    auto dA = strassenDivideView<2, 2>(a, n, m, effA);
+    auto dB = strassenDivideView<2, 2>(b, m, q, effB);
+
+    constexpr int hn = n / 2;
+    constexpr int hm = m / 2;
+    constexpr int hq = q / 2;
+
+    auto m1 = allocator.alloc(hn * hq);
+    auto m1_a = operationEffV2<hn, hm, effA, Add>(allocator, dA[0][0], dA[1][1]);
+    auto m1_b = operationEffV2<hm, hq, effB, Add>(allocator, dB[0][0], dB[1][1]);
+    lowLevelStrassenV2<opType, Steps - 1, hn, hm, hq, hq, hm, hq>(m1_a, m1_b, m1, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
+    allocator.dealloc(m1_b, hm*hq);
+    allocator.dealloc(m1_a, hn*hm);
+
+    auto m2 = allocator.alloc(hn * hq);
+    auto m2_a = operationEffV2<hn, hm, effA, Add>(allocator, dA[1][0], dA[1][1]);
+    lowLevelStrassenV2<opType, Steps - 1, hn, hm, hq, hq, hm, effB>(m2_a, dB[0][0], m2, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
+    allocator.dealloc(m2_a, hn*hm);
+
+    auto m3 = allocator.alloc(hn * hq);
+    auto m3_b = operationEffV2<hm, hq, effB, Sub>(allocator, dB[0][1], dB[1][1]);
+    lowLevelStrassenV2<opType, Steps - 1, hn, hm, hq, hq, effA, hq>(dA[0][0], m3_b, m3, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
+    allocator.dealloc(m3_b, hm*hq);
+
+    auto m4 = allocator.alloc(hn * hq);
+    auto m4_b = operationEffV2<hm, hq, effB, Sub>(allocator, dB[1][0], dB[0][0]);
+    lowLevelStrassenV2<opType, Steps - 1, hn, hm, hq, hq, effA, hq>(dA[1][1], m4_b, m4, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
+    allocator.dealloc(m4_b, hm*hq);
+
+    auto m5 = allocator.alloc(hn * hq);
+    auto m5_a = operationEffV2<hn, hm, effA, Add>(allocator, dA[0][0], dA[0][1]);
+    lowLevelStrassenV2<opType, Steps - 1, hn, hm, hq, hq, hm, effB>(m5_a, dB[1][1], m5, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
+    allocator.dealloc(m5_a, hn*hm);
+
+    auto m6 = allocator.alloc(hn * hq);
+    auto m6_a = operationEffV2<hn, hm, effA, Sub>(allocator, dA[1][0], dA[0][0]);
+    auto m6_b = operationEffV2<hm, hq, effB, Add>(allocator, dB[0][0], dB[0][1]);
+    lowLevelStrassenV2<opType, Steps - 1, hn, hm, hq, hq, hm, hq>(m6_a, m6_b, m6, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
+    allocator.dealloc(m6_b, hm*hq);
+    allocator.dealloc(m6_a, hn*hm);
+
+    auto m7 = allocator.alloc(hn * hq);
+    auto m7_a = operationEffV2<hn, hm, effA, Sub>(allocator, dA[0][1], dA[1][1]);
+    auto m7_b = operationEffV2<hm, hq, effB, Add>(allocator, dB[1][0], dB[1][1]);
+    lowLevelStrassenV2<opType, Steps - 1, hn, hm, hq, hq, hm, hq>(m7_a, m7_b, m7, allocator, typename std::conditional<(Steps > 1), std::true_type, std::false_type>::type());
+    allocator.dealloc(m7_b, hm*hq);
+    allocator.dealloc(m7_a, hn*hm);
+
+    auto dC = strassenDivideView<2, 2>(c, n, q);
+    for (int i = 0; i < hn; ++i) {
+        for (int j = 0; j < hq; ++j) {
+            int dstIndex = j + i * q;
+            int index = j + i * hq;
+            dC[0][0][dstIndex] = m1[index] + m4[index] - m5[index] + m7[index];
+            dC[0][1][dstIndex] = m3[index] + m5[index];
+            dC[1][0][dstIndex] = m2[index] + m4[index];
+            dC[1][1][dstIndex] = m1[index] + m3[index] - m2[index] + m6[index];
+        }
+    }
+
+    allocator.dealloc(m7, hn*hq);
+    allocator.dealloc(m6, hn*hq);
+    allocator.dealloc(m5, hn*hq);
+    allocator.dealloc(m4, hn*hq);
+    allocator.dealloc(m3, hn*hq);
+    allocator.dealloc(m2, hn*hq);
+    allocator.dealloc(m1, hn*hq);
+}
+template<BaseMulType opType, int Steps, int n, int m, int q, int effC, int effA, int effB, typename T>
+void lowLevelStrassenV2(T* result, T* a, T* b) {
+    int expected = 0;
+    int eN = n;
+    int eM = m;
+    int eQ = q;
+    for (int i = 0; i < Steps; ++i) {
+        eN /= 2;
+        eM /= 2;
+        eQ /= 2;
+        expected += 1*StackAllocator<T>::Allign(eN*eM) + 1*StackAllocator<T>::Allign(eM*eQ) + 7*StackAllocator<T>::Allign(eN*eQ);
+    }
+    StackAllocator<T> allocator(expected);
+    lowLevelStrassenV2<opType, Steps, n, m, q, effC, effA, effB>(a, b, result, allocator);
+}
+
+template<BaseMulType opType, int Steps, typename M1, typename M2>
+auto lowLevelStrassenV2(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
+    if constexpr (M1::HasConstexprRowAndColumnCount() && M2::HasConstexprRowAndColumnCount()) {
+        Matrix<typename M1::ValueType, M1::CRow(), M2::CCol()> result;
+        lowLevelStrassenV2<opType, Steps, M1::CRow(), M1::CCol(), M2::CCol(), M2::CCol(), M1::CEffCol(), M2::CEffCol()>(result.data(), a.data(), b.data());
+        return result;
+    }
+}
