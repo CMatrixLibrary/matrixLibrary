@@ -28,30 +28,30 @@ namespace avx {
 #endif
 }
 
-template<typename ValueType, typename Enable = void> class avxType;
+template<typename ValueType, typename Enable = void> class AvxType;
 
 #ifdef AVX2_IS_AVAILABLE
-template<typename ValueType> class avxType<ValueType, typename std::enable_if_t<std::is_integral_v<ValueType>>> {
+template<typename ValueType> class AvxType<ValueType, typename std::enable_if_t<std::is_integral_v<ValueType>>> {
     __m256i value;
 public:
-    avxType(__m256i value) : value(value) {}
+    AvxType(__m256i value) : value(value) {}
     operator __m256i() { return value; }
 };
-template<> class avxType<float, typename std::enable_if_t<sizeof(float) == 4 && std::numeric_limits<float>::is_iec559>> {
+template<> class AvxType<float, typename std::enable_if_t<sizeof(float) == 4 && std::numeric_limits<float>::is_iec559>> {
     __m256 value;
 public:
-    avxType(__m256 value) : value(value) {}
+    AvxType(__m256 value) : value(value) {}
     operator __m256() { return value; }
 };
-template<> class avxType<double, typename std::enable_if_t<sizeof(double) == 8 && std::numeric_limits<double>::is_iec559>> {
+template<> class AvxType<double, typename std::enable_if_t<sizeof(double) == 8 && std::numeric_limits<double>::is_iec559>> {
     __m256d value;
 public:
-    avxType(__m256d value) : value(value) {}
+    AvxType(__m256d value) : value(value) {}
     operator __m256d() { return value; }
 };
 #else
-template<> class avxType<float> {};
-template<> class avxType<double> {};
+template<> class AvxType<float> {};
+template<> class AvxType<double> {};
 #endif
 
 namespace avx {
@@ -76,43 +76,43 @@ namespace avx {
 
 #ifdef AVX2_IS_AVAILABLE
 
-    template<typename T> avxType<T> loadAligned(const T* ptr) { 
+    template<typename T> AvxType<T> loadAligned(const T* ptr) { 
         return _mm256_load_si256((__m256i*)ptr); 
     }
-    avxType<float> loadAligned(const float* ptr) { return _mm256_load_ps(ptr); }
-    avxType<double> loadAligned(const double* ptr) { return _mm256_load_pd(ptr); }
+    AvxType<float> loadAligned(const float* ptr) { return _mm256_load_ps(ptr); }
+    AvxType<double> loadAligned(const double* ptr) { return _mm256_load_pd(ptr); }
 
-    template<typename T> avxType<T> loadUnaligned(const T* ptr) { return _mm256_loadu_si256((__m256i*)ptr); }
-    avxType<float> loadUnaligned(const float* ptr) { return _mm256_loadu_ps(ptr); }
-    avxType<double> loadUnaligned(const double* ptr) { return _mm256_loadu_pd(ptr); }
+    template<typename T> AvxType<T> loadUnaligned(const T* ptr) { return _mm256_loadu_si256((__m256i*)ptr); }
+    AvxType<float> loadUnaligned(const float* ptr) { return _mm256_loadu_ps(ptr); }
+    AvxType<double> loadUnaligned(const double* ptr) { return _mm256_loadu_pd(ptr); }
 
-    template<typename T> void storeAligned(T* dst, avxType<T> src) { return _mm256_store_si256((__m256i*)dst, src); }
-    void storeAligned(float* dst, avxType<float> src) { return _mm256_store_ps(dst, src); }
-    void storeAligned(double* dst, avxType<double> src) { return _mm256_store_pd(dst, src); }
+    template<typename T> void storeAligned(T* dst, AvxType<T> src) { return _mm256_store_si256((__m256i*)dst, src); }
+    void storeAligned(float* dst, AvxType<float> src) { return _mm256_store_ps(dst, src); }
+    void storeAligned(double* dst, AvxType<double> src) { return _mm256_store_pd(dst, src); }
 
-    template<typename T> void storeUnaligned(T* dst, avxType<T> src) { return _mm256_storeu_si256((__m256i*)dst, src); }
-    void storeUnaligned(float* dst, avxType<float> src) { return _mm256_storeu_ps(dst, src); }
-    void storeUnaligned(double* dst, avxType<double> src) { return _mm256_storeu_pd(dst, src); }
+    template<typename T> void storeUnaligned(T* dst, AvxType<T> src) { return _mm256_storeu_si256((__m256i*)dst, src); }
+    void storeUnaligned(float* dst, AvxType<float> src) { return _mm256_storeu_ps(dst, src); }
+    void storeUnaligned(double* dst, AvxType<double> src) { return _mm256_storeu_pd(dst, src); }
 
-    template<typename T> avxType<T> add(avxType<T> a, avxType<T> b) { 
+    template<typename T> AvxType<T> add(AvxType<T> a, AvxType<T> b) { 
         if constexpr (sizeof(T) == 1) return _mm256_add_epi8(a, b);
         if constexpr (sizeof(T) == 2) return _mm256_add_epi16(a, b);
         if constexpr (sizeof(T) == 4) return _mm256_add_epi32(a, b);
         if constexpr (sizeof(T) == 8) return _mm256_add_epi64(a, b);
     }
-    avxType<float> add(avxType<float> a, avxType<float> b) { return _mm256_add_ps(a, b); }
-    avxType<double> add(avxType<double> a, avxType<double> b) { return _mm256_add_pd(a, b); }
+    AvxType<float> add(AvxType<float> a, AvxType<float> b) { return _mm256_add_ps(a, b); }
+    AvxType<double> add(AvxType<double> a, AvxType<double> b) { return _mm256_add_pd(a, b); }
 
-    template<typename T> avxType<T> sub(avxType<T> a, avxType<T> b) {
+    template<typename T> AvxType<T> sub(AvxType<T> a, AvxType<T> b) {
         if constexpr (sizeof(T) == 1) return _mm256_sub_epi8(a, b);
         if constexpr (sizeof(T) == 2) return _mm256_sub_epi16(a, b);
         if constexpr (sizeof(T) == 4) return _mm256_sub_epi32(a, b);
         if constexpr (sizeof(T) == 8) return _mm256_sub_epi64(a, b);
     }
-    avxType<float> sub(avxType<float> a, avxType<float> b) { return _mm256_sub_ps(a, b); }
-    avxType<double> sub(avxType<double> a, avxType<double> b) { return _mm256_sub_pd(a, b); }
+    AvxType<float> sub(AvxType<float> a, AvxType<float> b) { return _mm256_sub_ps(a, b); }
+    AvxType<double> sub(AvxType<double> a, AvxType<double> b) { return _mm256_sub_pd(a, b); }
 
-    template<typename T> avxType<T> mul(avxType<T> a, avxType<T> b) {
+    template<typename T> AvxType<T> mul(AvxType<T> a, AvxType<T> b) {
         if constexpr (sizeof(T) == 1) {
             auto even = _mm256_mullo_epi16(a, b);
             auto odd = _mm256_mullo_epi16(_mm256_srli_epi16(a, 8), _mm256_srli_epi16(b, 8));
@@ -134,35 +134,35 @@ namespace avx {
             return  prod;
         }
     }
-    avxType<float> mul(avxType<float> a, avxType<float> b) { return _mm256_mul_ps(a, b); }
-    avxType<double> mul(avxType<double> a, avxType<double> b) { return _mm256_mul_pd(a, b); }
+    AvxType<float> mul(AvxType<float> a, AvxType<float> b) { return _mm256_mul_ps(a, b); }
+    AvxType<double> mul(AvxType<double> a, AvxType<double> b) { return _mm256_mul_pd(a, b); }
 
-    template<typename T> avxType<T> zero() { return _mm256_setzero_si256(); }
-    template<> avxType<int8_t> zero() { return _mm256_setzero_si256(); }
-    template<> avxType<float> zero() { return _mm256_setzero_ps(); }
-    template<> avxType<double> zero() { return _mm256_setzero_pd(); }
+    template<typename T> AvxType<T> zero() { return _mm256_setzero_si256(); }
+    template<> AvxType<int8_t> zero() { return _mm256_setzero_si256(); }
+    template<> AvxType<float> zero() { return _mm256_setzero_ps(); }
+    template<> AvxType<double> zero() { return _mm256_setzero_pd(); }
 
-    template<typename T> avxType<T> setAllElements(T value) {
+    template<typename T> AvxType<T> setAllElements(T value) {
         if constexpr (sizeof(T) == 1) return _mm256_set1_epi8(value);
         if constexpr (sizeof(T) == 2) return _mm256_set1_epi16(value);
         if constexpr (sizeof(T) == 4) return _mm256_set1_epi32(value);
         if constexpr (sizeof(T) == 8) return _mm256_set1_epi64x(value);
     }
-    avxType<float> setAllElements(float value) { return _mm256_set1_ps(value); }
-    avxType<double> setAllElements(double value) { return _mm256_set1_pd(value); }
+    AvxType<float> setAllElements(float value) { return _mm256_set1_ps(value); }
+    AvxType<double> setAllElements(double value) { return _mm256_set1_pd(value); }
 
-    template<typename T> avxType<T> fma(avxType<T> a, avxType<T> b, avxType<T> c) {
+    template<typename T> AvxType<T> fma(AvxType<T> a, AvxType<T> b, AvxType<T> c) {
         return add(mul(a, b), c);
     }
 
-    avxType<float> fma(avxType<float> a, avxType<float> b, avxType<float> c) {
+    AvxType<float> fma(AvxType<float> a, AvxType<float> b, AvxType<float> c) {
         #ifdef FMA_IS_AVAILABLE
         return _mm256_fmadd_ps(a, b, c);
         #else
         return add(mul(a, b), c);
         #endif
     }
-    avxType<double> fma(avxType<double> a, avxType<double> b, avxType<double> c) {
+    AvxType<double> fma(AvxType<double> a, AvxType<double> b, AvxType<double> c) {
         #ifdef FMA_IS_AVAILABLE
         return _mm256_fmadd_pd(a, b, c);
         #else
@@ -170,35 +170,35 @@ namespace avx {
         #endif
     }
 #else
-    template<typename T> avxType<T> loadAligned(const T* ptr) { return avxType<T>{}; }
-    template<typename T> avxType<T> loadUnaligned(const T* ptr) { return avxType<T>{}; }
-    template<typename T> void storeAligned(T* dst, avxType<T> src) {}
-    template<typename T> void storeUnaligned(T* dst, avxType<T> src) {}
-    template<typename T> avxType<T> add(avxType<T> a, avxType<T> b) { return avxType<T>{}; }
-    template<typename T> avxType<T> sub(avxType<T> a, avxType<T> b) { return avxType<T>{}; }
-    template<typename T> avxType<T> mul(avxType<T> a, avxType<T> b) { return avxType<T>{}; }
-    template<typename T> avxType<T> zero() { return avxType<T>{}; }
-    template<typename T> avxType<T> setAllElements(T value) { return avxType<T>{}; }
-    template<typename T> avxType<T> fma(avxType<T> a, avxType<T> b, avxType<T> c) { return avxType<T>{}; }
+    template<typename T> AvxType<T> loadAligned(const T* ptr) { return AvxType<T>{}; }
+    template<typename T> AvxType<T> loadUnaligned(const T* ptr) { return AvxType<T>{}; }
+    template<typename T> void storeAligned(T* dst, AvxType<T> src) {}
+    template<typename T> void storeUnaligned(T* dst, AvxType<T> src) {}
+    template<typename T> AvxType<T> add(AvxType<T> a, AvxType<T> b) { return AvxType<T>{}; }
+    template<typename T> AvxType<T> sub(AvxType<T> a, AvxType<T> b) { return AvxType<T>{}; }
+    template<typename T> AvxType<T> mul(AvxType<T> a, AvxType<T> b) { return AvxType<T>{}; }
+    template<typename T> AvxType<T> zero() { return AvxType<T>{}; }
+    template<typename T> AvxType<T> setAllElements(T value) { return AvxType<T>{}; }
+    template<typename T> AvxType<T> fma(AvxType<T> a, AvxType<T> b, AvxType<T> c) { return AvxType<T>{}; }
 #endif
 };
 
-template<typename T> avxType<T> operator+(avxType<T> a, avxType<T> b) {
+template<typename T> AvxType<T> operator+(AvxType<T> a, AvxType<T> b) {
     return avx::add(a, b);
 }
-template<typename T> avxType<T> operator-(avxType<T> a, avxType<T> b) {
+template<typename T> AvxType<T> operator-(AvxType<T> a, AvxType<T> b) {
     return avx::sub(a, b);
 }
-template<typename T> avxType<T> operator*(avxType<T> a, avxType<T> b) {
+template<typename T> AvxType<T> operator*(AvxType<T> a, AvxType<T> b) {
     return avx::mul(a, b);
 }
-template<typename T> avxType<T> operator+=(avxType<T>& a, avxType<T> b) {
+template<typename T> AvxType<T> operator+=(AvxType<T>& a, AvxType<T> b) {
     return a = a + b;
 }
-template<typename T> avxType<T> operator-=(avxType<T>& a, avxType<T> b) {
+template<typename T> AvxType<T> operator-=(AvxType<T>& a, AvxType<T> b) {
     return a = a - b;
 }
-template<typename T> avxType<T> operator*=(avxType<T>& a, avxType<T> b) {
+template<typename T> AvxType<T> operator*=(AvxType<T>& a, AvxType<T> b) {
     return a = a * b;
 }
 
