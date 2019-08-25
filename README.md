@@ -532,7 +532,7 @@ Albo jeżeli chcemy skopiować wektor ```c``` do ```a``` i ```b``` (a\[i\] = b\[
 ## Algorytmy szybkiego mnozenia macierzy FMM Fast Matrix Multiplication 
 [fmmUtility.h](fmmUtility.h)
 
-[strassen.h](strassen.h) (kod stąd będzie w przyszłości usunięty i skopiowana będzie wersja z ```fmmUtility.h```)
+[strassen.h](strassen.h)
 
 Mnożenie macierzy polegające na rekurencyjnym dzieleniu macierzy na mniejsze bloki, które umiemy pomnożyć wykorzystując mniejszą liczbę operacji niż w przypadku zwykłego mnożenia (z mniejszą złożonością obliczeniową niż ```O(n^3)```).
 
