@@ -41,20 +41,23 @@ namespace fmm {
         BaseMulTypeMASK         = 0xff'00
     };
     enum ResizeStrategy {
-        ResizeStrategyAutomatic = 0x00'00'00,
         DynamicPeeling          = 0x01'00'00,
         StaticPadding           = 0x02'00'00,
-        ResizeStrategyMASK      = 0xff'00'00
+        ResizeStrategyMASK      = 0xff'00'00,
+        ResizeStrategyAutomatic = DynamicPeeling
     };
     enum BaseMulSize {
-        BaseMulSizeAutomatic    = 0x00'00'00'00,
         Normal                  = 0x01'00'00'00,
         Effective               = 0x02'00'00'00,
-        BaseMulSizeMASK         = 0xff'00'00'00
+        BaseMulSizeMASK         = 0xff'00'00'00,
+        BaseMulSizeAutomatic    = Effective
     };
     
     template<int Method, Algorithm alg> 
     constexpr int getNewWithAlgorithm = (Method & (BaseMulTypeMASK | ResizeStrategyMASK | BaseMulSizeMASK)) | alg;
+
+    template<int Method, int Flag> constexpr bool contains = (Method & Flag) == Flag;
+
 }
 
 namespace fmm::detail {
@@ -201,32 +204,32 @@ namespace fmm::detail {
     // base multiplication
     template<int Method, typename T> 
     void baseMul(T* c, const T* a, const T* b, int n, int m, int p) {
-        if constexpr (Method & BaseMulType::Naive)         naiveMul(c, a, b, n, m, p);
-        if constexpr (Method & BaseMulType::Parallel)      parallelMul(c, a, b, n, m, p);
-        if constexpr (Method & BaseMulType::Block)         blockMul(c, a, b, n, m, p);
-        if constexpr (Method & BaseMulType::ParallelBlock) parallelBlockMul(c, a, b, n, m, p);
-        if constexpr (Method & BaseMulType::Avx)           avx::mul(c, a, b, n, m, p);
-        if constexpr (Method & BaseMulType::ParallelAvx)   avx::parallelMul(c, a, b, n, m, p);
-        if constexpr (Method & BaseMulType::Blas)          blas::mul(c, a, b, n, m, p);
+        if constexpr (contains<Method, BaseMulType::Naive>)         naiveMul(c, a, b, n, m, p);
+        if constexpr (contains<Method, BaseMulType::Parallel>)      parallelMul(c, a, b, n, m, p);
+        if constexpr (contains<Method, BaseMulType::Block>)         blockMul(c, a, b, n, m, p);
+        if constexpr (contains<Method, BaseMulType::ParallelBlock>) parallelBlockMul(c, a, b, n, m, p);
+        if constexpr (contains<Method, BaseMulType::Avx>)           avx::mul(c, a, b, n, m, p);
+        if constexpr (contains<Method, BaseMulType::ParallelAvx>)   avx::parallelMul(c, a, b, n, m, p);
+        if constexpr (contains<Method, BaseMulType::Blas>)          blas::mul(c, a, b, n, m, p);
     }
 
     template<int Method, typename T> 
     void baseMul(T* c, const T* a, const T* b, int n, int m, int p, int effC, int effA, int effB) {
-        if constexpr (Method & BaseMulType::Naive)         naiveMul(c, a, b, n, m, p, effC, effA, effB);
-        if constexpr (Method & BaseMulType::Parallel)      parallelMul(c, a, b, n, m, p, effC, effA, effB);
-        if constexpr (Method & BaseMulType::Block)         blockMul(c, a, b, n, m, p, effC, effA, effB);
-        if constexpr (Method & BaseMulType::ParallelBlock) parallelBlockMul(c, a, b, n, m, p, effC, effA, effB);
-        if constexpr (Method & BaseMulType::Avx)           avx::mul(c, a, b, n, m, p, effC, effA, effB);
-        if constexpr (Method & BaseMulType::ParallelAvx)   avx::parallelMul(c, a, b, n, m, p, effC, effA, effB);
-        if constexpr (Method & BaseMulType::Blas)          blas::mul(c, a, b, n, m, p, effC, effA, effB);
+        if constexpr (contains<Method, BaseMulType::Naive>)         naiveMul(c, a, b, n, m, p, effC, effA, effB);
+        if constexpr (contains<Method, BaseMulType::Parallel>)      parallelMul(c, a, b, n, m, p, effC, effA, effB);
+        if constexpr (contains<Method, BaseMulType::Block>)         blockMul(c, a, b, n, m, p, effC, effA, effB);
+        if constexpr (contains<Method, BaseMulType::ParallelBlock>) parallelBlockMul(c, a, b, n, m, p, effC, effA, effB);
+        if constexpr (contains<Method, BaseMulType::Avx>)           avx::mul(c, a, b, n, m, p, effC, effA, effB);
+        if constexpr (contains<Method, BaseMulType::ParallelAvx>)   avx::parallelMul(c, a, b, n, m, p, effC, effA, effB);
+        if constexpr (contains<Method, BaseMulType::Blas>)          blas::mul(c, a, b, n, m, p, effC, effA, effB);
     }
 
     template<int Method, typename T>
     void baseMul(T* c, const T* a, const T* b, int n, int m, int p, int effC, int effA, int effB, StackAllocator<T>& allocator) {
         if (effC != p || effA != m || effB != p) {
-            if constexpr (Method & BaseMulSize::Effective) {
+            if constexpr (contains<Method, BaseMulSize::Effective>) {
                 baseMul<Method>(c, a, b, n, m, p, effC, effA, effB);
-            } else if constexpr (Method & BaseMulSize::Normal) {
+            } else if constexpr (contains<Method, BaseMulSize::Normal>) {
                 T* cx = c;
                 T* ax = const_cast<T*>(a);
                 T* bx = const_cast<T*>(b);
@@ -266,7 +269,7 @@ namespace fmm::detail {
             baseMul<Method>(c, a, b, n, m, p, effC, effA, effB, allocator);
             return;
         }
-        if constexpr (Method & ResizeStrategy::DynamicPeeling) {
+        if constexpr (contains<Method, ResizeStrategy::DynamicPeeling>) {
             auto[nPeeled, mPeeled, pPeeled] = peelingSizes<BaseN, BaseM, BaseP>(n, m, p);
             function(c, a, b, nPeeled, mPeeled, pPeeled, effC, effA, effB, steps, allocator);
             peelingMul<BaseN, BaseM, BaseP>(c, a, b, n, m, p, effC, effA, effB);
@@ -275,19 +278,16 @@ namespace fmm::detail {
         }
     }
 
-
-    // Min-Space
-    template<int Method, int BaseN, int BaseM, int BaseP, typename T>
-    void minSpaceRecursive(T* c, T* a, T* b, int n, int m, int p, int effC, int effA, int effB, int steps, StackAllocator<T>& allocator);
     
-    template<int Method, int BaseN, int BaseM, int BaseP, typename T>
-    void minSpaceRun(T* c, T* a, T* b, int n, int m, int p, int effC, int effA, int effB, int steps) {
+    // Min-Space
+    template<int Method, int BaseN, int BaseM, int BaseP, int MulCount, typename T, typename Function>
+    void minSpaceRun(Function function, T* c, T* a, T* b, int n, int m, int p, int effC, int effA, int effB, int steps) {
         auto paddingSizesOpt = staticPaddingNewSizes(n, m, p, BaseN, BaseM, BaseP, steps);
         int runningSpace = 0;
         int nPadded = n;
         int mPadded = m;
         int pPadded = p;
-        if ((Method & ResizeStrategy::StaticPadding) && paddingSizesOpt) {
+        if (contains<Method, ResizeStrategy::StaticPadding> && paddingSizesOpt) {
             auto& paddingSizes = *paddingSizesOpt;
             nPadded = paddingSizes[0];
             mPadded = paddingSizes[1];
@@ -296,7 +296,7 @@ namespace fmm::detail {
         }
         runningSpace += additionalRunningSpaceSize<BaseN, BaseM, BaseP, T>(steps, nPadded, mPadded, pPadded, 1, 1, 1);
 
-        if (Method & BaseMulSize::Normal && !(steps == 0 && effC==p && effA==m && effB==p)) {
+        if (contains<Method, BaseMulSize::Normal> && !(steps == 0 && effC==p && effA==m && effB==p)) {
             int nn = sizeAfterLastStep<BaseN>(nPadded, steps);
             int mm = sizeAfterLastStep<BaseM>(mPadded, steps);
             int pp = sizeAfterLastStep<BaseP>(pPadded, steps);
@@ -308,37 +308,34 @@ namespace fmm::detail {
         }
 
         StackAllocator<T> allocator(runningSpace);
-        if ((Method & ResizeStrategy::StaticPadding) && paddingSizesOpt) {
+        if (contains<Method, ResizeStrategy::StaticPadding> && paddingSizesOpt) {
             auto[newC, newA, newB] = allocateAndCopy(c, a, b, n, m, p, effA, effB, nPadded, mPadded, pPadded, allocator);
-            nextStep<Method, BaseN, BaseM, BaseP>(minSpaceRecursive<Method, BaseN, BaseM, BaseP, T>, newC, newA, newB, nPadded, mPadded, pPadded, pPadded, mPadded, pPadded, steps, allocator);
+            nextStep<Method, BaseN, BaseM, BaseP>(function, newC, newA, newB, nPadded, mPadded, pPadded, pPadded, mPadded, pPadded, steps, allocator);
             copyAndDeallocate(newC, newA, newB, n, p, nPadded, mPadded, pPadded, c, effC, allocator);
         } else {
-            nextStep<Method, BaseN, BaseM, BaseP>(minSpaceRecursive<Method, BaseN, BaseM, BaseP, T>, c, a, b, n, m, p, effC, effA, effB, steps, allocator);
+            nextStep<Method, BaseN, BaseM, BaseP>(function, c, a, b, n, m, p, effC, effA, effB, steps, allocator);
         }
     }
 
 
     // Low-level
-    template<int Method, int BaseN, int BaseM, int BaseP, typename T>
-    void lowLevelRecursive(T* c, T* a, T* b, int n, int m, int p, int effC, int effA, int effB, int steps, StackAllocator<T>& allocator);
-
-    template<int Method, int BaseN, int BaseM, int BaseP, typename T> 
-    void lowLevelRun(T* c, T* a, T* b, int n, int m, int p, int effC, int effA, int effB, int steps) {
+    template<int Method, int BaseN, int BaseM, int BaseP, int MulCount, typename T, typename Function>
+    void lowLevelRun(Function function, T* c, T* a, T* b, int n, int m, int p, int effC, int effA, int effB, int steps) {
         auto paddingSizesOpt = staticPaddingNewSizes(n, m, p, BaseN, BaseM, BaseP, steps);
         int runningSpace = 0;
         int nPadded = n;
         int mPadded = m;
         int pPadded = p;
-        if ((Method & ResizeStrategy::StaticPadding) && paddingSizesOpt) {
+        if (contains<Method, ResizeStrategy::StaticPadding> && paddingSizesOpt) {
             auto& paddingSizes = *paddingSizesOpt;
             nPadded = paddingSizes[0];
             mPadded = paddingSizes[1];
             pPadded = paddingSizes[2];
             runningSpace += additionalStaticPaddingSize<T>(nPadded, mPadded, pPadded);
         }
-        runningSpace += additionalRunningSpaceSize<BaseN, BaseM, BaseP, T>(steps, nPadded, mPadded, pPadded, 5, 5, 7);
+        runningSpace += additionalRunningSpaceSize<BaseN, BaseM, BaseP, T>(steps, nPadded, mPadded, pPadded, 1, 1, MulCount);
 
-        if (Method & BaseMulSize::Normal && steps == 0 && (effC!=p || effA!=m || effB!=p)) {
+        if (contains<Method, BaseMulSize::Normal> && steps == 0 && (effC!=p || effA!=m || effB!=p)) {
             int nn = sizeAfterLastStep<BaseN>(nPadded, steps);
             int mm = sizeAfterLastStep<BaseM>(mPadded, steps);
             int pp = sizeAfterLastStep<BaseP>(pPadded, steps);
@@ -346,73 +343,68 @@ namespace fmm::detail {
         }
 
         StackAllocator<T> allocator(runningSpace);
-        if ((Method & ResizeStrategy::StaticPadding) && paddingSizesOpt) {
+        if (contains<Method, ResizeStrategy::StaticPadding> && paddingSizesOpt) {
             auto[newC, newA, newB] = allocateAndCopy(c, a, b, n, m, p, effA, effB, nPadded, mPadded, pPadded, allocator);
-            nextStep<Method, BaseN, BaseM, BaseP>(lowLevelRecursive<Method, BaseN, BaseM, BaseP, T>, newC, newA, newB, nPadded, mPadded, pPadded, pPadded, mPadded, pPadded, steps, allocator);
+            nextStep<Method, BaseN, BaseM, BaseP>(function, newC, newA, newB, nPadded, mPadded, pPadded, pPadded, mPadded, pPadded, steps, allocator);
             copyAndDeallocate(newC, newA, newB, n, p, nPadded, mPadded, pPadded, c, effC, allocator);
         } else {
-            nextStep<Method, BaseN, BaseM, BaseP>(lowLevelRecursive<Method, BaseN, BaseM, BaseP, T>, c, a, b, n, m, p, effC, effA, effB, steps, allocator);
+            nextStep<Method, BaseN, BaseM, BaseP>(function, c, a, b, n, m, p, effC, effA, effB, steps, allocator);
         }
     }
 
 
     // Parallel Low-Level
-    template<int Method, int BaseN, int BaseM, int BaseP, typename T>
-    void lowLevelParallelRecursive(T* c, T* a, T* b, int n, int m, int p, int effC, int effA, int effB, int steps, StackAllocator<T>& allocator);
-
-    template<int Method, int BaseN, int BaseM, int BaseP, typename T>
-    void lowLevelParallelRun(T* c, T* a, T* b, int n, int m, int p, int effC, int effA, int effB, int steps) {
-        //constexpr int UpdatedMethod = 
-        
+    template<int Method, int BaseN, int BaseM, int BaseP, int MulCount, typename T, typename Function>
+    void lowLevelParallelRun(Function function, T* c, T* a, T* b, int n, int m, int p, int effC, int effA, int effB, int steps) {
         auto paddingSizesOpt = staticPaddingNewSizes(n, m, p, BaseN, BaseM, BaseP, steps);
         int runningSpace = 0;
         int nPadded = n;
         int mPadded = m;
         int pPadded = p;
-        if ((Method & ResizeStrategy::StaticPadding) && paddingSizesOpt) {
+        if (contains<Method, ResizeStrategy::StaticPadding> && paddingSizesOpt) {
             auto& paddingSizes = *paddingSizesOpt;
             nPadded = paddingSizes[0];
             mPadded = paddingSizes[1];
             pPadded = paddingSizes[2];
             runningSpace += additionalStaticPaddingSize<T>(nPadded, mPadded, pPadded);
         }
-        runningSpace += additionalRunningSpaceSize<BaseN, BaseM, BaseP, T>(std::min(1, steps), nPadded, mPadded, pPadded, 5, 5, 7);
+        runningSpace += additionalRunningSpaceSize<BaseN, BaseM, BaseP, T>(std::min(1, steps), nPadded, mPadded, pPadded, 1 + BaseN*BaseM, 1 + BaseM*BaseP, MulCount);
 
         StackAllocator<T> allocator(runningSpace);
-        if ((Method & ResizeStrategy::StaticPadding) && paddingSizesOpt) {
+        if (contains<Method, ResizeStrategy::StaticPadding> && paddingSizesOpt) {
             auto[newC, newA, newB] = allocateAndCopy(c, a, b, n, m, p, effA, effB, nPadded, mPadded, pPadded, allocator);
-            nextStep<Method, BaseN, BaseM, BaseP>(lowLevelParallelRecursive<Method, BaseN, BaseM, BaseP, T>, newC, newA, newB, nPadded, mPadded, pPadded, pPadded, mPadded, pPadded, steps, allocator);
+            nextStep<Method, BaseN, BaseM, BaseP>(function, newC, newA, newB, nPadded, mPadded, pPadded, pPadded, mPadded, pPadded, steps, allocator);
             copyAndDeallocate(newC, newA, newB, n, p, nPadded, mPadded, pPadded, c, effC, allocator);
         } else {
-            nextStep<Method, BaseN, BaseM, BaseP>(lowLevelParallelRecursive<Method, BaseN, BaseM, BaseP, T>, c, a, b, n, m, p, effC, effA, effB, steps, allocator);
+            nextStep<Method, BaseN, BaseM, BaseP>(function, c, a, b, n, m, p, effC, effA, effB, steps, allocator);
         }
     }
 
-    template<int Method, int BaseN, int BaseM, int BaseP, typename M1, typename M2>
-    auto runAlgorithm(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
+    template<int Method, int BaseN, int BaseM, int BaseP, int MulCount, typename M1, typename M2, typename Function>
+    auto runAlgorithm(Function function, const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
         auto c = a.createNew(a.rowCount(), b.columnCount());
 
-        if constexpr (Method & Algorithm::LowLevel) {
-            lowLevelRun<Method, BaseN, BaseM, BaseP>(
+        if constexpr (contains<Method, Algorithm::LowLevel>) {
+            lowLevelRun<Method, BaseN, BaseM, BaseP, MulCount>(function,
                 c.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(),
                 c.effectiveColumnCount(), a.effectiveColumnCount(), b.effectiveColumnCount(), steps
             );
         }
-        else if constexpr (Method & Algorithm::MinSpace) {
-            minSpaceRun<Method, BaseN, BaseM, BaseP>(
+        else if constexpr (contains<Method, Algorithm::MinSpace>) {
+            minSpaceRun<Method, BaseN, BaseM, BaseP, MulCount>(function,
                 c.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(),
                 c.effectiveColumnCount(), a.effectiveColumnCount(), b.effectiveColumnCount(), steps
             );
         }
-        else if constexpr (Method & Algorithm::LowLevelParallel) {
-            lowLevelParallelRun<Method, BaseN, BaseM, BaseP>(
+        else if constexpr (contains<Method, Algorithm::LowLevelParallel>) {
+            lowLevelParallelRun<Method, BaseN, BaseM, BaseP, MulCount>(function,
                 c.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(),
                 c.effectiveColumnCount(), a.effectiveColumnCount(), b.effectiveColumnCount(), steps
             );
         }
         else { // Automatic
             // Here the algorithm should be chosen based on type and size of matrices
-            lowLevelParallelRun<Method, BaseN, BaseM, BaseP>(
+            lowLevelParallelRun<Method, BaseN, BaseM, BaseP, MulCount>(function,
                 c.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(),
                 c.effectiveColumnCount(), a.effectiveColumnCount(), b.effectiveColumnCount(), steps
             );
@@ -424,9 +416,13 @@ namespace fmm::detail {
 
 // Min-Space <2,2,2:7> (Strassen)
 namespace fmm::detail {
-    template<int Method, int BaseN, int BaseM, int BaseP, typename T>
+    template<int Method, typename T>
     void minSpaceRecursive(T* c, T* a, T* b, int n, int m, int p, int effC, int effA, int effB, int steps, StackAllocator<T>& allocator) {
         using namespace ArithmeticOperation;
+
+        constexpr int BaseN = 2;
+        constexpr int BaseM = 2;
+        constexpr int BaseP = 2;
 
         auto[dn, dm, dp] = divideSizes<BaseN, BaseM, BaseP>(n, m, p);
 
@@ -440,35 +436,35 @@ namespace fmm::detail {
 
         operationEff<Add>(dn, dm, dm, effA, tempA, dA[0][0], dA[1][1]);
         operationEff<Add>(dm, dp, dp, effB, tempB, dB[0][0], dB[1][1]);
-        nextStep<Method, BaseN, BaseM, BaseP>(minSpaceRecursive<Method, BaseN, BaseM, BaseP, T>, dC[0][0], tempA, tempB, dn, dm, dp, effC, dm, dp, steps - 1, allocator);
+        nextStep<Method, BaseN, BaseM, BaseP>(minSpaceRecursive<Method, T>, dC[0][0], tempA, tempB, dn, dm, dp, effC, dm, dp, steps - 1, allocator);
         operationEff<Assign>(dn, dp, effC, effC, dC[1][1], dC[0][0]);
 
         operationEff<Add>(dn, dm, dm, effA, tempA, dA[1][0], dA[1][1]);
-        nextStep<Method, BaseN, BaseM, BaseP>(minSpaceRecursive<Method, BaseN, BaseM, BaseP, T>, dC[1][0], tempA, dB[0][0], dn, dm, dp, effC, dm, effB, steps - 1, allocator);
+        nextStep<Method, BaseN, BaseM, BaseP>(minSpaceRecursive<Method, T>, dC[1][0], tempA, dB[0][0], dn, dm, dp, effC, dm, effB, steps - 1, allocator);
         operationEff<SubAssign>(dn, dp, effC, effC, dC[1][1], dC[1][0]);
 
         operationEff<Sub>(dm, dp, dp, effB, tempB, dB[0][1], dB[1][1]);
-        nextStep<Method, BaseN, BaseM, BaseP>(minSpaceRecursive<Method, BaseN, BaseM, BaseP, T>, dC[0][1], dA[0][0], tempB, dn, dm, dp, effC, effA, dp, steps - 1, allocator);
+        nextStep<Method, BaseN, BaseM, BaseP>(minSpaceRecursive<Method, T>, dC[0][1], dA[0][0], tempB, dn, dm, dp, effC, effA, dp, steps - 1, allocator);
         operationEff<AddAssign>(dn, dp, effC, effC, dC[1][1], dC[0][1]);
 
         operationEff<Sub>(dm, dp, dp, effB, tempB, dB[1][0], dB[0][0]);
-        nextStep<Method, BaseN, BaseM, BaseP>(minSpaceRecursive<Method, BaseN, BaseM, BaseP, T>, tempC, dA[1][1], tempB, dn, dm, dp, dp, effA, dp, steps - 1, allocator);
+        nextStep<Method, BaseN, BaseM, BaseP>(minSpaceRecursive<Method, T>, tempC, dA[1][1], tempB, dn, dm, dp, dp, effA, dp, steps - 1, allocator);
         operationEff<AddAssign>(dn, dp, effC, dp, dC[0][0], tempC);
         operationEff<AddAssign>(dn, dp, effC, dp, dC[1][0], tempC);
 
         operationEff<Add>(dn, dm, dm, effA, tempA, dA[0][0], dA[0][1]);
-        nextStep<Method, BaseN, BaseM, BaseP>(minSpaceRecursive<Method, BaseN, BaseM, BaseP, T>, tempC, tempA, dB[1][1], dn, dm, dp, dp, dm, effB, steps - 1, allocator);
+        nextStep<Method, BaseN, BaseM, BaseP>(minSpaceRecursive<Method, T>, tempC, tempA, dB[1][1], dn, dm, dp, dp, dm, effB, steps - 1, allocator);
         operationEff<SubAssign>(dn, dp, effC, dp, dC[0][0], tempC);
         operationEff<AddAssign>(dn, dp, effC, dp, dC[0][1], tempC);
 
         operationEff<Sub>(dn, dm, dm, effA, tempA, dA[1][0], dA[0][0]);
         operationEff<Add>(dm, dp, dp, effB, tempB, dB[0][0], dB[0][1]);
-        nextStep<Method, BaseN, BaseM, BaseP>(minSpaceRecursive<Method, BaseN, BaseM, BaseP, T>, tempC, tempA, tempB, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
+        nextStep<Method, BaseN, BaseM, BaseP>(minSpaceRecursive<Method, T>, tempC, tempA, tempB, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
         operationEff<AddAssign>(dn, dp, effC, dp, dC[1][1], tempC);
 
         operationEff<Sub>(dn, dm, dm, effA, tempA, dA[0][1], dA[1][1]);
         operationEff<Add>(dm, dp, dp, effB, tempB, dB[1][0], dB[1][1]);
-        nextStep<Method, BaseN, BaseM, BaseP>(minSpaceRecursive<Method, BaseN, BaseM, BaseP, T>, tempC, tempA, tempB, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
+        nextStep<Method, BaseN, BaseM, BaseP>(minSpaceRecursive<Method, T>, tempC, tempA, tempB, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
         operationEff<AddAssign>(dn, dp, effC, dp, dC[0][0], tempC);
 
         allocator.dealloc(tempC, dn*dp);
@@ -479,54 +475,58 @@ namespace fmm::detail {
 
 // Low-Level <2,2,2:7> (Strassen)
 namespace fmm::detail {
-    template<int Method, int BaseN, int BaseM, int BaseP, typename T>
+    template<int Method, typename T>
     void lowLevelRecursive(T* c, T* a, T* b, int n, int m, int p, int effC, int effA, int effB, int steps, StackAllocator<T>& allocator) {
         using namespace ArithmeticOperation;
 
+        constexpr int BaseN = 2;
+        constexpr int BaseM = 2;
+        constexpr int BaseP = 2;
+
         auto[dn, dm, dp] = divideSizes<BaseN, BaseM, BaseP>(n, m, p);
 
-        auto dA = divide<BaseN, BaseM>(a, n, m, effA, allocator);
-        auto dB = divide<BaseM, BaseP>(b, m, p, effB, allocator);
+        auto dA = divideView<BaseN, BaseM>(a, n, m, effA);
+        auto dB = divideView<BaseM, BaseP>(b, m, p, effB);
         auto dC = divideView<BaseN, BaseP>(c, n, p, effC);
 
         auto m1 = allocator.alloc(dn * dp);
-        auto m1_a = operationEffWithAlloc<Add>(allocator, dn, dm, dm, dA[0][0], dA[1][1]);
-        auto m1_b = operationEffWithAlloc<Add>(allocator, dm, dp, dp, dB[0][0], dB[1][1]);
-        nextStep<Method, BaseN, BaseM, BaseP>(lowLevelRecursive<Method, BaseN, BaseM, BaseP, T>, m1, m1_a, m1_b, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
+        auto m1_a = operationEffWithAlloc<Add>(allocator, dn, dm, effA, dA[0][0], dA[1][1]);
+        auto m1_b = operationEffWithAlloc<Add>(allocator, dm, dp, effB, dB[0][0], dB[1][1]);
+        nextStep<Method, BaseN, BaseM, BaseP>(lowLevelRecursive<Method, T>, m1, m1_a, m1_b, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
         allocator.dealloc(m1_b, dm*dp);
         allocator.dealloc(m1_a, dn*dm);
 
         auto m2 = allocator.alloc(dn * dp);
-        auto m2_a = operationEffWithAlloc<Add>(allocator, dn, dm, dm, dA[1][0], dA[1][1]);
-        nextStep<Method, BaseN, BaseM, BaseP>(lowLevelRecursive<Method, BaseN, BaseM, BaseP, T>, m2, m2_a, dB[0][0], dn, dm, dp, dp, dm, dp, steps - 1, allocator);
+        auto m2_a = operationEffWithAlloc<Add>(allocator, dn, dm, effA, dA[1][0], dA[1][1]);
+        nextStep<Method, BaseN, BaseM, BaseP>(lowLevelRecursive<Method, T>, m2, m2_a, dB[0][0], dn, dm, dp, dp, dm, effB, steps - 1, allocator);
         allocator.dealloc(m2_a, dn*dm);
 
         auto m3 = allocator.alloc(dn * dp);
-        auto m3_b = operationEffWithAlloc<Sub>(allocator, dm, dp, dp, dB[0][1], dB[1][1]);
-        nextStep<Method, BaseN, BaseM, BaseP>(lowLevelRecursive<Method, BaseN, BaseM, BaseP, T>, m3, dA[0][0], m3_b, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
+        auto m3_b = operationEffWithAlloc<Sub>(allocator, dm, dp, effB, dB[0][1], dB[1][1]);
+        nextStep<Method, BaseN, BaseM, BaseP>(lowLevelRecursive<Method, T>, m3, dA[0][0], m3_b, dn, dm, dp, dp, effA, dp, steps - 1, allocator);
         allocator.dealloc(m3_b, dm*dp);
 
         auto m4 = allocator.alloc(dn * dp);
-        auto m4_b = operationEffWithAlloc<Sub>(allocator, dm, dp, dp, dB[1][0], dB[0][0]);
-        nextStep<Method, BaseN, BaseM, BaseP>(lowLevelRecursive<Method, BaseN, BaseM, BaseP, T>, m4, dA[1][1], m4_b, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
+        auto m4_b = operationEffWithAlloc<Sub>(allocator, dm, dp, effB, dB[1][0], dB[0][0]);
+        nextStep<Method, BaseN, BaseM, BaseP>(lowLevelRecursive<Method, T>, m4, dA[1][1], m4_b, dn, dm, dp, dp, effA, dp, steps - 1, allocator);
         allocator.dealloc(m4_b, dm*dp);
 
         auto m5 = allocator.alloc(dn * dp);
-        auto m5_a = operationEffWithAlloc<Add>(allocator, dn, dm, dm, dA[0][0], dA[0][1]);
-        nextStep<Method, BaseN, BaseM, BaseP>(lowLevelRecursive<Method, BaseN, BaseM, BaseP, T>, m5, m5_a, dB[1][1], dn, dm, dp, dp, dm, dp, steps - 1, allocator);
+        auto m5_a = operationEffWithAlloc<Add>(allocator, dn, dm, effA, dA[0][0], dA[0][1]);
+        nextStep<Method, BaseN, BaseM, BaseP>(lowLevelRecursive<Method, T>, m5, m5_a, dB[1][1], dn, dm, dp, dp, dm, effB, steps - 1, allocator);
         allocator.dealloc(m5_a, dn*dm);
 
         auto m6 = allocator.alloc(dn * dp);
-        auto m6_a = operationEffWithAlloc<Sub>(allocator, dn, dm, dm, dA[1][0], dA[0][0]);
-        auto m6_b = operationEffWithAlloc<Add>(allocator, dm, dp, dp, dB[0][0], dB[0][1]);
-        nextStep<Method, BaseN, BaseM, BaseP>(lowLevelRecursive<Method, BaseN, BaseM, BaseP, T>, m6, m6_a, m6_b, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
+        auto m6_a = operationEffWithAlloc<Sub>(allocator, dn, dm, effA, dA[1][0], dA[0][0]);
+        auto m6_b = operationEffWithAlloc<Add>(allocator, dm, dp, effB, dB[0][0], dB[0][1]);
+        nextStep<Method, BaseN, BaseM, BaseP>(lowLevelRecursive<Method, T>, m6, m6_a, m6_b, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
         allocator.dealloc(m6_b, dm*dp);
         allocator.dealloc(m6_a, dn*dm);
 
         auto m7 = allocator.alloc(dn * dp);
-        auto m7_a = operationEffWithAlloc<Sub>(allocator, dn, dm, dm, dA[0][1], dA[1][1]);
-        auto m7_b = operationEffWithAlloc<Add>(allocator, dm, dp, dp, dB[1][0], dB[1][1]);
-        nextStep<Method, BaseN, BaseM, BaseP>(lowLevelRecursive<Method, BaseN, BaseM, BaseP, T>, m7, m7_a, m7_b, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
+        auto m7_a = operationEffWithAlloc<Sub>(allocator, dn, dm, effA, dA[0][1], dA[1][1]);
+        auto m7_b = operationEffWithAlloc<Add>(allocator, dm, dp, effB, dB[1][0], dB[1][1]);
+        nextStep<Method, BaseN, BaseM, BaseP>(lowLevelRecursive<Method, T>, m7, m7_a, m7_b, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
         allocator.dealloc(m7_b, dm*dp);
         allocator.dealloc(m7_a, dn*dm);
 
@@ -542,23 +542,19 @@ namespace fmm::detail {
         allocator.dealloc(m3, dn*dp);
         allocator.dealloc(m2, dn*dp);
         allocator.dealloc(m1, dn*dp);
-        allocator.dealloc(dB[1][1], dm*dp);
-        allocator.dealloc(dB[1][0], dm*dp);
-        allocator.dealloc(dB[0][1], dm*dp);
-        allocator.dealloc(dB[0][0], dm*dp);
-        allocator.dealloc(dA[1][1], dn*dm);
-        allocator.dealloc(dA[1][0], dn*dm);
-        allocator.dealloc(dA[0][1], dn*dm);
-        allocator.dealloc(dA[0][0], dn*dm);
     }
 }
 
 
 // Parallel Low-Level <2,2,2:7> (Strassen)
 namespace fmm::detail {
-    template<int Method, int BaseN, int BaseM, int BaseP, typename T>
+    template<int Method, typename T>
     void lowLevelParallelRecursive(T* c, T* a, T* b, int n, int m, int p, int effC, int effA, int effB, int steps, StackAllocator<T>& allocator) {
         using namespace ArithmeticOperation;
+
+        constexpr int BaseN = 2;
+        constexpr int BaseM = 2;
+        constexpr int BaseP = 2;
 
         auto[dn, dm, dp] = divideSizes<BaseN, BaseM, BaseP>(n, m, p);
 
@@ -586,36 +582,36 @@ namespace fmm::detail {
 
         ThreadPool pool;
 
-        pool.addTask([=]() {
+        pool.addTask([=, dn=dn, dm=dm, dp=dp]() {
             operationEff<Add>(dn, dm, dm, effA, m1_a, dA[0][0], dA[1][1]);
             operationEff<Add>(dm, dp, dp, effB, m1_b, dB[0][0], dB[1][1]);
-            minSpaceRun<Method, BaseN, BaseM, BaseP>(m1, m1_a, m1_b, dn, dm, dp, dp, dm, dp, steps - 1);
+            minSpaceRun<Method, 2, 2, 2, 7>(minSpaceRecursive<Method, T>, m1, m1_a, m1_b, dn, dm, dp, dp, dm, dp, steps - 1);
         });
-        pool.addTask([=]() {
+        pool.addTask([=, dn = dn, dm = dm, dp = dp]() {
             operationEff<Add>(dn, dm, dm, effA, m2_a, dA[1][0], dA[1][1]);
-            minSpaceRun<Method, BaseN, BaseM, BaseP>(m2, m2_a, dB[0][0], dn, dm, dp, dp, dm, effB, steps - 1);
+            minSpaceRun<Method, 2, 2, 2, 7>(minSpaceRecursive<Method, T>, m2, m2_a, dB[0][0], dn, dm, dp, dp, dm, effB, steps - 1);
         });
-        pool.addTask([=]() {
+        pool.addTask([=, dn = dn, dm = dm, dp = dp]() {
             operationEff<Sub>(dm, dp, dp, effB, m3_b, dB[0][1], dB[1][1]);
-            minSpaceRun<Method, BaseN, BaseM, BaseP>(m3, dA[0][0], m3_b, dn, dm, dp, dp, effA, dp, steps - 1);
+            minSpaceRun<Method, 2, 2, 2, 7>(minSpaceRecursive<Method, T>, m3, dA[0][0], m3_b, dn, dm, dp, dp, effA, dp, steps - 1);
         });
-        pool.addTask([=]() {
+        pool.addTask([=, dn = dn, dm = dm, dp = dp]() {
             operationEff<Sub>(dm, dp, dp, effB, m4_b, dB[1][0], dB[0][0]);
-            minSpaceRun<Method, BaseN, BaseM, BaseP>(m4, dA[1][1], m4_b, dn, dm, dp, dp, effA, dp, steps - 1);
+            minSpaceRun<Method, 2, 2, 2, 7>(minSpaceRecursive<Method, T>, m4, dA[1][1], m4_b, dn, dm, dp, dp, effA, dp, steps - 1);
         });
-        pool.addTask([=]() {
+        pool.addTask([=, dn = dn, dm = dm, dp = dp]() {
             operationEff<Add>(dn, dm, dm, effA, m5_a, dA[0][0], dA[0][1]);
-            minSpaceRun<Method, BaseN, BaseM, BaseP>(m5, m5_a, dB[1][1], dn, dm, dp, dp, dm, effB, steps - 1);
+            minSpaceRun<Method, 2, 2, 2, 7>(minSpaceRecursive<Method, T>, m5, m5_a, dB[1][1], dn, dm, dp, dp, dm, effB, steps - 1);
         });
-        pool.addTask([=]() {
+        pool.addTask([=, dn = dn, dm = dm, dp = dp]() {
             operationEff<Sub>(dn, dm, dm, effA, m6_a, dA[1][0], dA[0][0]);
             operationEff<Add>(dm, dp, dp, effB, m6_b, dB[0][0], dB[0][1]);
-            minSpaceRun<Method, BaseN, BaseM, BaseP>(m6, m6_a, m6_b, dn, dm, dp, dp, dm, dp, steps - 1);
+            minSpaceRun<Method, 2, 2, 2, 7>(minSpaceRecursive<Method, T>, m6, m6_a, m6_b, dn, dm, dp, dp, dm, dp, steps - 1);
         });
-        pool.addTask([=]() {
+        pool.addTask([=, dn = dn, dm = dm, dp = dp]() {
             operationEff<Sub>(dn, dm, dm, effA, m7_a, dA[0][1], dA[1][1]);
             operationEff<Add>(dm, dp, dp, effB, m7_b, dB[1][0], dB[1][1]);
-            minSpaceRun<Method, BaseN, BaseM, BaseP>(m7, m7_a, m7_b, dn, dm, dp, dp, dm, dp, steps - 1);
+            minSpaceRun<Method, 2, 2, 2, 7>(minSpaceRecursive<Method, T>, m7, m7_a, m7_b, dn, dm, dp, dp, dm, dp, steps - 1);
         });
 
         pool.completeTasksAndStop();
@@ -649,17 +645,17 @@ namespace fmm::detail {
 namespace fmm {
     template<int Method, typename M1, typename M2>
     auto minSpaceStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
-        return detail::runAlgorithm<getNewWithAlgorithm<Method, Algorithm::MinSpace>, 2, 2, 2>(a, b, steps);
+        return detail::runAlgorithm<getNewWithAlgorithm<Method, Algorithm::MinSpace>, 2, 2, 2, 7>(detail::minSpaceRecursive<Method, typename M1::ValueType>, a, b, steps);
     }
 
     template<int Method, typename M1, typename M2>
     auto lowLevelStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
-        return detail::runAlgorithm<getNewWithAlgorithm<Method, Algorithm::LowLevel>, 2, 2, 2>(a, b, steps);
+        return detail::runAlgorithm<getNewWithAlgorithm<Method, Algorithm::LowLevel>, 2, 2, 2, 7>(detail::lowLevelRecursive<Method, typename M1::ValueType>, a, b, steps);
     }
 
     template<int Method, typename M1, typename M2>
     auto lowLevelParallelStrassen(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
-        return detail::runAlgorithm<getNewWithAlgorithm<Method, Algorithm::LowLevelParallel>, 2, 2, 2>(a, b, steps);
+        return detail::runAlgorithm<getNewWithAlgorithm<Method, Algorithm::LowLevelParallel>, 2, 2, 2, 7>(detail::lowLevelParallelRecursive<Method, typename M1::ValueType>, a, b, steps);
     }
 }
 
