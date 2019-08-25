@@ -69,7 +69,7 @@ template<int n, int m, int p, int effC, int effA, int effB, typename T> void blo
 
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < p; ++j) {
-            c.at(i, j) = T{};
+            c[j + i*effC] = T{};
         }
     }
 
