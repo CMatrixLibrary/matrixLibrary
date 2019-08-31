@@ -255,9 +255,9 @@ int main() {
 
     StaticHeapMatrix<T, N, N> a;
     StaticHeapMatrix<T, N, N> b;
-    fmm::strassenLowLevelStatic<fmm::DynamicPeeling | fmm::Effective | fmm::Naive, N, N, N, N, N, N, Steps>(a, b);
-    fmm::strassenMinSpaceStatic<fmm::DynamicPeeling | fmm::Effective | fmm::Naive, N, N, N, N, N, N, Steps>(a, b);
-    fmm::strassenParallelLowLevelStatic<fmm::DynamicPeeling | fmm::Effective | fmm::Naive, N, N, N, N, N, N, Steps>(a, b);
+    fmm::strassenLowLevelStatic<Steps>(a, b);
+    fmm::strassenMinSpaceStatic<Steps>(a, b);
+    fmm::strassenParallelLowLevelStatic<Steps>(a, b);
 
     strassenBenchmark<float>();
     std::cin.get();

@@ -42,16 +42,16 @@ namespace fmm {
         BaseMulTypeMASK         = 0xff'00
     };
     enum ResizeStrategy {
+        ResizeStrategyAutomatic = 0x00'00'00,
         DynamicPeeling          = 0x01'00'00,
         StaticPadding           = 0x02'00'00,
-        ResizeStrategyMASK      = 0xff'00'00,
-        ResizeStrategyAutomatic = DynamicPeeling
+        ResizeStrategyMASK      = 0xff'00'00
     };
     enum BaseMulSize {
+        BaseMulSizeAutomatic    = 0x00'00'00'00,   
         Normal                  = 0x01'00'00'00,
         Effective               = 0x02'00'00'00,
-        BaseMulSizeMASK         = 0xff'00'00'00,
-        BaseMulSizeAutomatic    = Effective
+        BaseMulSizeMASK         = 0xff'00'00'00
     };
     
     template<int Method, Algorithm alg> 
@@ -59,6 +59,42 @@ namespace fmm {
 
     template<int Method, int Flag> constexpr bool contains = (Method & Flag) == Flag;
 
+    template<int Method, int Mask> constexpr bool hasAttribute = (Method & Mask) != 0;
+
+    template<int Method>
+    constexpr int methodWithFilledAlgorithm = Method | (hasAttribute<Method, AlgorithmMASK> ? 0 : MinSpace);
+
+    template<int Method>
+    constexpr int methodWithFilledResizeStrategy = Method | (hasAttribute<Method, ResizeStrategyMASK> ? 0 : DynamicPeeling);
+
+    template<int Method>
+    constexpr int methodWithFilledBaseMulSize = Method | (hasAttribute<Method, BaseMulSizeMASK> ? 0 : Effective);
+
+    template<int Method, typename T>
+    constexpr int methodWithFilledBaseMulType = Method | (
+        hasAttribute<Method, BaseMulTypeMASK> ? 
+            0 
+        : blas::IsAvailable && blas::IsCompatible<T> ? 
+            Blas
+        : avx::IsAvailable && avx::IsCompatible<T> ? 
+            contains<Method, LowLevelParallel> ? 
+                Avx
+            : 
+                ParallelAvx
+        : contains<Method, LowLevelParallel> ?
+            Naive
+        : 
+            ParallelBlock
+        );
+
+    template<int Method, typename T>
+    constexpr int methodWithAllFilledValues = methodWithFilledBaseMulType<
+        methodWithFilledAlgorithm<
+            methodWithFilledResizeStrategy<
+                methodWithFilledBaseMulSize<Method>
+            >
+        >
+    , T>;
 }
 
 // utility for unknown sizes at compile-time
@@ -385,29 +421,24 @@ namespace fmm::detail {
 
     template<int Method, int BaseN, int BaseM, int BaseP, int MulCount, typename FunctionImpl, typename M1, typename M2>
     auto runAlgorithm(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
+        constexpr auto FilledMethod = methodWithAllFilledValues<Method, typename M1::ValueType>;
+        
         auto c = a.createNew(a.rowCount(), b.columnCount());
 
-        if constexpr (contains<Method, Algorithm::LowLevel>) {
-            lowLevelRun<Method, BaseN, BaseM, BaseP, MulCount, FunctionImpl>(
+        if constexpr (contains<FilledMethod, Algorithm::LowLevel>) {
+            lowLevelRun<FilledMethod, BaseN, BaseM, BaseP, MulCount, FunctionImpl>(
                 c.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(),
                 c.effectiveColumnCount(), a.effectiveColumnCount(), b.effectiveColumnCount(), steps
             );
         }
-        else if constexpr (contains<Method, Algorithm::MinSpace>) {
-            minSpaceRun<Method, BaseN, BaseM, BaseP, MulCount, FunctionImpl>(
+        else if constexpr (contains<FilledMethod, Algorithm::MinSpace>) {
+            minSpaceRun<FilledMethod, BaseN, BaseM, BaseP, MulCount, FunctionImpl>(
                 c.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(),
                 c.effectiveColumnCount(), a.effectiveColumnCount(), b.effectiveColumnCount(), steps
             );
         }
-        else if constexpr (contains<Method, Algorithm::LowLevelParallel>) {
-            lowLevelParallelRun<Method, BaseN, BaseM, BaseP, MulCount, FunctionImpl>(
-                c.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(),
-                c.effectiveColumnCount(), a.effectiveColumnCount(), b.effectiveColumnCount(), steps
-            );
-        }
-        else { // Automatic
-            // Here the algorithm should be chosen based on type and size of matrices
-            lowLevelParallelRun<Method, BaseN, BaseM, BaseP, MulCount, FunctionImpl>(
+        else if constexpr (contains<FilledMethod, Algorithm::LowLevelParallel>) {
+            lowLevelParallelRun<FilledMethod, BaseN, BaseM, BaseP, MulCount, FunctionImpl>(
                 c.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(),
                 c.effectiveColumnCount(), a.effectiveColumnCount(), b.effectiveColumnCount(), steps
             );
@@ -606,33 +637,38 @@ namespace fmm::detail {
         }
     }
 
-    template<int Method, int BaseN, int BaseM, int BaseP, int MulCount, int n, int m, int p, int effC, int effA, int effB, int steps, typename FunctionImpl, typename M1, typename M2>
-    auto runAlgorithm(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
-        auto c = a.template createNew<n, p>();
+    template<int Method, int BaseN, int BaseM, int BaseP, int MulCount, int steps, typename FunctionImpl, typename M1, typename M2>
+    auto runAlgorithmStatic(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
+        constexpr auto FilledMethod = methodWithAllFilledValues<Method, typename M1::ValueType>;
 
-        if constexpr (contains<Method, Algorithm::LowLevel>) {
-            lowLevelRun<Method, BaseN, BaseM, BaseP, MulCount, n, m, p, effC, effA, effB, steps, FunctionImpl>(
-                c.data(), a.data(), b.data()
-            );
+        if constexpr (M1::HasConstexprSizes() && M2::HasConstexprSizes()) {
+            constexpr auto n = M1::CRow();
+            constexpr auto m = M1::CCol();
+            constexpr auto p = M2::CCol();
+            
+            auto c = a.template createNew<n, p>();
+            
+            constexpr auto effA = M1::CEffCol();
+            constexpr auto effB = M2::CEffCol();
+            constexpr auto effC = c.CEffCol();
+            
+            if constexpr (contains<FilledMethod, Algorithm::LowLevel>) {
+                lowLevelRun<FilledMethod, BaseN, BaseM, BaseP, MulCount, n, m, p, effC, effA, effB, steps, FunctionImpl>(
+                    c.data(), a.data(), b.data()
+                );
+            } else if constexpr (contains<FilledMethod, Algorithm::MinSpace>) {
+                minSpaceRun<FilledMethod, BaseN, BaseM, BaseP, MulCount, n, m, p, effC, effA, effB, steps, FunctionImpl>(
+                    c.data(), a.data(), b.data()
+                );
+            } else if constexpr (contains<FilledMethod, Algorithm::LowLevelParallel>) {
+                lowLevelParallelRun<FilledMethod, BaseN, BaseM, BaseP, MulCount, n, m, p, effC, effA, effB, steps, FunctionImpl>(
+                    c.data(), a.data(), b.data()
+                );
+            }
+            return c;
+        } else {
+            static_assert(always_false_v<M1>, "Cannot use static fmm algorithm with matrices of unknown sizes");
         }
-        else if constexpr (contains<Method, Algorithm::MinSpace>) {
-            minSpaceRun<Method, BaseN, BaseM, BaseP, MulCount, n, m, p, effC, effA, effB, steps, FunctionImpl>(
-                c.data(), a.data(), b.data()
-            );
-        }
-        else if constexpr (contains<Method, Algorithm::LowLevelParallel>) {
-            lowLevelParallelRun<Method, BaseN, BaseM, BaseP, MulCount, n, m, p, effC, effA, effB, steps, FunctionImpl>(
-                c.data(), a.data(), b.data()
-            );
-        }
-        else { // Automatic
-            // Here the algorithm should be chosen based on type and size of matrices
-            lowLevelParallelRun<Method, BaseN, BaseM, BaseP, MulCount, n, m, p, effC, effA, effB, steps, FunctionImpl>(
-                c.data(), a.data(), b.data()
-            );
-        }
-        
-        return c;
     }
 }
 

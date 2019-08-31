@@ -484,34 +484,34 @@ namespace fmm::detail {
 
 
 namespace fmm {
-    template<int Method, typename M1, typename M2>
+    template<int Method=0, typename M1, typename M2>
     auto strassenMinSpace(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
         return detail::runAlgorithm<getNewWithAlgorithm<Method, Algorithm::MinSpace>, 2, 2, 2, 7, detail::StrassenMinSpaceRecursive>(a, b, steps);
     }
 
-    template<int Method, typename M1, typename M2>
+    template<int Method=0, typename M1, typename M2>
     auto strassenLowLevel(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
         return detail::runAlgorithm<getNewWithAlgorithm<Method, Algorithm::LowLevel>, 2, 2, 2, 7, detail::StrassenLowLevelRecursive>(a, b, steps);
     }
 
-    template<int Method, typename M1, typename M2>
+    template<int Method=0, typename M1, typename M2>
     auto strassenParallelLowLevel(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
         return detail::runAlgorithm<getNewWithAlgorithm<Method, Algorithm::LowLevelParallel>, 2, 2, 2, 7, detail::StrassenLowLevelParallelRecursive>(a, b, steps);
     }
 
-    template<int Method, int n, int m, int p, int effC, int effA, int effB, int steps, typename M1, typename M2>
+    template<int steps, int Method=0, typename M1, typename M2>
     auto strassenMinSpaceStatic(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
-        return detail::runAlgorithm<getNewWithAlgorithm<Method, Algorithm::MinSpace>, 2, 2, 2, 7, n, m, p, effC, effA, effB, steps, detail::StrassenMinSpaceRecursiveStatic>(a, b);
+        return detail::runAlgorithmStatic<getNewWithAlgorithm<Method, Algorithm::MinSpace>, 2, 2, 2, 7, steps, detail::StrassenMinSpaceRecursiveStatic>(a, b);
     }
 
-    template<int Method, int n, int m, int p, int effC, int effA, int effB, int steps, typename M1, typename M2>
+    template<int steps, int Method=0, typename M1, typename M2>
     auto strassenLowLevelStatic(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
-        return detail::runAlgorithm<getNewWithAlgorithm<Method, Algorithm::LowLevel>, 2, 2, 2, 7, n, m, p, effC, effA, effB, steps, detail::StrassenLowLevelRecursiveStatic>(a, b);
+        return detail::runAlgorithmStatic<getNewWithAlgorithm<Method, Algorithm::LowLevel>, 2, 2, 2, 7, steps, detail::StrassenLowLevelRecursiveStatic>(a, b);
     }
 
-    template<int Method, int n, int m, int p, int effC, int effA, int effB, int steps, typename M1, typename M2>
+    template<int steps, int Method=0, typename M1, typename M2>
     auto strassenParallelLowLevelStatic(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
-        return detail::runAlgorithm<getNewWithAlgorithm<Method, Algorithm::LowLevelParallel>, 2, 2, 2, 7, n, m, p, effC, effA, effB, steps, detail::StrassenLowLevelParallelRecursiveStatic>(a, b);
+        return detail::runAlgorithmStatic<getNewWithAlgorithm<Method, Algorithm::LowLevelParallel>, 2, 2, 2, 7, steps, detail::StrassenLowLevelParallelRecursiveStatic>(a, b);
     }
 }
 
