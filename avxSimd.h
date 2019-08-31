@@ -12,6 +12,8 @@
 #define avx_StaticAssertMessage "avx2 is not available. Maybe you're missing a compilation flag?"
 
 namespace avx {
+    template<typename T> constexpr bool IsCompatible = std::is_integral_v<T> || std::numeric_limits<T>::is_iec559;
+
 #ifdef __AVX2__
     #define AVX2_IS_AVAILABLE
     #if (defined(COMPILER_MSVC) || defined(COMPILER_INTEL)) && !defined(__FMA__)

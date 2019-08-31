@@ -9,6 +9,10 @@
 #define Blas_StaticAssertMessage "blas is not available. Maybe you're missing \"#define USE_BLAS\"?"
 
 namespace blas {
+    template<typename T> constexpr bool IsCompatible =
+        std::is_same_v<T, float> || std::is_same_v<T, double> ||
+        std::is_same_v<T, std::complex<float>> || std::is_same_v<T, std::complex<double>>;
+
 #ifdef USE_BLAS
     #define BLAS_IS_AVAILABLE
     constexpr bool IsAvailable = true;
@@ -80,7 +84,7 @@ namespace blas {
                 return result;
             }
         } else {
-            static_assert(blas::IsAvailable && always_false_v<M1>, "blas is not available");
+            static_assert(always_false_v<M1>, "blas is not available");
         }
     }
 }

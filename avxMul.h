@@ -673,7 +673,7 @@ namespace avx {
                 return result;
             }
         } else {
-            static_assert(avx::IsAvailable && always_false_v<M1>, avx_StaticAssertMessage);
+            static_assert(always_false_v<M1>, avx_StaticAssertMessage);
         }
     }
 
@@ -694,7 +694,7 @@ namespace avx {
                 return result;
             }
         } else {
-            static_assert(avx::IsAvailable && always_false_v<M1>, avx_StaticAssertMessage);
+            static_assert(always_false_v<M1>, avx_StaticAssertMessage);
         }
     }
 }
