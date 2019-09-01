@@ -522,6 +522,28 @@ namespace fmm::detail {
         }
     }
 
+    // generic arithmetic operations
+    template<ArithmeticOperation::OpType... ops, typename TCoeff, typename T, typename... Ts> void operationEffWithCoeff(int n, int m, int effFirst, int effRest, TCoeff coeff, T&& arg, Ts&&... args) {
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < m; ++j) {
+                calculate<ops...>(arg[j + i * effFirst], coeff * args[j + i * effRest]...);
+            }
+        }
+    }
+    template<ArithmeticOperation::OpType op, typename T1, typename T2> void operationOnFirstArg(T1&& arg1, T2&& arg2) {
+        calculate<op>(arg2, arg1);
+    }
+    template<ArithmeticOperation::OpType op, ArithmeticOperation::OpType... ops, typename T, typename TArg, typename... Ts> void operationOnFirstArg(T&& first, TArg&& arg, Ts&&... args) {
+        calculate<op>(arg, first);
+        operationOnFirstArg<ops...>(first, args...);
+    }
+    template<ArithmeticOperation::OpType... ops, typename T, typename... Ts> void operationsOnFirstArg(int n, int m, int effFirst, int effRest, T&& arg, Ts&&... args) {
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < m; ++j) {
+                operationOnFirstArg<ops...>(arg[j + i * effFirst], args[j + i * effRest]...);
+            }
+        }
+    }
 
     template<int Method, int BaseN, int BaseM, int BaseP, int n, int m, int p, int effC, int effA, int effB, int steps, typename FunctionImpl, typename T> 
     struct NextStepImpl {
