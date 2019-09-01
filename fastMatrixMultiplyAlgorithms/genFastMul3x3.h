@@ -1,81 +1,137 @@
 // this file was generated using fastMatrixMultiplyAlgorithms/generator
-/*#pragma once
-#include <array>
-#include "../FullMatrix.h"
-#include "../FullMatrixView.h"
-#include "../FullMatrixConstView.h"
-#include "../naiveOperations.h"
-#include "../operators.h"
-#include "../utilityDetails.h"
+#ifndef GEN_FMM_3_3_3_23_H
+#define GEN_FMM_3_3_3_23_H
+#include "../fmmUtility.h"
 
-namespace details {
-    template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB>
-    FullMatrix<T> genFastMul3x3(const MatrixA<T>& A, const MatrixB<T>& B, int steps) {
-        if (steps <= 0) {
-            return naiveMul(A, B);
+namespace fmm::detail {
+    struct GenFastMul3x3Recursive {
+        template<int Method, typename T>
+        static void Run(T* c, T* a, T* b, int n, int m, int p, int effC, int effA, int effB, int steps, StackAllocator<T>& allocator) {
+            using namespace ArithmeticOperation;
+
+            constexpr int BaseN = 3;
+            constexpr int BaseM = 3;
+            constexpr int BaseP = 3;
+
+            auto[dn, dm, dp] = divideSizes<BaseN, BaseM, BaseP>(n, m, p);
+
+            auto dA = divideView<BaseN, BaseM>(a, n, m, effA);
+            auto dB = divideView<BaseM, BaseP>(b, m, p, effB);
+            auto dC = divideView<BaseN, BaseP>(c, n, p, effC);
+
+            auto tempA = allocator.alloc(dn * dm);
+            auto tempB = allocator.alloc(dm * dp);
+            auto tempC = allocator.alloc(dn * dp);
+
+            operationEff<Assign, Add, Add, Add, Sub, Sub, Sub, Sub>(dn, dm, dm, effA, tempA, dA[0][0], dA[0][1], dA[0][2], dA[1][0], dA[1][1], dA[2][1], dA[2][2]);
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, tempA, dB[1][1], dn, dm, dp, dp, dm, effB, steps - 1, allocator);
+            operationsOnFirstArg<Assign>(dn, dp, dp, effC, tempC, dC[0][1]);
+
+            operationEff<Assign, Add, Sub>(dn, dm, dm, effA, tempA, dA[0][0], dA[1][0]);
+            operationEff<Assign, Sub, Add>(dn, dm, dm, effB, tempB, dB[1][0], dB[1][1]);
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, tempA, tempB, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
+            operationsOnFirstArg<Assign, Assign>(dn, dp, dp, effC, tempC, dC[1][0], dC[1][1]);
+
+            operationEff<Assign, Sub, Add, Add, Sub, Sub, Sub, Add>(dn, dm, dm, effB, tempB, dB[0][0], dB[0][1], dB[1][0], dB[1][1], dB[1][2], dB[2][0], dB[2][2]);
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, dA[1][1], tempB, dn, dm, dp, dp, effA, dp, steps - 1, allocator);
+            operationsOnFirstArg<AddAssign>(dn, dp, dp, effC, tempC, dC[1][0]);
+
+            operationEff<Assign, Sub, Add, Add>(dn, dm, dm, effA, tempA, dA[0][0], dA[1][0], dA[1][1]);
+            operationEff<Assign, Add, Sub, Add>(dn, dm, dm, effB, tempB, dB[0][0], dB[0][1], dB[1][1]);
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, tempA, tempB, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
+            operationsOnFirstArg<AddAssign, AddAssign, AddAssign>(dn, dp, dp, effC, tempC, dC[0][1], dC[1][0], dC[1][1]);
+
+            operationEff<Assign, Add, Add>(dn, dm, dm, effA, tempA, dA[1][0], dA[1][1]);
+            operationEff<Assign, Sub, Add>(dn, dm, dm, effB, tempB, dB[0][0], dB[0][1]);
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, tempA, tempB, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
+            operationsOnFirstArg<AddAssign, AddAssign>(dn, dp, dp, effC, tempC, dC[0][1], dC[1][1]);
+
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, dA[0][0], dB[0][0], dn, dm, dp, dp, effA, effB, steps - 1, allocator);
+            operationsOnFirstArg<Assign, AddAssign, Assign, AddAssign, AddAssign, Assign, Assign>(dn, dp, dp, effC, tempC, dC[0][0], dC[0][1], dC[0][2], dC[1][0], dC[1][1], dC[2][0], dC[2][2]);
+
+            operationEff<Assign, Sub, Add, Add>(dn, dm, dm, effA, tempA, dA[0][0], dA[2][0], dA[2][1]);
+            operationEff<Assign, Add, Sub, Add>(dn, dm, dm, effB, tempB, dB[0][0], dB[0][2], dB[1][2]);
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, tempA, tempB, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
+            operationsOnFirstArg<AddAssign, AddAssign, AddAssign>(dn, dp, dp, effC, tempC, dC[0][2], dC[2][0], dC[2][2]);
+
+            operationEff<Assign, Sub, Add>(dn, dm, dm, effA, tempA, dA[0][0], dA[2][0]);
+            operationEff<Assign, Add, Sub>(dn, dm, dm, effB, tempB, dB[0][2], dB[1][2]);
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, tempA, tempB, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
+            operationsOnFirstArg<AddAssign, AddAssign>(dn, dp, dp, effC, tempC, dC[2][0], dC[2][2]);
+
+            operationEff<Assign, Add, Add>(dn, dm, dm, effA, tempA, dA[2][0], dA[2][1]);
+            operationEff<Assign, Sub, Add>(dn, dm, dm, effB, tempB, dB[0][0], dB[0][2]);
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, tempA, tempB, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
+            operationsOnFirstArg<AddAssign, AddAssign>(dn, dp, dp, effC, tempC, dC[0][2], dC[2][2]);
+
+            operationEff<Assign, Add, Add, Add, Sub, Sub, Sub, Sub>(dn, dm, dm, effA, tempA, dA[0][0], dA[0][1], dA[0][2], dA[1][1], dA[1][2], dA[2][0], dA[2][1]);
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, tempA, dB[1][2], dn, dm, dp, dp, dm, effB, steps - 1, allocator);
+            operationsOnFirstArg<AddAssign>(dn, dp, dp, effC, tempC, dC[0][2]);
+
+            operationEff<Assign, Sub, Add, Add, Sub, Sub, Sub, Add>(dn, dm, dm, effB, tempB, dB[0][0], dB[0][2], dB[1][0], dB[1][1], dB[1][2], dB[2][0], dB[2][1]);
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, dA[2][1], tempB, dn, dm, dp, dp, effA, dp, steps - 1, allocator);
+            operationsOnFirstArg<AddAssign>(dn, dp, dp, effC, tempC, dC[2][0]);
+
+            operationEff<Assign, Sub, Add, Add>(dn, dm, dm, effA, tempA, dA[0][2], dA[2][1], dA[2][2]);
+            operationEff<Assign, Add, Add, Sub>(dn, dm, dm, effB, tempB, dB[1][1], dB[2][0], dB[2][1]);
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, tempA, tempB, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
+            operationsOnFirstArg<AddAssign, AddAssign, Assign>(dn, dp, dp, effC, tempC, dC[0][1], dC[2][0], dC[2][1]);
+
+            operationEff<Assign, Add, Sub>(dn, dm, dm, effA, tempA, dA[0][2], dA[2][2]);
+            operationEff<Assign, Add, Sub>(dn, dm, dm, effB, tempB, dB[1][1], dB[2][1]);
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, tempA, tempB, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
+            operationsOnFirstArg<AddAssign, AddAssign>(dn, dp, dp, effC, tempC, dC[2][0], dC[2][1]);
+
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, dA[0][2], dB[2][0], dn, dm, dp, dp, effA, effB, steps - 1, allocator);
+            operationsOnFirstArg<AddAssign, AddAssign, AddAssign, AddAssign, Assign, AddAssign, AddAssign>(dn, dp, dp, effC, tempC, dC[0][0], dC[0][1], dC[0][2], dC[1][0], dC[1][2], dC[2][0], dC[2][1]);
+
+            operationEff<Assign, Add, Add>(dn, dm, dm, effA, tempA, dA[2][1], dA[2][2]);
+            operationEff<Assign, Sub, Add>(dn, dm, dm, effB, tempB, dB[2][0], dB[2][1]);
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, tempA, tempB, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
+            operationsOnFirstArg<AddAssign, AddAssign>(dn, dp, dp, effC, tempC, dC[0][1], dC[2][1]);
+
+            operationEff<Assign, Sub, Add, Add>(dn, dm, dm, effA, tempA, dA[0][2], dA[1][1], dA[1][2]);
+            operationEff<Assign, Add, Add, Sub>(dn, dm, dm, effB, tempB, dB[1][2], dB[2][0], dB[2][2]);
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, tempA, tempB, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
+            operationsOnFirstArg<AddAssign, AddAssign, AddAssign>(dn, dp, dp, effC, tempC, dC[0][2], dC[1][0], dC[1][2]);
+
+            operationEff<Assign, Add, Sub>(dn, dm, dm, effA, tempA, dA[0][2], dA[1][2]);
+            operationEff<Assign, Add, Sub>(dn, dm, dm, effB, tempB, dB[1][2], dB[2][2]);
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, tempA, tempB, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
+            operationsOnFirstArg<AddAssign, AddAssign>(dn, dp, dp, effC, tempC, dC[1][0], dC[1][2]);
+
+            operationEff<Assign, Add, Add>(dn, dm, dm, effA, tempA, dA[1][1], dA[1][2]);
+            operationEff<Assign, Sub, Add>(dn, dm, dm, effB, tempB, dB[2][0], dB[2][2]);
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, tempA, tempB, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
+            operationsOnFirstArg<AddAssign, AddAssign>(dn, dp, dp, effC, tempC, dC[0][2], dC[1][2]);
+
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, dA[0][1], dB[1][0], dn, dm, dp, dp, effA, effB, steps - 1, allocator);
+            operationsOnFirstArg<AddAssign>(dn, dp, dp, effC, tempC, dC[0][0]);
+
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, dA[1][2], dB[2][1], dn, dm, dp, dp, effA, effB, steps - 1, allocator);
+            operationsOnFirstArg<AddAssign>(dn, dp, dp, effC, tempC, dC[1][1]);
+
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, dA[1][0], dB[0][2], dn, dm, dp, dp, effA, effB, steps - 1, allocator);
+            operationsOnFirstArg<AddAssign>(dn, dp, dp, effC, tempC, dC[1][2]);
+
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, dA[2][0], dB[0][1], dn, dm, dp, dp, effA, effB, steps - 1, allocator);
+            operationsOnFirstArg<AddAssign>(dn, dp, dp, effC, tempC, dC[2][1]);
+
+            nextStep<Method, BaseN, BaseM, BaseP, GenFastMul3x3Recursive>(tempC, dA[2][2], dB[2][2], dn, dm, dp, dp, effA, effB, steps - 1, allocator);
+            operationsOnFirstArg<AddAssign>(dn, dp, dp, effC, tempC, dC[2][2]);
+
+            allocator.dealloc(tempC, dn*dp);
+            allocator.dealloc(tempB, dm*dp);
+            allocator.dealloc(tempA, dn*dm);
         }
+    };
+}
 
-        auto a = matrixDivide<3, 3>(A);
-        auto b = matrixDivide<3, 3>(B);
-
-        std::array<FullMatrix<T>, 23> m;
-        auto a_11_15 = a[2][1] + a[2][2];
-        auto a_8_10 = a[2][0] - a[0][0];
-        auto a_0_1 = a[0][0] + a[0][1];
-        auto a_2_19 = a[0][2] - a_0_1;
-        auto a_5_20 = -a[2][1] - a_2_19;
-        auto a_7_16 = a[1][1] + a[1][2];
-        auto a_4_21 = -a[1][1] - a_5_20;
-        auto a_9_7 = a[1][0] + a[1][1];
-        auto b_12_17 = b[1][2] - b[2][2];
-        auto b_2_7 = -b[0][0] - b[2][0];
-        auto b_4_19 = b[1][0] - b_2_7;
-        auto b_0_16 = b[1][1] - b[2][1];
-        auto b_6_20 = -b[1][2] - b_4_19;
-        auto b_5_22 = -b[1][1] - b_6_20;
-        m[0] = genFastMul3x3(-a[1][0] - a[2][2] - a_4_21, b[1][1], steps - 1);
-        m[1] = genFastMul3x3(a[0][0] - a[1][0], -b[1][0] + b[1][1], steps - 1);
-        m[2] = genFastMul3x3(a[1][1], b[0][1] + b[2][2] - b_5_22, steps - 1);
-        m[3] = genFastMul3x3(-a[0][0] - a_9_7, b[0][0] - b[0][1] + b[1][1], steps - 1);
-        m[4] = genFastMul3x3(a_9_7, -b[0][0] + b[0][1], steps - 1);
-        m[5] = genFastMul3x3(a[0][0], b[0][0], steps - 1);
-        m[6] = genFastMul3x3(a[2][1] - a_8_10, b[0][0] - b[0][2] + b[1][2], steps - 1);
-        m[7] = genFastMul3x3(a_8_10, b[0][2] - b[1][2], steps - 1);
-        m[8] = genFastMul3x3(a[2][0] + a[2][1], -b[0][0] + b[0][2], steps - 1);
-        m[9] = genFastMul3x3(-a[1][2] - a[2][0] - a_4_21, b[1][2], steps - 1);
-        m[10] = genFastMul3x3(a[2][1], b[0][2] + b[2][1] - b_5_22, steps - 1);
-        m[11] = genFastMul3x3(-a[0][2] - a_11_15, b[2][0] - b_0_16, steps - 1);
-        m[12] = genFastMul3x3(a[0][2] - a[2][2], b_0_16, steps - 1);
-        m[13] = genFastMul3x3(a[0][2], b[2][0], steps - 1);
-        m[14] = genFastMul3x3(a_11_15, -b[2][0] + b[2][1], steps - 1);
-        m[15] = genFastMul3x3(-a[0][2] - a_7_16, b[2][0] - b_12_17, steps - 1);
-        m[16] = genFastMul3x3(a[0][2] - a[1][2], b_12_17, steps - 1);
-        m[17] = genFastMul3x3(a_7_16, -b[2][0] + b[2][2], steps - 1);
-        m[18] = genFastMul3x3(a[0][1], b[1][0], steps - 1);
-        m[19] = genFastMul3x3(a[1][2], b[2][1], steps - 1);
-        m[20] = genFastMul3x3(a[1][0], b[0][2], steps - 1);
-        m[21] = genFastMul3x3(a[2][0], b[0][1], steps - 1);
-        m[22] = genFastMul3x3(a[2][2], b[2][2], steps - 1);
-
-        FullMatrix<T> C(A.rowCount(), B.columnCount());
-        auto c = matrixDivide<3, 3>(C);
-
-        c[0][0].copy(m[5] + m[13] + m[18]);
-        c[0][1].copy(m[0] + m[3] + m[4] + m[5] + m[11] + m[13] + m[14]);
-        c[0][2].copy(m[5] + m[6] + m[8] + m[9] + m[13] + m[15] + m[17]);
-        c[1][0].copy(m[1] + m[2] + m[3] + m[5] + m[13] + m[15] + m[16]);
-        c[1][1].copy(m[1] + m[2] + m[3] + m[5] + m[13] + m[15] + m[16]);
-        c[1][2].copy(m[13] + m[15] + m[16] + m[17] + m[20]);
-        c[2][0].copy(m[5] + m[6] + m[7] + m[10] + m[11] + m[12] + m[13]);
-        c[2][1].copy(m[11] + m[12] + m[13] + m[14] + m[21]);
-        c[2][2].copy(m[5] + m[6] + m[7] + m[8] + m[22]);
-
-        return C;
+namespace fmm {
+    template<int Method = 0, typename M1, typename M2>
+    auto genFastMul3x3MinSpace(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
+        return detail::runAlgorithm<getNewWithAlgorithm<Method, Algorithm::MinSpace>, 3, 3, 3, 23, detail::GenFastMul3x3Recursive>(a, b, steps);
     }
 }
 
-template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB>
-FullMatrix<T> genFastMul3x3(const MatrixA<T>& A, const MatrixB<T>& B) {
-    return details::fastMul<3, 3, 3>(A, B, 50, details::genFastMul3x3<T, MatrixA, MatrixB>);
-}
-*/
+#endif
