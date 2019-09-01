@@ -38,13 +38,11 @@ namespace fmm::detail {
 
             operationEff<Sub>(dm, dp, dp, effB, tempB, dB[1][0], dB[0][0]);
             nextStep<Method, BaseN, BaseM, BaseP, StrassenMinSpaceRecursive>(tempC, dA[1][1], tempB, dn, dm, dp, dp, effA, dp, steps - 1, allocator);
-            operationEff<AddAssign>(dn, dp, effC, dp, dC[0][0], tempC);
-            operationEff<AddAssign>(dn, dp, effC, dp, dC[1][0], tempC);
+            operationsOnFirstArg<AddAssign, AddAssign>(dn, dp, dp, effC, tempC, dC[0][0], dC[1][0]);
 
             operationEff<Add>(dn, dm, dm, effA, tempA, dA[0][0], dA[0][1]);
             nextStep<Method, BaseN, BaseM, BaseP, StrassenMinSpaceRecursive>(tempC, tempA, dB[1][1], dn, dm, dp, dp, dm, effB, steps - 1, allocator);
-            operationEff<SubAssign>(dn, dp, effC, dp, dC[0][0], tempC);
-            operationEff<AddAssign>(dn, dp, effC, dp, dC[0][1], tempC);
+            operationsOnFirstArg<SubAssign, AddAssign>(dn, dp, dp, effC, tempC, dC[0][0], dC[0][1]);
 
             operationEff<Sub>(dn, dm, dm, effA, tempA, dA[1][0], dA[0][0]);
             operationEff<Add>(dm, dp, dp, effB, tempB, dB[0][0], dB[0][1]);

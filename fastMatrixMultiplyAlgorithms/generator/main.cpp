@@ -275,17 +275,96 @@ std::pair<std::vector<MatrixValue>, std::vector<std::vector<int>>> createMatrixI
 
     return std::pair(matrixValues, matrixIndexes);
 }
-void printRecursiveCalls(std::ofstream& out, const Input& input, const std::string& algorithmName) {
-    out << "        std::array<FullMatrix<T>, " << input.mulCount << "> m;\n";
-    auto[aMatrixValues, aMatrixIndexes] = createMatrixIndexes(out, "a", input.a);
-    auto[bMatrixValues, bMatrixIndexes] = createMatrixIndexes(out, "b", input.b);
+
+std::pair<std::vector<std::pair<std::string, std::string>>, int> 
+getOperationEffValues(std::string matrixName, int n, int m, int mulIndex, const Matrix<double>& matrix) {
+    std::vector<std::pair<std::string, std::string>> result;
+    int coeff = 0;
+    for (int row = 0; row < n; ++row) {
+        for (int col = 0; col < m; ++col) {
+            auto value = matrix.at(col, row, mulIndex);
+            if (value != 0 && value != 1 && value != -1) {
+                coeff = value;
+            }
+            if (value > 0) {
+                result.emplace_back("Add", matrixName + "[" + std::to_string(row) + "][" + std::to_string(col) + "]");
+            } else if (value < 0) {
+                result.emplace_back("Sub", matrixName + "[" + std::to_string(row) + "][" + std::to_string(col) + "]");
+            }
+        }
+    }
+    return { result, coeff };
+}
+std::string printOperationEff(std::ofstream& out, std::string matrixLetter, int n, int m, int mulIndex, const Matrix<double>& matrix) {
+    auto[operationValues, coeff] = getOperationEffValues("d" + matrixLetter, n, m, mulIndex, matrix);
+    bool performOperation = coeff || operationValues.size() > 1 || operationValues[0].first == "Sub";
+    if (performOperation) {
+        if (coeff) out << "            operationEffWithCoeff<Assign";
+        else       out << "            operationEff<Assign";
+        for (auto& operationValue : operationValues) {
+            out << ", " << operationValue.first;
+        }
+        out << ">(dn, dm, dm, eff" << matrixLetter << ", temp" << matrixLetter;
+        if (coeff) out << ", " << coeff;
+        for (auto& operationValue : operationValues) {
+            out << ", " << operationValue.second;
+        }
+        out << ");\n";
+        return "";
+    } else {
+        return operationValues[0].second;
+    }
+}
+std::vector<std::pair<std::string, std::string>> 
+getOperationsOnFirstArgValues(std::string matrixName, int n, int m, int mulIndex, const Matrix<double>& matrix, std::vector<bool>& assignedResultMatrices) {
+    std::vector<std::pair<std::string, std::string>> result;
+    for (int row = 0; row < n; ++row) {
+        for (int col = 0; col < m; ++col) {
+            auto value = matrix.at(col, row, mulIndex);
+            if (value != 0) {
+                if (!assignedResultMatrices[col + row * m]) {
+                    result.emplace_back("Assign", matrixName + "[" + std::to_string(row) + "][" + std::to_string(col) + "]");
+                } else if (value > 0) {
+                    result.emplace_back("AddAssign", matrixName + "[" + std::to_string(row) + "][" + std::to_string(col) + "]");
+                } else if (value < 0) {
+                    result.emplace_back("SubAssign", matrixName + "[" + std::to_string(row) + "][" + std::to_string(col) + "]");
+                }
+                assignedResultMatrices[col + row * m] = true;
+            }
+        }
+    }
+    return result;
+}
+
+void printRecursiveCalls(std::ofstream& out, const Input& input, const std::string& functionName) {
+    std::vector<bool> assignedResultMatrices(input.xSize*input.zSize, false);
 
     for (int i = 0; i < input.mulCount; ++i) {
-        out << "        m[" << i << "] = " << algorithmName << "("; 
-        printRecursiveCallMultiplyFactor(out, i, "a", input.a, aMatrixValues, aMatrixIndexes);
+        std::string aMatrix = printOperationEff(out, "A", input.xSize, input.ySize, i, input.a);
+        std::string bMatrix = printOperationEff(out, "B", input.ySize, input.zSize, i, input.b);
+        out << "            nextStep<Method, BaseN, BaseM, BaseP, " << functionName << ">(tempC, ";
+        if (aMatrix.empty()) out << "tempA";
+        else                 out << aMatrix;
         out << ", ";
-        printRecursiveCallMultiplyFactor(out, i, "b", input.b, bMatrixValues, bMatrixIndexes);
-        out << ", steps - 1);\n";
+        if (bMatrix.empty()) out << "tempB";
+        else                 out << bMatrix;
+        out << ", dn, dm, dp, dp";
+        if (aMatrix.empty()) out << ", dm";
+        else                 out << ", effA";
+        if (bMatrix.empty()) out << ", dp";
+        else                 out << ", effB";
+        out << ", steps - 1, allocator);\n";
+        auto operationValues = getOperationsOnFirstArgValues("dC", input.xSize, input.zSize, i, input.c, assignedResultMatrices);
+        out << "            operationsOnFirstArg<" << operationValues[0].first;
+        for (int i = 1; i < operationValues.size(); ++i) {
+            out << ", " << operationValues[i].first;
+        }
+        out << ">(dn, dp, dp, effC, tempC";
+        for (auto& operationValue : operationValues) {
+            out << ", " << operationValue.second;
+        }
+        out << ");\n";
+        out << "\n";
     }
 }
 
@@ -326,43 +405,62 @@ void generateAlgorithm(const fs::path& inputPath, const fs::path& outputPath) {
     }
     auto input = *inputOpt;
     auto algorithmName = inputPath.stem().string();
+    auto recursiveFunctionName = algorithmName + "Recursive";
+    recursiveFunctionName[0] = toupper(recursiveFunctionName[0]);
 
     std::ofstream out(outputPath);
     out << "// this file was generated using fastMatrixMultiplyAlgorithms/generator\n";
-    out << "#pragma once\n";
-    out << "#include <array>\n";
-    out << "#include \"../FullMatrix.h\"\n";
-    out << "#include \"../FullMatrixView.h\"\n";
-    out << "#include \"../FullMatrixConstView.h\"\n";
-    out << "#include \"../naiveOperations.h\"\n";
-    out << "#include \"../operators.h\"\n";
-    out << "#include \"../utilityDetails.h\"\n";
+
+    std::string defineName = "GEN_FMM_"
+        + std::to_string(input.xSize) + "_"
+        + std::to_string(input.ySize) + "_"
+        + std::to_string(input.zSize) + "_"
+        + std::to_string(input.mulCount) + "_H";
+
+    out << "#ifndef " << defineName << '\n';
+    out << "#define " << defineName << '\n';
+    out << "#include \"../fmmUtility.h\"\n";
     out << '\n';
-    out << "namespace details {\n";
-    out << "    template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB>\n";
-    out << "    FullMatrix<T> " << algorithmName << "(const MatrixA<T>& A, const MatrixB<T>& B, int steps) {\n";
-    out << "        if (steps <= 0) {\n";
-    out << "            return naiveMul(A, B);\n";
+    out << "namespace fmm::detail {\n";
+    out << "    struct " << recursiveFunctionName << " {\n";
+    out << "        template<int Method, typename T>\n";
+    out << "        static void Run(T* c, T* a, T* b, int n, int m, int p, int effC, int effA, int effB, int steps, StackAllocator<T>& allocator) {\n";
+    out << "            using namespace ArithmeticOperation;\n";
+    out << "\n";
+    out << "            constexpr int BaseN = " << input.xSize << ";\n";
+    out << "            constexpr int BaseM = " << input.ySize << ";\n";
+    out << "            constexpr int BaseP = " << input.zSize << ";\n";
+    out << "\n";
+    out << "            auto[dn, dm, dp] = divideSizes<BaseN, BaseM, BaseP>(n, m, p);\n";
+    out << "\n";
+    out << "            auto dA = divideView<BaseN, BaseM>(a, n, m, effA);\n";
+    out << "            auto dB = divideView<BaseM, BaseP>(b, m, p, effB);\n";
+    out << "            auto dC = divideView<BaseN, BaseP>(c, n, p, effC);\n";
+    out << "\n";
+    out << "            auto tempA = allocator.alloc(dn * dm);\n";
+    out << "            auto tempB = allocator.alloc(dm * dp);\n";
+    out << "            auto tempC = allocator.alloc(dn * dp);\n";
+    out << "\n";
+    printRecursiveCalls(out, input, recursiveFunctionName);
+    out << "            allocator.dealloc(tempC, dn*dp);\n";
+    out << "            allocator.dealloc(tempB, dm*dp);\n";
+    out << "            allocator.dealloc(tempA, dn*dm);\n";
     out << "        }\n";
+    out << "    };\n";
+    out << "}\n";
     out << '\n';
-    out << "        auto a = matrixDivide<" << input.xSize << ", " << input.ySize << ">(A);\n";
-    out << "        auto b = matrixDivide<" << input.ySize << ", " << input.zSize << ">(B);\n";
-    out << '\n';
-    printRecursiveCalls(out, input, algorithmName);
-    out << '\n';
-    out << "        FullMatrix<T> C(A.rowCount(), B.columnCount());\n";
-    out << "        auto c = matrixDivide<" << input.xSize << ", " << input.zSize << ">(C);\n";
-    out << '\n';
-    printCMatrixConstruction(out, input);
-    out << '\n';
-    out << "        return C;\n";
+    out << "namespace fmm {\n";
+    out << "    template<int Method = 0, typename M1, typename M2>\n";
+    out << "    auto "
+        << algorithmName
+        << "MinSpace(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {\n";
+    out << "        return detail::runAlgorithm<getNewWithAlgorithm<Method, Algorithm::MinSpace>, "
+        << input.xSize << ", " << input.ySize << ", " << input.zSize << ", " << input.mulCount << ", " 
+        << "detail::" << recursiveFunctionName << ">(a, b, steps);\n";
     out << "    }\n";
     out << "}\n";
     out << '\n';
-    out << "template<typename T, template<typename> typename MatrixA, template<typename> typename MatrixB>\n";
-    out << "FullMatrix<T> " << algorithmName << "(const MatrixA<T>& A, const MatrixB<T>& B) {\n";
-    out << "    return details::fastMul<" << input.xSize << ", " << input.ySize << ", " << input.zSize << ">(A, B, 50, details::" << algorithmName << "<T, MatrixA, MatrixB>);\n";
-    out << "}\n";
+    out << "#endif\n";
 }
 
 int main(int argc, char** argv) {
