@@ -494,7 +494,7 @@ namespace fmm {
 
     template<int Method=0, typename M1, typename M2>
     auto strassenParallelLowLevel(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
-        return detail::runAlgorithm<getNewWithAlgorithm<Method, Algorithm::LowLevelParallel>, 2, 2, 2, 7, detail::StrassenLowLevelParallelRecursive>(a, b, steps);
+        return detail::runAlgorithm<getNewWithAlgorithm<Method, Algorithm::LowLevelParallel>, 2, 2, 2, 7, detail::StrassenLowLevelParallelRecursive>(a, b, steps, 5, 5);
     }
 
     template<int steps, int Method=0, typename M1, typename M2>

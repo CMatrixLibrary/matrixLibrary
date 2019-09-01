@@ -394,7 +394,7 @@ namespace fmm::detail {
 
     // Parallel Low-Level
     template<int Method, int BaseN, int BaseM, int BaseP, int MulCount, typename FunctionImpl, typename T>
-    void lowLevelParallelRun(T* c, T* a, T* b, int n, int m, int p, int effC, int effA, int effB, int steps) {
+    void lowLevelParallelRun(T* c, T* a, T* b, int n, int m, int p, int effC, int effA, int effB, int steps, int tempACount, int tempBCount) {
         auto paddingSizesOpt = staticPaddingNewSizes(n, m, p, BaseN, BaseM, BaseP, steps);
         int runningSpace = 0;
         int nPadded = n;
@@ -407,7 +407,7 @@ namespace fmm::detail {
             pPadded = paddingSizes[2];
             runningSpace += additionalStaticPaddingSize<T>(nPadded, mPadded, pPadded);
         }
-        runningSpace += additionalRunningSpaceSize<BaseN, BaseM, BaseP, T>(std::min(1, steps), nPadded, mPadded, pPadded, 1 + BaseN*BaseM, 1 + BaseM*BaseP, MulCount);
+        runningSpace += additionalRunningSpaceSize<BaseN, BaseM, BaseP, T>(std::min(1, steps), nPadded, mPadded, pPadded, tempACount, tempBCount, MulCount);
 
         StackAllocator<T> allocator(runningSpace);
         if (contains<Method, ResizeStrategy::StaticPadding> && paddingSizesOpt) {
@@ -420,7 +420,7 @@ namespace fmm::detail {
     }
 
     template<int Method, int BaseN, int BaseM, int BaseP, int MulCount, typename FunctionImpl, typename M1, typename M2>
-    auto runAlgorithm(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
+    auto runAlgorithm(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps, int tempACount=0, int tempBCount=0) {
         constexpr auto FilledMethod = methodWithAllFilledValues<Method, typename M1::ValueType>;
         
         auto c = a.createNew(a.rowCount(), b.columnCount());
@@ -440,7 +440,8 @@ namespace fmm::detail {
         else if constexpr (contains<FilledMethod, Algorithm::LowLevelParallel>) {
             lowLevelParallelRun<FilledMethod, BaseN, BaseM, BaseP, MulCount, FunctionImpl>(
                 c.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(),
-                c.effectiveColumnCount(), a.effectiveColumnCount(), b.effectiveColumnCount(), steps
+                c.effectiveColumnCount(), a.effectiveColumnCount(), b.effectiveColumnCount(), steps,
+                tempACount, tempBCount
             );
         }
         
