@@ -1,0 +1,17 @@
+﻿################################################################################
+# Ten plik .gitignore został utworzony automatycznie przez Microsoft(R) Visual Studio.
+################################################################################
+
+/ProjektInzynierski/.vs/ProjektInzynierski/v15/ipch/AutoPCH/7b2aca665acf601b/MAIN.ipch
+/ProjektInzynierski/.vs/ProjektInzynierski/v15/ipch/AutoPCH/947baa82db2e303b/MAIN.ipch
+/ProjektInzynierski/.vs/ProjektInzynierski/v15/Browse.VC.db
+/ProjektInzynierski/.vs/ProjektInzynierski/v15/Browse.VC.opendb
+/ProjektInzynierski/Release
+/ProjektInzynierski/ProjektInzynierski/Release/ProjektI.47836D1B.tlog
+/ProjektInzynierski/ProjektInzynierski/Release
+/ProjektInzynierski/ProjektInzynierski/Debug
+/ProjektInzynierski/Debug
+/ProjektInzynierski/.vs/ProjektInzynierski/v15/ipch
+/ProjektInzynierski/ProjektInzynierski
+/ProjektInzynierski/.vs/ProjektInzynierski/v15
+/ProjektInzynierski

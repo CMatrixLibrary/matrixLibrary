@@ -192,7 +192,7 @@ template<typename T> void strassenBenchmark() {
     outFile << "ID,N,Steps"; 
     for (auto baseMul : std::array<std::string, 7>{"Naive", "Block", "Parallel", "ParallelBlock", "Avx", "ParallelAvx", "Blas"}) {
         for (auto algorithm : std::array<std::string, 3>{"Low-Level", "Min-Space", "Parallel-Low-Level"}) {
-            for (auto baseSize : std::array<std::string, 2>{"Effective", "Normal"}) {
+            for (auto baseSize : std::array<std::string, 2>{"Effective", "Normals"}) {
                 outFile << "," << algorithm << "_" << baseMul << "_" << baseSize;
             }
         }
