@@ -1,6 +1,8 @@
 #ifndef GENERIC_ARITHMETIC_OPERATIONS_H
 #define GENERIC_ARITHMETIC_OPERATIONS_H
 
+#include <cstdlib>
+
 /*
     meta-programming utility for creating long arithmetic expressions.
     Examples:
@@ -81,7 +83,8 @@ inline auto calculate(T&& arg, Ts&&... args) {
         else if constexpr (op == ArithmeticOperation::Add) return calculate<ops...>(args...) + arg;
         else return calculate<ops...>(args...) - arg;
     }
-    return arg; // impossible to hit, but some compilerers can't see that so needed to avoid warnings 
+    std::abort(); // impossible to hit, but some compilerers can't see that so needed to avoid warnings 
+    //return std::result_of<decltype(calculate<op, ops..., T, Ts...>(arg, args...))>::type{}; 
 }
 
 template<ArithmeticOperation::OpType... ops, typename... Ts> void operation(int n, int m, Ts&&... args) {
