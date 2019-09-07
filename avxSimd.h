@@ -12,7 +12,9 @@
 #define avx_StaticAssertMessage "avx2 is not available. Maybe you're missing a compilation flag?"
 
 namespace avx {
-    template<typename T> constexpr bool IsCompatible = std::is_integral_v<T> || std::numeric_limits<T>::is_iec559;
+    template<typename T> constexpr bool IsCompatible = 
+        ((sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4 || sizeof(T) == 8) && std::is_integral_v<T>) 
+        || std::numeric_limits<T>::is_iec559;
 
 #ifdef __AVX2__
     #define AVX2_IS_AVAILABLE
@@ -33,7 +35,7 @@ namespace avx {
 template<typename ValueType, typename Enable = void> class AvxType;
 
 #ifdef AVX2_IS_AVAILABLE
-template<typename ValueType> class AvxType<ValueType, typename std::enable_if_t<std::is_integral_v<ValueType>>> {
+template<typename ValueType> class AvxType<ValueType, typename std::enable_if_t<(sizeof(ValueType) == 1 || sizeof(ValueType) == 2 || sizeof(ValueType) == 4 || sizeof(ValueType) == 8) && std::is_integral_v<ValueType>>> {
     __m256i value;
 public:
     AvxType(__m256i value) : value(value) {}
