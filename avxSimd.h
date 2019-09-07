@@ -101,6 +101,7 @@ namespace avx {
         if constexpr (sizeof(T) == 2) return _mm256_add_epi16(a, b);
         if constexpr (sizeof(T) == 4) return _mm256_add_epi32(a, b);
         if constexpr (sizeof(T) == 8) return _mm256_add_epi64(a, b);
+        return __m256i{}; // impossible to hit, but some compilerers can't see that so needed to avoid warnings 
     }
     AvxType<float> add(AvxType<float> a, AvxType<float> b) { return _mm256_add_ps(a, b); }
     AvxType<double> add(AvxType<double> a, AvxType<double> b) { return _mm256_add_pd(a, b); }
@@ -110,6 +111,7 @@ namespace avx {
         if constexpr (sizeof(T) == 2) return _mm256_sub_epi16(a, b);
         if constexpr (sizeof(T) == 4) return _mm256_sub_epi32(a, b);
         if constexpr (sizeof(T) == 8) return _mm256_sub_epi64(a, b);
+        return __m256i{}; // impossible to hit, but some compilerers can't see that so needed to avoid warnings 
     }
     AvxType<float> sub(AvxType<float> a, AvxType<float> b) { return _mm256_sub_ps(a, b); }
     AvxType<double> sub(AvxType<double> a, AvxType<double> b) { return _mm256_sub_pd(a, b); }
@@ -135,6 +137,7 @@ namespace avx {
             __m256i prod = _mm256_add_epi64(prodll, prodlh4);
             return  prod;
         }
+        return __m256i{}; // impossible to hit, but some compilerers can't see that so needed to avoid warnings 
     }
     AvxType<float> mul(AvxType<float> a, AvxType<float> b) { return _mm256_mul_ps(a, b); }
     AvxType<double> mul(AvxType<double> a, AvxType<double> b) { return _mm256_mul_pd(a, b); }
@@ -149,6 +152,7 @@ namespace avx {
         if constexpr (sizeof(T) == 2) return _mm256_set1_epi16(value);
         if constexpr (sizeof(T) == 4) return _mm256_set1_epi32(value);
         if constexpr (sizeof(T) == 8) return _mm256_set1_epi64x(value);
+        return __m256i{}; // impossible to hit, but some compilerers can't see that so needed to avoid warnings 
     }
     AvxType<float> setAllElements(float value) { return _mm256_set1_ps(value); }
     AvxType<double> setAllElements(double value) { return _mm256_set1_pd(value); }
