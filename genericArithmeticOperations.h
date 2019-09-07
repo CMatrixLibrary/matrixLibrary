@@ -61,6 +61,7 @@ inline auto calculate(T&& arg) {
     if constexpr (op == ArithmeticOperation::OpType::Add) return arg;
     else if constexpr (op == ArithmeticOperation::OpType::Sub) return -arg;
     else static_assert(always_false_v<T>, "Incorrect operation");
+    return arg; // impossible to hit, but some compilerers can't see that so needed to avoid warnings 
 }
 
 template<ArithmeticOperation::OpType op, ArithmeticOperation::OpType... ops, typename T, typename... Ts>
@@ -69,16 +70,18 @@ inline auto calculate(T&& arg, Ts&&... args) {
         if constexpr (op == ArithmeticOperation::Add || op == ArithmeticOperation::Sub) {
             return arg = calculate<ArithmeticOperation::Add, op, ops...>(args...);
         }
-        if constexpr (op == ArithmeticOperation::Assign) return arg = calculate<ArithmeticOperation::Add, ops...>(args...);
-        if constexpr (op == ArithmeticOperation::AddAssign) return arg += calculate<ArithmeticOperation::Add, ops...>(args...);
-        if constexpr (op == ArithmeticOperation::SubAssign) return arg -= calculate<ArithmeticOperation::Add, ops...>(args...);
-    } else {
-        if constexpr (op == ArithmeticOperation::Add) return calculate<ops...>(args...) + arg;
-        if constexpr (op == ArithmeticOperation::Sub) return calculate<ops...>(args...) - arg;
-        if constexpr (op == ArithmeticOperation::Assign) return arg = calculate<ops...>(args...);
-        if constexpr (op == ArithmeticOperation::AddAssign) return arg += calculate<ops...>(args...);
-        if constexpr (op == ArithmeticOperation::SubAssign) return arg -= calculate<ops...>(args...);
+        else if constexpr (op == ArithmeticOperation::Assign) return arg = calculate<ArithmeticOperation::Add, ops...>(args...);
+        else if constexpr (op == ArithmeticOperation::AddAssign) return arg += calculate<ArithmeticOperation::Add, ops...>(args...);
+        else return arg -= calculate<ArithmeticOperation::Add, ops...>(args...);
     }
+    else {
+        if constexpr (op == ArithmeticOperation::Assign) return arg = calculate<ops...>(args...);
+        else if constexpr (op == ArithmeticOperation::AddAssign) return arg += calculate<ops...>(args...);
+        else if constexpr (op == ArithmeticOperation::SubAssign) return arg -= calculate<ops...>(args...);
+        else if constexpr (op == ArithmeticOperation::Add) return calculate<ops...>(args...) + arg;
+        else return calculate<ops...>(args...) - arg;
+    }
+    return arg; // impossible to hit, but some compilerers can't see that so needed to avoid warnings 
 }
 
 template<ArithmeticOperation::OpType... ops, typename... Ts> void operation(int n, int m, Ts&&... args) {
