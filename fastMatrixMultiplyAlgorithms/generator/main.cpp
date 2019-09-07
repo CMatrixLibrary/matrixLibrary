@@ -133,8 +133,9 @@ struct OpMatrix {
     std::string operation;
     int row;
     int col;
+    double coeff;
     
-    OpMatrix(const std::string& letter, const std::string& operation, int row, int col) : letter(letter), operation(operation), row(row), col(col) {}
+    OpMatrix(const std::string& letter, const std::string& operation, int row, int col, double coeff) : letter(letter), operation(operation), row(row), col(col), coeff(coeff) {}
 
     std::string name() const {
         return "d" + letter + "[" + std::to_string(row) + "][" + std::to_string(col) + "]";
@@ -144,9 +145,17 @@ struct TempMatrix {
     std::string letter;
     std::string specialName;
     std::vector<OpMatrix> opMatrices;
-    double coeff = 0;
+    
     bool isView() const {
-        return !(coeff != 0 || opMatrices.size() > 1 || opMatrices[0].operation == "Sub");
+        return !(opMatrices.size() > 1 || opMatrices[0].operation == "Sub" || hasCoeff());
+    }
+    bool hasCoeff() const {
+        for (int i = 0; i < opMatrices.size(); ++i) {
+            if (opMatrices[i].coeff != 1) {
+                return true;
+            }
+        }
+        return false;
     }
     std::string eff() const {
         if (isView()) return "eff" + letter;
@@ -167,13 +176,10 @@ void setTemporaryMatrix(const std::string& letter, const Matrix<double>& matrix,
     for (int row = 0; row < n; ++row) {
         for (int col = 0; col < m; ++col) {
             double value = matrix.at(col, row, mulIndex);
-            if (value != 0 && value != 1 && value != -1) {
-                tempMatrix.coeff = value;
-            }
             if (value > 0) {
-                tempMatrix.opMatrices.emplace_back(letter, "Add", row, col);
+                tempMatrix.opMatrices.emplace_back(letter, "Add", row, col, std::abs(value));
             } else if (value < 0) {
-                tempMatrix.opMatrices.emplace_back(letter, "Sub", row, col);
+                tempMatrix.opMatrices.emplace_back(letter, "Sub", row, col, std::abs(value));
             }
         }
     }
@@ -214,16 +220,18 @@ void printCommonAlgorithmEnd(std::ofstream& out) {
 
 void printOperationEff(const std::string& indent, std::ofstream& out, int n, int m, int mulIndex, const Matrix<double>& matrix, const TempMatrix& tempMatrix) {
     if (!tempMatrix.isView()) {
+        bool hasCoeff = tempMatrix.hasCoeff();
         out << indent;
-        if (tempMatrix.coeff) out << "operationEffWithCoeff<Assign";
-        else                  out << "operationEff<Assign";
+        if (hasCoeff) out << "operationEffWithCoeffs<Assign";
+        else          out << "operationEff<Assign";
         for (auto& opMatrix : tempMatrix.opMatrices) {
             out << ", " << opMatrix.operation;
         }
-        out << ">(dn, dm, dm, eff" << tempMatrix.letter << ", " << tempMatrix.name();
-        if (tempMatrix.coeff) out << ", " << tempMatrix.coeff;
+        if (tempMatrix.letter == "A") out << ">(dn, dm, dm, effA, " << tempMatrix.name();
+        if (tempMatrix.letter == "B") out << ">(dm, dp, dp, effB, " << tempMatrix.name();
         for (auto& opMatrix : tempMatrix.opMatrices) {
-            out << ", " << opMatrix.name();
+            if (hasCoeff) out << ", std::pair(" << opMatrix.coeff << ", " << opMatrix.name() << ")";
+            else          out << ", " << opMatrix.name();
         }
         out << ");\n";
     }
@@ -232,16 +240,38 @@ void printOperationEff(const std::string& indent, std::ofstream& out, int n, int
 std::vector<std::pair<std::string, std::string>> 
 getOperationsOnFirstArgValues(std::string matrixName, int n, int m, int mulIndex, const Matrix<double>& matrix, std::vector<bool>& assignedResultMatrices) {
     std::vector<std::pair<std::string, std::string>> result;
+    bool hasCoeff = false;
+    for (int row = 0; row < n; ++row) {
+        for (int col = 0; col < m; ++col) {
+            auto value = matrix.at(col, row, mulIndex);
+            if (std::abs(value) != 1 && value != 0) {
+                hasCoeff = true;
+            }
+            if (!assignedResultMatrices[col + row * m] && value == -1) {
+                hasCoeff = true;
+            }
+        }
+    }
     for (int row = 0; row < n; ++row) {
         for (int col = 0; col < m; ++col) {
             auto value = matrix.at(col, row, mulIndex);
             if (value != 0) {
-                if (!assignedResultMatrices[col + row * m]) {
-                    result.emplace_back("Assign", matrixName + "[" + std::to_string(row) + "][" + std::to_string(col) + "]");
-                } else if (value > 0) {
-                    result.emplace_back("AddAssign", matrixName + "[" + std::to_string(row) + "][" + std::to_string(col) + "]");
-                } else if (value < 0) {
-                    result.emplace_back("SubAssign", matrixName + "[" + std::to_string(row) + "][" + std::to_string(col) + "]");
+                if (hasCoeff) {
+                    if (!assignedResultMatrices[col + row * m]) {
+                        result.emplace_back("Assign", "std::pair(" + std::to_string(value) + ", " + matrixName + "[" + std::to_string(row) + "][" + std::to_string(col) + "])");
+                    } else if (value > 0) {
+                        result.emplace_back("AddAssign", "std::pair(" + std::to_string(std::abs(value)) + ", " + matrixName + "[" + std::to_string(row) + "][" + std::to_string(col) + "])");
+                    } else if (value < 0) {
+                        result.emplace_back("SubAssign", "std::pair(" + std::to_string(std::abs(value)) + ", " + matrixName + "[" + std::to_string(row) + "][" + std::to_string(col) + "])");
+                    }
+                } else {
+                    if (!assignedResultMatrices[col + row * m]) {
+                        result.emplace_back("Assign", matrixName + "[" + std::to_string(row) + "][" + std::to_string(col) + "]");
+                    } else if (value > 0) {
+                        result.emplace_back("AddAssign", matrixName + "[" + std::to_string(row) + "][" + std::to_string(col) + "]");
+                    } else if (value < 0) {
+                        result.emplace_back("SubAssign", matrixName + "[" + std::to_string(row) + "][" + std::to_string(col) + "]");
+                    }
                 }
                 assignedResultMatrices[col + row * m] = true;
             }
@@ -266,7 +296,8 @@ void generateMinSpaceAlgorithm(std::ofstream& out, const std::string& algorithmN
             << abMatrices[i].a.name() << ", " << abMatrices[i].b.name() << ", dn, dm, dp, dp, "
             << abMatrices[i].a.eff() << ", " << abMatrices[i].b.eff() << ", steps - 1, allocator);\n";
         auto operationValues = getOperationsOnFirstArgValues("dC", input.xSize, input.zSize, i, input.c, assignedResultMatrices);
-        out << "            operationsOnFirstArg<" << operationValues[0].first;
+        if (operationValues[0].second[0] == 's') out << "            operationsOnFirstArgWithCoeffs<" << operationValues[0].first;
+        else out << "            operationsOnFirstArg<" << operationValues[0].first;
         for (int i = 1; i < operationValues.size(); ++i) {
             out << ", " << operationValues[i].first;
         }
@@ -287,19 +318,38 @@ void generateMinSpaceAlgorithm(std::ofstream& out, const std::string& algorithmN
 }
 
 void printOperationEffCMatrix(std::ofstream& out, const Input& input) {
+    bool hasCoeff = false;
     for (int row = 0; row < input.xSize; ++row) {
         for (int col = 0; col < input.zSize; ++col) {
             std::vector<std::pair<std::string, std::string>> usedMatrices;
+
+            bool hasCoeff = false;
             for (int mulIndex = 0; mulIndex < input.mulCount; ++mulIndex) {
                 auto value = input.c.at(col, row, mulIndex);
-                if (value > 0) {
-                    usedMatrices.emplace_back("Add", "m" + std::to_string(mulIndex + 1));
-                } else if (value < 0) {
-                    usedMatrices.emplace_back("Sub", "m" + std::to_string(mulIndex + 1));
+                if (std::abs(value) != 1 && value != 0) {
+                    hasCoeff = true;
                 }
             }
 
-            out << "            operationEff<Assign";
+            for (int mulIndex = 0; mulIndex < input.mulCount; ++mulIndex) {
+                auto value = input.c.at(col, row, mulIndex);
+                if (hasCoeff) {
+                    if (value > 0) {
+                        usedMatrices.emplace_back("Add", "std::pair(" + std::to_string(std::abs(value)) + ", m" + std::to_string(mulIndex + 1) + ")");
+                    } else if (value < 0) {
+                        usedMatrices.emplace_back("Sub", "std::pair(" + std::to_string(std::abs(value)) + ", m" + std::to_string(mulIndex + 1) + ")");
+                    }
+                } else {
+                    if (value > 0) {
+                        usedMatrices.emplace_back("Add", "m" + std::to_string(mulIndex + 1));
+                    } else if (value < 0) {
+                        usedMatrices.emplace_back("Sub", "m" + std::to_string(mulIndex + 1));
+                    }
+                }
+            }
+
+            if (hasCoeff) out << "            operationEffWithCoeffs<Assign";
+            else          out << "            operationEff<Assign";
             for (auto& m : usedMatrices) {
                 out << ", " << m.first;
             }
