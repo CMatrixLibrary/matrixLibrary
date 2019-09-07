@@ -524,10 +524,17 @@ namespace fmm::detail {
     }
 
     // generic arithmetic operations
-    template<ArithmeticOperation::OpType... ops, typename TCoeff, typename T, typename... Ts> void operationEffWithCoeff(int n, int m, int effFirst, int effRest, TCoeff coeff, T&& arg, Ts&&... args) {
+    /*template<ArithmeticOperation::OpType... ops, typename TCoeff, typename T, typename... Ts> void operationEffWithCoeff(int n, int m, int effFirst, int effRest, TCoeff coeff, T&& arg, Ts&&... args) {
         for (int i = 0; i < n; ++i) {
             for (int j = 0; j < m; ++j) {
                 calculate<ops...>(arg[j + i * effFirst], coeff * args[j + i * effRest]...);
+            }
+        }
+    }*/
+    template<ArithmeticOperation::OpType... ops, typename T, typename... Ts> void operationEffWithCoeffs(int n, int m, int effFirst, int effRest, T&& arg, Ts&&... args) {
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < m; ++j) {
+                calculate<ops...>(arg[j + i * effFirst], (args.first * args.second[j + i * effRest])...);
             }
         }
     }
@@ -542,6 +549,22 @@ namespace fmm::detail {
         for (int i = 0; i < n; ++i) {
             for (int j = 0; j < m; ++j) {
                 operationOnFirstArg<ops...>(arg[j + i * effFirst], args[j + i * effRest]...);
+            }
+        }
+    }
+    template<ArithmeticOperation::OpType op, typename T1, typename T2> void operationsOnFirstArgWithCoeffs(T1&& first, T2&& arg) {
+        if constexpr (op == ArithmeticOperation::Assign) *arg.second = arg.first * first;
+        else if constexpr (op == ArithmeticOperation::AddAssign) *arg.second += arg.first * first;
+        else *arg.second -= arg.first * first;
+    }
+    template<ArithmeticOperation::OpType op, ArithmeticOperation::OpType... ops, typename T, typename TArg, typename... Ts> void operationsOnFirstArgWithCoeffs(T&& first, TArg&& arg, Ts&&... args) {
+        operationsOnFirstArgWithCoeffs<op>(first, arg);
+        operationsOnFirstArgWithCoeffs<ops...>(first, args...);
+    }
+    template<ArithmeticOperation::OpType... ops, typename T, typename... Ts> void operationsOnFirstArgWithCoeffs(int n, int m, int effFirst, int effRest, T&& arg, Ts&&... args) {
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < m; ++j) {
+                operationsOnFirstArgWithCoeffs<ops...>(arg[j + i * effFirst], std::pair(args.first, &args.second[j + i * effRest])...);
             }
         }
     }
