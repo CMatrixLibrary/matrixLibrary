@@ -26,6 +26,10 @@ public:
         data_(matrix.data() + startColumn + startRow * matrix.effectiveColumnCount()),
         effectiveColumnCount_(matrix.effectiveColumnCount())
     {}
+    MatrixStaticSizeView(T* data, mtl::size_t effectiveColumnCount) :
+        data_(data),
+        effectiveColumnCount_(effectiveColumnCount)
+    {}
 
     template<typename MT> MatrixStaticSizeView& operator=(MatrixInterface<MT>& matrix) {
         data_ = matrix.data();

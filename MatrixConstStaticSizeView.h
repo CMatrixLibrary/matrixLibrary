@@ -29,6 +29,10 @@ public:
         data_(matrix.data() + startColumn + startRow * matrix.effectiveColumnCount()),
         effectiveColumnCount_(matrix.effectiveColumnCount())
     {}
+    MatrixConstStaticSizeView(const T* data, mtl::size_t effectiveColumnCount) :
+        data_(data),
+        effectiveColumnCount_(effectiveColumnCount)
+    {}
     MatrixConstStaticSizeView(HeapMatrix<T>&&) = delete;
     template<int RCount, int CCount> MatrixConstStaticSizeView(StaticHeapMatrix<T, RCount, CCount>&&) = delete;
     template<int RCount, int CCount> MatrixConstStaticSizeView(StackMatrix<T, RCount, CCount>&&) = delete;

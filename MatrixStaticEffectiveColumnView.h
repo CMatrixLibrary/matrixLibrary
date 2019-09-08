@@ -34,5 +34,10 @@ public:
         rowCount_(rowCount),
         columnCount_(columnCount)
     {}
+    MatrixStaticEffectiveColumnView(T* data, mtl::size_t rowCount, mtl::size_t columnCount) :
+        data_(data),
+        rowCount_(rowCount),
+        columnCount_(columnCount)
+    {}
 };
 #endif

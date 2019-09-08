@@ -26,6 +26,9 @@ public:
     template<typename MT> MatrixConstStaticView(const MatrixInterface<MT>& matrix, mtl::size_t startRow=0, mtl::size_t startColumn=0) :
         data_(matrix.data() + startColumn + startRow * EffCols_)
     {}
+    MatrixConstStaticView(const T* data) :
+        data_(data)
+    {}
     MatrixConstStaticView(HeapMatrix<T>&&) = delete;
     template<int RCount, int CCount> MatrixConstStaticView(StaticHeapMatrix<T, RCount, CCount>&&) = delete;
     template<int RCount, int CCount> MatrixConstStaticView(StackMatrix<T, RCount, CCount>&&) = delete;
