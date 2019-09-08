@@ -40,6 +40,12 @@ public:
         columnCount_(columnCount),
         effectiveColumnCount_(matrix.effectiveColumnCount())
     {}
+    MatrixDynamicView(T* data, mtl::size_t rowCount, mtl::size_t columnCount, mtl::size_t effectiveColumnCount) :
+        data_(data),
+        rowCount_(rowCount),
+        columnCount_(columnCount),
+        effectiveColumnCount_(effectiveColumnCount)
+    {}
 
     mtl::size_t _effectiveColumnCount() const { return effectiveColumnCount_; }
 };

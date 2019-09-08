@@ -23,5 +23,8 @@ public:
     template<typename MT> MatrixStaticView(MatrixInterface<MT>& matrix, mtl::size_t startRow=0, mtl::size_t startColumn=0) :
         data_(matrix.data() + startColumn + startRow * EffCols_)
     {}
+    MatrixStaticView(T* data) :
+        data_(data)
+    {}
 };
 #endif
