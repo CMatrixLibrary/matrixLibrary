@@ -21,6 +21,7 @@
 #include "parallelMul.h"
 #include "parallelBlockMul.h"
 #include "fmmUtility.h"
+#include "InverseOperations.h"
 
 template<typename T, int Reps, int N, int NEnd, int Inc, bool UseBlas = true, bool UseAvx = true> void testBaseMul(std::ostream& out);
 
@@ -248,18 +249,43 @@ template<typename T> void strassenBenchmark() {
     std::cout << "\nDONE\n";
 }
 
+
 int main() {
-    using T = float;
-    constexpr int N = 128;
-    constexpr int Steps = 2;
+   
+	HeapMatrix<double> heapMatrix(4, 4);
+	heapMatrix[0][0] = 5.0;
+	heapMatrix[0][1] = 6.0;
+	heapMatrix[0][2] = 6.0;
+	heapMatrix[0][3] = 8.0;
 
-    StaticHeapMatrix<T, N, N> a;
-    StaticHeapMatrix<T, N, N> b;
-    fmm::strassenLowLevelStatic<Steps>(a, b);
-    fmm::strassenMinSpaceStatic<Steps>(a, b);
-    fmm::strassenParallelLowLevelStatic<Steps>(a, b);
+	heapMatrix[1][0] = 2.0;
+	heapMatrix[1][1] = 2.0;
+	heapMatrix[1][2] = 2.0;
+	heapMatrix[1][3] = 8.0;
 
-    strassenBenchmark<float>();
-    std::cin.get();
+	heapMatrix[2][0] = 6.0;
+	heapMatrix[2][1] = 6.0;
+	heapMatrix[2][2] = 2.0;
+	heapMatrix[2][3] = 8.0;
+
+	heapMatrix[3][0] = 2.0;
+	heapMatrix[3][1] = 3.0;
+	heapMatrix[3][2] = 6.0;
+	heapMatrix[3][3] = 7.0;
+
+
+	HeapMatrix<double> identity(4, 4);
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) {
+			identity.at(i, j) = (j == i ? 1 : 0);
+		}
+	}
+
+	gaussInverse(heapMatrix, identity);
+
+
+
+
+
     return 0;
 }
