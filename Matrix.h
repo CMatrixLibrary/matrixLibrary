@@ -1,6 +1,7 @@
 #ifndef MATRIX_H
 #define MATRIX_H
 #include "StackMatrix.h"
+#include "CachePaddedHeapMatrix.h"
 #include "HeapMatrix.h"
 #include "StaticHeapMatrix.h"
 #include <type_traits>

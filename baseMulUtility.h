@@ -14,7 +14,7 @@ auto FUNCTION_NAME(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
         FUNCTION_NAME(result, a, b);\
         return result;\
     } else {\
-        Matrix<typename M1::ValueType> result(a.rowCount(), b.columnCount());\
+        auto result = a.createNew(a.rowCount(), b.columnCount()); \
         FUNCTION_NAME(result, a, b);\
         return result;\
     }\

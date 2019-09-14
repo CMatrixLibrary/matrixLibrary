@@ -6,9 +6,21 @@
 #include <numeric>
 #include <utility>
 
+struct TimeResult {
+    double value;
+
+    TimeResult(double value=0) : value(value) {}
+    operator double() { return value; }
+
+    double getSec()   { return value; }
+    double getMilli() { return value * 1'000; }
+    double getMicro() { return value * 1'000'000; }
+    double getNano()  { return value * 1'000'000'000; }
+};
+
 struct MyTime {
     MyTime() : time(std::chrono::steady_clock::now()) {}
-    double operator-(const MyTime& other) {
+    TimeResult operator-(const MyTime& other) {
         return std::chrono::duration<double>(time - other.time).count();
     }
 private:
@@ -20,7 +32,7 @@ MyTime getTime() {
 
 // run once, return pair { functionReturnValue, time }
 template<typename ReturnType, typename Function, typename... Args>
-std::pair<ReturnType, double> benchmark(Function function, Args&&... args) {
+std::pair<ReturnType, TimeResult> benchmark(Function function, Args&&... args) {
     auto start = getTime();
     ReturnType result = function(std::forward<Args>(args)...);
     auto end = getTime();
@@ -28,7 +40,7 @@ std::pair<ReturnType, double> benchmark(Function function, Args&&... args) {
 }
 
 // run once, return time
-template<typename Function, typename... Args> double benchmark(Function function, Args&&... args) {
+template<typename Function, typename... Args> TimeResult benchmark(Function function, Args&&... args) {
     auto start = getTime();
     function(std::forward<Args>(args)...);
     auto end = getTime();
@@ -37,9 +49,9 @@ template<typename Function, typename... Args> double benchmark(Function function
 
 
 namespace details {
-    template<typename Function, typename... Args> std::vector<double> runMultipleTimes(int repetitions, Function function, Args&&... args) {
+    template<typename Function, typename... Args> std::vector<TimeResult> runMultipleTimes(int repetitions, Function function, Args&&... args) {
         repetitions += 1;
-        std::vector<double> times(repetitions);
+        std::vector<TimeResult> times(repetitions);
         for (int i = repetitions-1; i >= 0; --i) {
             times[i] = benchmark(function, args...);
         }
@@ -49,15 +61,25 @@ namespace details {
 }
 
 // run "repetitions" times, return avarage time
-template<typename Function, typename... Args> double benchmark(int repetitions, Function function, Args&&... args) {
+template<typename Function, typename... Args> TimeResult benchmark(int repetitions, Function function, Args&&... args) {
     auto times = details::runMultipleTimes(repetitions, function, std::forward<Args>(args)...);
     auto value = std::accumulate(times.begin(), times.end(), 0.0);
     return value / repetitions;
 }
 
+// run "repetitions" times, return median time
+template<typename Function, typename... Args> TimeResult benchmarkMedian(int repetitions, Function function, Args&&... args) {
+    auto times = details::runMultipleTimes(repetitions, function, std::forward<Args>(args)...);
+    if (repetitions % 2 == 0) {
+        return times[repetitions / 2] + times[repetitions / 2 - 1];
+    } else {
+        return times[repetitions / 2];
+    }
+}
+
 // run "repetitions" times, return pair { functionReturnValue, avarage time }
 template<typename ReturnType, typename Function, typename... Args>
-std::pair<ReturnType, double> benchmark(int repetitions, Function function, Args&&... args) {
+std::pair<ReturnType, TimeResult> benchmark(int repetitions, Function function, Args&&... args) {
     return { function(args...), benchmark(repetitions, function, args...) };
 }
 #endif

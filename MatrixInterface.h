@@ -24,6 +24,7 @@ template<typename T, mtl::size_t, mtl::size_t, mtl::size_t> class MatrixStaticVi
 template<typename T, mtl::size_t, mtl::size_t, mtl::size_t> class MatrixConstStaticView;
 
 template<typename T> using createNew_t = decltype(std::declval<const T>()._createNew());
+template<typename T> using createNewWithSize_t = decltype(std::declval<const T>()._createNew(0,0));
 template<typename T> using effectiveColumnCount_t = decltype(std::declval<const T>()._effectiveColumnCount());
 template<typename T> using columnCount_t = decltype(std::declval<const T>()._columnCount());
 template<typename T> using rowCount_t = decltype(std::declval<const T>()._rowCount());
@@ -84,7 +85,12 @@ public:
         }
     }
     auto createNew(int rowCount, int columnCount) const {
-        return HeapMatrix<typename MatrixType::ValueType>(rowCount, columnCount);
+        auto& it = static_cast<const MatrixType&>(*this);
+        if constexpr (detect<MatrixType, createNewWithSize_t>{}) {
+            return it._createNew(rowCount, columnCount);
+        } else {
+            return HeapMatrix<typename MatrixType::ValueType>(rowCount, columnCount);
+        }
     }
     template<mtl::size_t RowCount, mtl::size_t ColumnCount> auto  createNew() const {
         return StaticHeapMatrix<typename MatrixType::ValueType, RowCount, ColumnCount>{};

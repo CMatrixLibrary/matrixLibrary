@@ -634,26 +634,294 @@ namespace avx::detail {
         }
 #endif
     }
+
+    
+
+    template<int jb, int kb, typename T>
+    void mul9Task(T* c, const T* a, const T* b, const T* newB, int ii, int iEnd, int n, int m, int p, int effC, int effA, int effB) {
+        for (mtl::size_t kk = 0; kk < p; kk += kb) {
+            mtl::size_t kEnd = std::min(kk + kb, p);
+            for (mtl::size_t jj = 0; jj < m; jj += jb) {
+                mtl::size_t jEnd = std::min(jj + jb, m);
+                auto i = ii;
+                for (; i <= iEnd - 2; i += 2) {
+                    auto k = kk;
+                    auto aPtr = a + i * effA;
+                    auto cPtr = c + i * effC;
+                    auto bPtr = newB + kk * m + jj * ((kEnd - kk) - (kEnd - kk) % (2 * avx::packedCount<T>()));
+                    for (; k <= kEnd - 2 * avx::packedCount<T>(); k += 2 * avx::packedCount<T>()) {
+                        auto sum1i1 = avx::loadUnaligned(&cPtr[k]);
+                        auto sum2i1 = avx::loadUnaligned(&cPtr[k + avx::packedCount<T>()]);
+                        auto sum1i2 = avx::loadUnaligned(&cPtr[k + effC]);
+                        auto sum2i2 = avx::loadUnaligned(&cPtr[k + avx::packedCount<T>() + effC]);
+                        for (auto j = jj; j < jEnd; ++j) {
+                            auto bVectr1 = avx::loadUnaligned(bPtr);
+                            auto aValue1 = avx::setAllElements(aPtr[j]);
+                            sum1i1 = avx::fma(aValue1, bVectr1, sum1i1);
+                            auto bVectr2 = avx::loadUnaligned(bPtr + avx::packedCount<T>());
+                            sum2i1 = avx::fma(aValue1, bVectr2, sum2i1);
+                            auto aValue2 = avx::setAllElements(aPtr[j + effA]);
+                            sum1i2 = avx::fma(aValue2, bVectr1, sum1i2);
+                            sum2i2 = avx::fma(aValue2, bVectr2, sum2i2);
+                            bPtr += 2 * avx::packedCount<T>();
+                        }
+                        avx::storeUnaligned(&cPtr[k], sum1i1);
+                        avx::storeUnaligned(&cPtr[k + avx::packedCount<T>()], sum2i1);
+                        avx::storeUnaligned(&cPtr[k + effC], sum1i2);
+                        avx::storeUnaligned(&cPtr[k + avx::packedCount<T>() + effC], sum2i2);
+                    }
+                    for (; k < kEnd; ++k) {
+                        auto sum1 = T{};
+                        auto sum2 = T{};
+                        for (auto j = jj; j < jEnd; ++j) {
+                            sum1 += aPtr[j] * b[k + j * effB];
+                            sum2 += aPtr[j + effA] * b[k + j * effB];
+                        }
+                        cPtr[k] += sum1;
+                        cPtr[k + effC] += sum2;
+                    }
+                }
+                if (i < iEnd) {
+                    auto k = kk;
+                    auto aPtr = a + i * effA;
+                    auto cPtr = c + i * effC;
+                    auto bPtr = newB + kk * m + jj * ((kEnd - kk) - (kEnd - kk) % (2 * avx::packedCount<T>()));
+                    for (; k <= kEnd - 2 * avx::packedCount<T>(); k += 2 * avx::packedCount<T>()) {
+                        auto sum1 = avx::loadUnaligned(&cPtr[k]);
+                        auto sum2 = avx::loadUnaligned(&cPtr[k + avx::packedCount<T>()]);
+                        for (auto j = jj; j < jEnd; ++j) {
+                            auto aValue = avx::setAllElements(aPtr[j]);
+                            auto bVectr1 = avx::loadUnaligned(bPtr);
+                            sum1 += aValue * bVectr1;
+                            auto bVectr2 = avx::loadUnaligned(bPtr + avx::packedCount<T>());
+                            sum2 += aValue * bVectr2;
+                            bPtr += 2 * avx::packedCount<T>();
+                        }
+                        avx::storeUnaligned(&cPtr[k], sum1);
+                        avx::storeUnaligned(&cPtr[k + avx::packedCount<T>()], sum2);
+                    }
+                    for (; k < kEnd; ++k) {
+                        auto sum = T{};
+                        for (auto j = jj; j < jEnd; ++j) {
+                            sum += aPtr[j] * b[k + j * effB];
+                        }
+                        cPtr[k] += sum;
+                    }
+                }
+            }
+        }
+    }
+
+    template<int ib, int jb, int kb, typename T>
+    T* getNewB(const T* b, int n, int m, int p, int effB) {
+        auto newB = new T[m*p];
+        auto newBPtr = newB;
+        for (mtl::size_t kk = 0; kk < p; kk += kb) {
+            mtl::size_t kEnd = std::min(kk + kb, p);
+            for (mtl::size_t jj = 0; jj < m; jj += jb) {
+                mtl::size_t jEnd = std::min(jj + jb, m);
+                for (auto k = kk; k <= kEnd - 2 * avx::packedCount<T>(); k += 2 * avx::packedCount<T>()) {
+                    auto bPtr = b + k + jj * effB;
+                    for (auto j = jj; j < jEnd; ++j) {
+                        avx::storeUnaligned(newBPtr, avx::loadUnaligned(bPtr));
+                        avx::storeUnaligned(newBPtr + avx::packedCount<T>(), avx::loadUnaligned(bPtr + avx::packedCount<T>()));
+                        bPtr += effB;
+                        newBPtr += 2 * avx::packedCount<T>();
+                    }
+                }
+            }
+        }
+        return newB;
+    }
+
+    template<typename T>
+    void mul9(T* c, const T* a, const T* b, int n, int m, int p, int effC, int effA, int effB) {
+        static constexpr mtl::size_t ib = 128;
+        static constexpr mtl::size_t jb = 16;
+        static constexpr mtl::size_t kb = 256;
+
+        for (mtl::size_t i = 0; i < n; ++i) {
+            for (mtl::size_t j = 0; j < p; ++j) {
+                c[j + i * effC] = T{};
+            }
+        }
+
+        auto newB = getNewB<ib, jb, kb>(b, n, m, p, effB);
+
+        for (mtl::size_t ii = 0; ii < n; ii += ib) {
+            mtl::size_t iEnd = std::min(ii + ib, n);
+            mul9Task<jb, kb>(c, a, b, newB, ii, iEnd, n, m, p, effC, effA, effB);
+        }
+
+        delete[] newB;
+    }
+
+    template<typename T>
+    void parallelMul9(T* c, const T* a, const T* b, int n, int m, int p, int effC, int effA, int effB) {
+        static constexpr mtl::size_t ib = 128;
+        static constexpr mtl::size_t jb = 16;
+        static constexpr mtl::size_t kb = 256;
+
+        for (mtl::size_t i = 0; i < n; ++i) {
+            for (mtl::size_t j = 0; j < p; ++j) {
+                c[j + i * effC] = T{};
+            }
+        }
+
+        auto newB = getNewB<ib, jb, kb>(b, n, m, p, effB);
+
+        ThreadPool pool;
+        for (mtl::size_t ii = 0; ii < n; ii += ib) {
+            mtl::size_t iEnd = std::min(ii + ib, n);
+            pool.addTask([=]() {mul9Task<jb, kb>(c, a, b, newB, ii, iEnd, n, m, p, effC, effA, effB); });
+        }
+        pool.completeTasksAndStop();
+
+        delete[] newB;
+    }
+
+
+
+    template<int jb, int kb, int n, int m, int p, int effC, int effA, int effB, typename T>
+    void mul9Task(T* c, const T* a, const T* b, const T* newB, int ii, int iEnd) {
+        for (mtl::size_t kk = 0; kk < p; kk += kb) {
+            mtl::size_t kEnd = std::min(kk + kb, p);
+            for (mtl::size_t jj = 0; jj < m; jj += jb) {
+                mtl::size_t jEnd = std::min(jj + jb, m);
+                auto i = ii;
+                for (; i <= iEnd - 2; i += 2) {
+                    auto k = kk;
+                    auto aPtr = a + i * effA;
+                    auto cPtr = c + i * effC;
+                    auto bPtr = newB + kk * m + jj * ((kEnd - kk) - (kEnd - kk) % (2 * avx::packedCount<T>()));
+                    for (; k <= kEnd - 2 * avx::packedCount<T>(); k += 2 * avx::packedCount<T>()) {
+                        auto sum1i1 = avx::loadUnaligned(&cPtr[k]);
+                        auto sum2i1 = avx::loadUnaligned(&cPtr[k + avx::packedCount<T>()]);
+                        auto sum1i2 = avx::loadUnaligned(&cPtr[k + effC]);
+                        auto sum2i2 = avx::loadUnaligned(&cPtr[k + avx::packedCount<T>() + effC]);
+                        for (auto j = jj; j < jEnd; ++j) {
+                            auto bVectr1 = avx::loadUnaligned(bPtr);
+                            auto aValue1 = avx::setAllElements(aPtr[j]);
+                            sum1i1 = avx::fma(aValue1, bVectr1, sum1i1);
+                            auto bVectr2 = avx::loadUnaligned(bPtr + avx::packedCount<T>());
+                            sum2i1 = avx::fma(aValue1, bVectr2, sum2i1);
+                            auto aValue2 = avx::setAllElements(aPtr[j + effA]);
+                            sum1i2 = avx::fma(aValue2, bVectr1, sum1i2);
+                            sum2i2 = avx::fma(aValue2, bVectr2, sum2i2);
+                            bPtr += 2 * avx::packedCount<T>();
+                        }
+                        avx::storeUnaligned(&cPtr[k], sum1i1);
+                        avx::storeUnaligned(&cPtr[k + avx::packedCount<T>()], sum2i1);
+                        avx::storeUnaligned(&cPtr[k + effC], sum1i2);
+                        avx::storeUnaligned(&cPtr[k + avx::packedCount<T>() + effC], sum2i2);
+                    }
+                    for (; k < kEnd; ++k) {
+                        auto sum1 = T{};
+                        auto sum2 = T{};
+                        for (auto j = jj; j < jEnd; ++j) {
+                            sum1 += aPtr[j] * b[k + j * effB];
+                            sum2 += aPtr[j + effA] * b[k + j * effB];
+                        }
+                        cPtr[k] += sum1;
+                        cPtr[k + effC] += sum2;
+                    }
+                }
+                if (i < iEnd) {
+                    auto k = kk;
+                    auto aPtr = a + i * effA;
+                    auto cPtr = c + i * effC;
+                    auto bPtr = newB + kk * m + jj * ((kEnd - kk) - (kEnd - kk) % (2 * avx::packedCount<T>()));
+                    for (; k <= kEnd - 2 * avx::packedCount<T>(); k += 2 * avx::packedCount<T>()) {
+                        auto sum1 = avx::loadUnaligned(&cPtr[k]);
+                        auto sum2 = avx::loadUnaligned(&cPtr[k + avx::packedCount<T>()]);
+                        for (auto j = jj; j < jEnd; ++j) {
+                            auto aValue = avx::setAllElements(aPtr[j]);
+                            auto bVectr1 = avx::loadUnaligned(bPtr);
+                            sum1 += aValue * bVectr1;
+                            auto bVectr2 = avx::loadUnaligned(bPtr + avx::packedCount<T>());
+                            sum2 += aValue * bVectr2;
+                            bPtr += 2 * avx::packedCount<T>();
+                        }
+                        avx::storeUnaligned(&cPtr[k], sum1);
+                        avx::storeUnaligned(&cPtr[k + avx::packedCount<T>()], sum2);
+                    }
+                    for (; k < kEnd; ++k) {
+                        auto sum = T{};
+                        for (auto j = jj; j < jEnd; ++j) {
+                            sum += aPtr[j] * b[k + j * effB];
+                        }
+                        cPtr[k] += sum;
+                    }
+                }
+            }
+        }
+    }
+    template<int n, int m, int p, int effC, int effA, int effB, typename T>
+    void mul9(T* c, const T* a, const T* b) {
+        static constexpr mtl::size_t ib = 128;
+        static constexpr mtl::size_t jb = 16;
+        static constexpr mtl::size_t kb = 256;
+
+        for (mtl::size_t i = 0; i < n; ++i) {
+            for (mtl::size_t j = 0; j < p; ++j) {
+                c[j + i * effC] = T{};
+            }
+        }
+
+        auto newB = getNewB<ib, jb, kb>(b, n, m, p, effB);
+
+        for (mtl::size_t ii = 0; ii < n; ii += ib) {
+            mtl::size_t iEnd = std::min(ii + ib, n);
+            mul9Task<jb, kb, n, m, p, effC, effA, effB>(c, a, b, newB, ii, iEnd);
+        }
+
+        delete[] newB;
+    }
+
+    template<int n, int m, int p, int effC, int effA, int effB, typename T>
+    void parallelMul9(T* c, const T* a, const T* b) {
+        static constexpr mtl::size_t ib = 128;
+        static constexpr mtl::size_t jb = 16;
+        static constexpr mtl::size_t kb = 256;
+
+        for (mtl::size_t i = 0; i < n; ++i) {
+            for (mtl::size_t j = 0; j < p; ++j) {
+                c[j + i * effC] = T{};
+            }
+        }
+
+        auto newB = getNewB<ib, jb, kb>(b, n, m, p, effB);
+
+        ThreadPool pool;
+        for (mtl::size_t ii = 0; ii < n; ii += ib) {
+            mtl::size_t iEnd = std::min(ii + ib, n);
+            pool.addTask([=]() {mul9Task<jb, kb, n, m, p, effC, effA, effB>(c, a, b, newB, ii, iEnd); });
+        }
+        pool.completeTasksAndStop();
+
+        delete[] newB;
+    }
+
 }
 
 namespace avx {
     template<typename T> void parallelMul(T* c, const T* a, const T* b, int n, int m, int p) {
-        detail::parallelMul7(c, a, b, n, m, p);
+        detail::parallelMul9(c, a, b, n, m, p, p, m, p);
     }
     template<typename T> void parallelMul(T* c, const T* a, const T* b, int n, int m, int p, int effC, int effA, int effB) {
-        detail::parallelMul7(c, a, b, n, m, p, effC, effA, effB);
+        detail::parallelMul9(c, a, b, n, m, p, effC, effA, effB);
     }
     template<int n, int m, int p, int effC, int effA, int effB, typename T> void parallelMul(T* c, const T* a, const T* b) {
-        detail::parallelMul7<n, m, p, effC, effA, effB>(c, a, b);
+        detail::parallelMul9<n, m, p, effC, effA, effB>(c, a, b);
     }
     template<typename T> void mul(T* c, const T* a, const T* b, int n, int m, int p) {
-        detail::mul7(c, a, b, n, m, p);
+        detail::mul9(c, a, b, n, m, p, p, m, p);
     }
     template<typename T> void mul(T* c, const T* a, const T* b, int n, int m, int p, int effC, int effA, int effB) {
-        detail::mul7(c, a, b, n, m, p, effC, effA, effB);
+        detail::mul9(c, a, b, n, m, p, effC, effA, effB);
     }
     template<int n, int m, int p, int effC, int effA, int effB, typename T> void mul(T* c, const T* a, const T* b) {
-        detail::mul7<n, m, p, effC, effA, effB>(c, a, b);
+        detail::mul9<n, m, p, effC, effA, effB>(c, a, b);
     }
 
     template<typename M1, typename M2>
