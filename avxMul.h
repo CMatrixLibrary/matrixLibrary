@@ -928,8 +928,8 @@ namespace avx {
     auto parallelMul(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
         if constexpr (avx::IsAvailable) {
             if constexpr (M1::HasConstexprSizes() && M2::HasConstexprSizes()) {
-                Matrix<typename M1::ValueType, M1::CRow(), M2::CCol()> result;
-                parallelMul<M1::CRow(), M1::CCol(), M2::CCol(), M2::CCol(), M1::CEffCol(), M2::CEffCol()>(result.data(), a.data(), b.data());
+                auto result = a.template createNew<M1::CRow(), M2::CCol()>();
+                parallelMul<M1::CRow(), M1::CCol(), M2::CCol(), result.CEffCol(), M1::CEffCol(), M2::CEffCol()>(result.data(), a.data(), b.data());
                 return result;
             } else {
                 auto result = a.createNew(a.rowCount(), b.columnCount());
@@ -945,8 +945,8 @@ namespace avx {
     auto mul(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
         if constexpr (avx::IsAvailable) {
             if constexpr (M1::HasConstexprSizes() && M2::HasConstexprSizes()) {
-                Matrix<typename M1::ValueType, M1::CRow(), M2::CCol()> result;
-                mul<M1::CRow(), M1::CCol(), M2::CCol(), M2::CCol(), M1::CEffCol(), M2::CEffCol()>(result.data(), a.data(), b.data());
+                auto result = a.template createNew<M1::CRow(), M2::CCol()>();
+                mul<M1::CRow(), M1::CCol(), M2::CCol(), result.CEffCol(), M1::CEffCol(), M2::CEffCol()>(result.data(), a.data(), b.data());
                 return result;
             } else {
                 auto result = a.createNew(a.rowCount(), b.columnCount());
