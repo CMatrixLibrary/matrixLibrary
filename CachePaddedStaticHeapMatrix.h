@@ -1,6 +1,7 @@
 #ifndef CACHE_PADDED_STATIC_HEAP_MATRIX_H
 #define CACHE_PADDED_STATIC_HEAP_MATRIX_H
 #include "MatrixInterface.h"
+#include "avxSimd.h"
 #include <type_traits>
 
 template<typename T, mtl::size_t RowCount_, mtl::size_t ColumnCount_> 
@@ -13,7 +14,16 @@ public:
 
     static const mtl::size_t Rows = RowCount_;
     static const mtl::size_t Cols = ColumnCount_;
-    static const mtl::size_t EffCols = ColumnCount_ % 64 != 0 ? ColumnCount_ : ColumnCount_ + 1;
+    static const mtl::size_t EffCols = 
+        (avx::IsAvailable && avx::template IsCompatible<T> && ColumnCount_ > 1000) ?
+            (ColumnCount_ % 1024 < 8) ?
+                ColumnCount_ + 8 - (ColumnCount_ % 1024)
+            : (ColumnCount_ % 1024 > 1016) ?
+                ColumnCount_ + 8 + 1024 - (ColumnCount_ % 1024)
+            : 
+                ColumnCount_
+        : 
+            ColumnCount_;
 
 private:
     T* data_;
@@ -65,6 +75,10 @@ public:
         m.data_ = nullptr;
 
         return *this;
+    }
+
+    template<int RCount, int CCount> CachePaddedStaticHeapMatrix _createNew() const {
+        return CachePaddedStaticHeapMatrix<T, RCount, CCount>{};
     }
 
 private:
