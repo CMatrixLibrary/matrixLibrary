@@ -4,6 +4,7 @@
 #include "CachePaddedHeapMatrix.h"
 #include "HeapMatrix.h"
 #include "StaticHeapMatrix.h"
+#include "CachePaddedStaticHeapMatrix.h"
 #include <type_traits>
 
 template<typename T, mtl::size_t Rows = 0, mtl::size_t Columns = 0>

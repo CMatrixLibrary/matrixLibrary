@@ -932,12 +932,8 @@ namespace avx {
                 parallelMul<M1::CRow(), M1::CCol(), M2::CCol(), M2::CCol(), M1::CEffCol(), M2::CEffCol()>(result.data(), a.data(), b.data());
                 return result;
             } else {
-                Matrix<typename M1::ValueType> result(a.rowCount(), b.columnCount());
-                if (a.effectiveColumnCount() == a.columnCount() && b.effectiveColumnCount() == b.columnCount()) {
-                    parallelMul(result.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount());
-                } else {
-                    parallelMul(result.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(), a.columnCount(), a.effectiveColumnCount(), b.effectiveColumnCount());
-                }
+                auto result = a.createNew(a.rowCount(), b.columnCount());
+                parallelMul(result.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(), result.effectiveColumnCount(), a.effectiveColumnCount(), b.effectiveColumnCount());
                 return result;
             }
         } else {
@@ -953,12 +949,8 @@ namespace avx {
                 mul<M1::CRow(), M1::CCol(), M2::CCol(), M2::CCol(), M1::CEffCol(), M2::CEffCol()>(result.data(), a.data(), b.data());
                 return result;
             } else {
-                Matrix<typename M1::ValueType> result(a.rowCount(), b.columnCount());
-                if (a.effectiveColumnCount() == a.columnCount() && b.effectiveColumnCount() == b.columnCount()) {
-                    mul(result.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount());
-                } else {
-                    mul(result.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(), a.columnCount(), a.effectiveColumnCount(), b.effectiveColumnCount());
-                }
+                auto result = a.createNew(a.rowCount(), b.columnCount());
+                mul(result.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(), result.effectiveColumnCount(), a.effectiveColumnCount(), b.effectiveColumnCount());
                 return result;
             }
         } else {

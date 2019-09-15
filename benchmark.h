@@ -71,7 +71,7 @@ template<typename Function, typename... Args> TimeResult benchmark(int repetitio
 template<typename Function, typename... Args> TimeResult benchmarkMedian(int repetitions, Function function, Args&&... args) {
     auto times = details::runMultipleTimes(repetitions, function, std::forward<Args>(args)...);
     if (repetitions % 2 == 0) {
-        return times[repetitions / 2] + times[repetitions / 2 - 1];
+        return (times[repetitions / 2] + times[repetitions / 2 - 1]) / 2;
     } else {
         return times[repetitions / 2];
     }
