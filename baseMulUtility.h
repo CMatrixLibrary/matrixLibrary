@@ -10,7 +10,7 @@
 template<typename M1, typename M2>\
 auto FUNCTION_NAME(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {\
     if constexpr (M1::HasConstexprRowAndColumnCount() && M2::HasConstexprRowAndColumnCount()) {\
-        Matrix<typename M1::ValueType, M1::CRow(), M2::CCol()> result;\
+        auto result = a.template createNew<M1::CRow(), M2::CCol()>();\
         FUNCTION_NAME(result, a, b);\
         return result;\
     } else {\

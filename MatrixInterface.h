@@ -25,6 +25,7 @@ template<typename T, mtl::size_t, mtl::size_t, mtl::size_t> class MatrixConstSta
 
 template<typename T> using createNew_t = decltype(std::declval<const T>()._createNew());
 template<typename T> using createNewWithSize_t = decltype(std::declval<const T>()._createNew(0,0));
+template<typename T> using createNewConstexpr_t = decltype(std::declval<const T>().template _createNew<0,0>());
 template<typename T> using effectiveColumnCount_t = decltype(std::declval<const T>()._effectiveColumnCount());
 template<typename T> using columnCount_t = decltype(std::declval<const T>()._columnCount());
 template<typename T> using rowCount_t = decltype(std::declval<const T>()._rowCount());
@@ -92,8 +93,13 @@ public:
             return HeapMatrix<typename MatrixType::ValueType>(rowCount, columnCount);
         }
     }
-    template<mtl::size_t RowCount, mtl::size_t ColumnCount> auto  createNew() const {
-        return StaticHeapMatrix<typename MatrixType::ValueType, RowCount, ColumnCount>{};
+    template<mtl::size_t RowCount, mtl::size_t ColumnCount> auto createNew() const {
+        auto& it = static_cast<const MatrixType&>(*this);
+        if constexpr (detect<MatrixType, createNewConstexpr_t>{}) {
+            return it.template _createNew<RowCount, ColumnCount>();
+        } else {
+            return StaticHeapMatrix<typename MatrixType::ValueType, RowCount, ColumnCount>{};
+        }
     }
 
     auto effectiveColumnCount() const {

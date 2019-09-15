@@ -1,6 +1,7 @@
 #ifndef CACHE_PADDING_HEAP_MATRIX_H
 #define CACHE_PADDING_HEAP_MATRIX_H
 #include "MatrixInterface.h"
+#include "avxSimd.h"
 #include <cstdlib>
 
 template<typename T> class CachePaddedHeapMatrix : public MatrixInterface<CachePaddedHeapMatrix<T>> {
@@ -32,9 +33,7 @@ public:
         columnCount_(columnCount),
         effectiveColumnCount_(columnCount)
     {
-        if (columnCount_ % 64 == 0) {
-            effectiveColumnCount_ += 1;
-        }
+        resizeEffectiveColumnCount();
         arrayNew();
     }
     template<typename MT> CachePaddedHeapMatrix(const MatrixInterface<MT>& m) :
@@ -50,9 +49,7 @@ public:
         rowCount_(rCount),
         effectiveColumnCount_(cCount)
     {
-        if (columnCount_ % 64 == 0) {
-            effectiveColumnCount_ += 1;
-        }
+        resizeEffectiveColumnCount();
         arrayNew();
         this->copy(m);
     }
@@ -121,6 +118,23 @@ public:
     mtl::size_t _effectiveColumnCount() const { return effectiveColumnCount_; }
 
 private:
+    int avxPaddedNumber(int number) {
+        if (number % 1024 < 8) {
+            return number + 8 - (number % 1024);
+        } else if (number % 1024 > 1016) {
+            return number + 8 + 1024 - (number % 1024);
+        } else {
+            return number;
+        }
+    }
+    void resizeEffectiveColumnCount() {
+        if (avx::IsAvailable && avx::template IsCompatible<T> && columnCount_ > 1000) {
+            effectiveColumnCount_ = avxPaddedNumber(columnCount_);
+        } else if (columnCount_ % 64 == 0) {
+            effectiveColumnCount_ += 1;
+        }
+    }
+
     void arrayNew() {
         data_ = static_cast<T*>(std::malloc(rowCount_ * effectiveColumnCount_ * sizeof(T)));
         if constexpr (std::is_class_v<T>) {
