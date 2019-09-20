@@ -19,7 +19,7 @@ private:
     std::array<T, Size> data_;
 
 public:
-    StackMatrix() : data_(std::array<T, Size>{}) {}
+    StackMatrix() {}
     template<typename MT> StackMatrix(const MatrixInterface<MT>& m) {
         this->copy(m);
     }

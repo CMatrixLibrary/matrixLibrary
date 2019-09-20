@@ -20,7 +20,7 @@ private:
 
 public:
     StaticHeapMatrix() :
-        data_(new T[Rows * Cols]())
+        data_(new T[Rows * Cols])
     {}
     explicit StaticHeapMatrix(T* newedPtr) : 
         data_(newedPtr)
