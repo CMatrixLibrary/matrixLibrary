@@ -77,8 +77,11 @@ public:
         return *this;
     }
 
-    template<int RCount, int CCount> CachePaddedStaticHeapMatrix _createNew() const {
+    template<int RCount, int CCount> CachePaddedStaticHeapMatrix<T, RCount, CCount> _createNew() const {
         return CachePaddedStaticHeapMatrix<T, RCount, CCount>{};
+    }
+    CachePaddedStaticHeapMatrix _createNew() const {
+        return CachePaddedStaticHeapMatrix{};
     }
 
 private:
