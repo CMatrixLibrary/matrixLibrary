@@ -61,8 +61,11 @@ public:
     T* _data()               { return data_.data(); }
     const T* _data()   const { return data_.data(); }
 
-    template<int RCount, int CCount> StackMatrix _createNew() const {
+    template<int RCount, int CCount> StackMatrix<T, RCount, CCount> _createNew() const {
         return StackMatrix<T, RCount, CCount>{};
+    }
+    StackMatrix _createNew() const {
+        return StackMatrix{};
     }
 };
 #endif
