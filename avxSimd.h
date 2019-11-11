@@ -144,6 +144,9 @@ namespace avx {
     AvxType<float> mul(AvxType<float> a, AvxType<float> b) { return _mm256_mul_ps(a, b); }
     AvxType<double> mul(AvxType<double> a, AvxType<double> b) { return _mm256_mul_pd(a, b); }
 
+    AvxType<float> div(AvxType<float> a, AvxType<float> b) { return _mm256_div_ps(a, b); }
+    AvxType<double> div(AvxType<double> a, AvxType<double> b) { return _mm256_div_pd(a, b); }
+
     template<typename T> AvxType<T> zero() { return _mm256_setzero_si256(); }
     template<> AvxType<int8_t> zero() { return _mm256_setzero_si256(); }
     template<> AvxType<float> zero() { return _mm256_setzero_ps(); }
@@ -177,6 +180,20 @@ namespace avx {
         return add(mul(a, b), c);
         #endif
     }
+    AvxType<float> fms(AvxType<float> a, AvxType<float> b, AvxType<float> c) {
+        #ifdef FMA_IS_AVAILABLE
+        return _mm256_fmsub_ps(a, b, c);
+        #else
+        return sub(mul(a, b), c);
+        #endif
+    }
+    AvxType<double> fms(AvxType<double> a, AvxType<double> b, AvxType<double> c) {
+        #ifdef FMA_IS_AVAILABLE
+        return _mm256_fmsub_pd(a, b, c);
+        #else
+        return sub(mul(a, b), c);
+        #endif
+    }
 #else
     template<typename T> AvxType<T> loadAligned(const T* ptr) { return AvxType<T>{}; }
     template<typename T> AvxType<T> loadUnaligned(const T* ptr) { return AvxType<T>{}; }
@@ -188,6 +205,7 @@ namespace avx {
     template<typename T> AvxType<T> zero() { return AvxType<T>{}; }
     template<typename T> AvxType<T> setAllElements(T value) { return AvxType<T>{}; }
     template<typename T> AvxType<T> fma(AvxType<T> a, AvxType<T> b, AvxType<T> c) { return AvxType<T>{}; }
+    template<typename T> AvxType<T> fms(AvxType<T> a, AvxType<T> b, AvxType<T> c) { return AvxType<T>{}; }
 #endif
 };
 
@@ -200,6 +218,9 @@ template<typename T> AvxType<T> operator-(AvxType<T> a, AvxType<T> b) {
 template<typename T> AvxType<T> operator*(AvxType<T> a, AvxType<T> b) {
     return avx::mul(a, b);
 }
+template<typename T> AvxType<T> operator/(AvxType<T> a, AvxType<T> b) {
+    return avx::div(a, b);
+}
 template<typename T> AvxType<T> operator+=(AvxType<T>& a, AvxType<T> b) {
     return a = a + b;
 }
@@ -208,6 +229,9 @@ template<typename T> AvxType<T> operator-=(AvxType<T>& a, AvxType<T> b) {
 }
 template<typename T> AvxType<T> operator*=(AvxType<T>& a, AvxType<T> b) {
     return a = a * b;
+}
+template<typename T> AvxType<T> operator/=(AvxType<T>& a, AvxType<T> b) {
+    return a = a / b;
 }
 
 #endif
