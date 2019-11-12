@@ -11,36 +11,36 @@
 #include "fmmUtility.h"
 #include "fastMatrixMultiplyAlgorithms/genStrassen.h"
 
-#define CreateCsvBenchmarkFmm(name, function, steps, runDynamic, runStatic) \
-    CreateCsvBenchmarkFullFunction(name, [&]() {function(args..., steps); }(), runDynamic, runStatic);
+#define CreateCsvBenchmarkFmm(name, function, steps, useCache, runDynamic, runStatic) \
+    CreateCsvBenchmarkFullFunction(name, [&]() {function(args..., steps); }(), useCache, runDynamic, runStatic);
 
-#define CreateCsvBenchmarkFmm5Steps(name, function, runDynamic, runStatic) \
-    CreateCsvBenchmarkFmm(name##_1, function, 1, runDynamic, runStatic);\
-    CreateCsvBenchmarkFmm(name##_2, function, 2, runDynamic, runStatic);\
-    CreateCsvBenchmarkFmm(name##_3, function, 3, runDynamic, runStatic);\
-    CreateCsvBenchmarkFmm(name##_4, function, 4, runDynamic, runStatic);\
-    CreateCsvBenchmarkFmm(name##_5, function, 5, runDynamic, runStatic);
+#define CreateCsvBenchmarkFmm5Steps(name, function, useCache, runDynamic, runStatic) \
+    CreateCsvBenchmarkFmm(name##_1, function, 1, useCache, runDynamic, runStatic);\
+    CreateCsvBenchmarkFmm(name##_2, function, 2, useCache, runDynamic, runStatic);\
+    CreateCsvBenchmarkFmm(name##_3, function, 3, useCache, runDynamic, runStatic);\
+    CreateCsvBenchmarkFmm(name##_4, function, 4, useCache, runDynamic, runStatic);\
+    CreateCsvBenchmarkFmm(name##_5, function, 5, useCache, runDynamic, runStatic);
 
-#define CreateCsvBenchmarkFmmAllAlgorithms5Steps(name, function, runDynamic, runStatic)\
-    CreateCsvBenchmarkFmm5Steps(name##_Naive, function<fmm::Naive>, runDynamic, runStatic)\
-    CreateCsvBenchmarkFmm5Steps(name##_Parallel, function<fmm::Parallel>, runDynamic, runStatic)\
-    CreateCsvBenchmarkFmm5Steps(name##_Block, function<fmm::Block>, runDynamic, runStatic)\
-    CreateCsvBenchmarkFmm5Steps(name##_ParallelBlock, function<fmm::ParallelBlock>, runDynamic, runStatic)\
-    CreateCsvBenchmarkFmm5Steps(name##_Avx, function<fmm::Avx>, runDynamic, runStatic)\
-    CreateCsvBenchmarkFmm5Steps(name##_ParallelAvx, function<fmm::ParallelAvx>, runDynamic, runStatic)\
-    CreateCsvBenchmarkFmm5Steps(name##_Blas, function<fmm::Blas>, runDynamic, runStatic)
+#define CreateCsvBenchmarkFmmAllAlgorithms5Steps(name, function, useCache, runDynamic, runStatic)\
+    CreateCsvBenchmarkFmm5Steps(name##_Naive, function<fmm::Naive>, useCache, runDynamic, runStatic)\
+    CreateCsvBenchmarkFmm5Steps(name##_Parallel, function<fmm::Parallel>, useCache, runDynamic, runStatic)\
+    CreateCsvBenchmarkFmm5Steps(name##_Block, function<fmm::Block>, useCache, runDynamic, runStatic)\
+    CreateCsvBenchmarkFmm5Steps(name##_ParallelBlock, function<fmm::ParallelBlock>, useCache, runDynamic, runStatic)\
+    CreateCsvBenchmarkFmm5Steps(name##_Avx, function<fmm::Avx>, useCache, runDynamic, runStatic)\
+    CreateCsvBenchmarkFmm5Steps(name##_ParallelAvx, function<fmm::ParallelAvx>, useCache, runDynamic, runStatic)\
+    CreateCsvBenchmarkFmm5Steps(name##_Blas, function<fmm::Blas>, useCache, runDynamic, runStatic)
 
-CreateCsvBenchmark(naiveMul, naiveMul, true, true);
-CreateCsvBenchmark(parallelMul, parallelMul, true, true);
-CreateCsvBenchmark(blockMul, blockMul, true, true);
-CreateCsvBenchmark(parallelBlockMul, parallelBlockMul, true, true);
-CreateCsvBenchmark(avxMul, avx::mul, true, true);
-CreateCsvBenchmark(avxParallelMul, avx::parallelMul, true, true);
-CreateCsvBenchmark(blasMul, blas::mul, true, true);
+CreateCsvBenchmark(naiveMul, naiveMul, true, true, false);
+CreateCsvBenchmark(parallelMul, parallelMul, true, true, false);
+CreateCsvBenchmark(blockMul, blockMul, true, true, false);
+CreateCsvBenchmark(parallelBlockMul, parallelBlockMul, true, true, false);
+CreateCsvBenchmark(avxMul, avx::mul, true, true, false);
+CreateCsvBenchmark(avxParallelMul, avx::parallelMul, true, true, false);
+CreateCsvBenchmark(blasMul, blas::mul, true, true, false);
 
-CreateCsvBenchmarkFmmAllAlgorithms5Steps(strassenMinSpace, fmm::genStrassenMinSpace, true, true)
-CreateCsvBenchmarkFmmAllAlgorithms5Steps(strassenLowLevel, fmm::genStrassenLowLevel, true, true)
-CreateCsvBenchmarkFmmAllAlgorithms5Steps(strassenParallel, fmm::genStrassenLowLevelParallel, true, true)
+CreateCsvBenchmarkFmmAllAlgorithms5Steps(strassenMinSpace, fmm::genStrassenMinSpace, true, true, false)
+CreateCsvBenchmarkFmmAllAlgorithms5Steps(strassenLowLevel, fmm::genStrassenLowLevel, true, true, false)
+CreateCsvBenchmarkFmmAllAlgorithms5Steps(strassenParallel, fmm::genStrassenLowLevelParallel, true, true, false)
 
 #define CsvBenchmarkBaseMulAll CsvBenchmarkNames_7(naiveMul, parallelMul, blockMul, parallelBlockMul, avxMul, avxParallelMul, blasMul)
 #define CsvBenchmarkBaseMulNoBlas CsvBenchmarkNames_6(naiveMul, parallelMul, blockMul, parallelBlockMul, avxMul, avxParallelMul)

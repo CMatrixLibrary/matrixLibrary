@@ -4,6 +4,39 @@
 #include "matrixCsvBenchmark.h"
 #include "commonCsvBenchmarkDefines.h"
 
+CreateCsvBenchmarkFullFunction(naiveMulCache, naiveMul(args...), true, true, false);
+CreateCsvBenchmarkFullFunction(naiveMulNoCache, naiveMul(args...), false, true, false);
+
+void heapMatrixVsCachePaddedMatrix() {
+    matrixCsvBenchmark<
+        double, // matrix element type
+        3,      // number of executed runs to take median from (repetitions)
+        8,      // starting N (matrix of size NxN)
+        4096,   // ending N (not included, so up to 2048)
+        2,      // increment value
+        IncrementType::Mul, // increment type: Mul means increase N by multiplying it with increment value
+        TimeFormat::Absolute, // Absolute -> show time in seconds
+        2,      // number of matrix arguments. multiplication function requires 2 matricies
+        CsvBenchmarkNames_2(naiveMulCache, naiveMulNoCache) // tested functions
+    >("HeapMatrixVsCachePaddedHeapMatrix");
+}
+
+template<typename T> void baseMulTestAllDynamic() {
+    matrixCsvBenchmark<T, 3, 64, 4096, 2, IncrementType::Mul, TimeFormat::DivByNCubed, 2,
+        CsvBenchmarkBaseMulAll
+    >("baseMulTestAllDynamic");
+}
+
+template<typename T> void baseMulTestAvxBlasDynamic() {
+    matrixCsvBenchmark<T, 3, 256, 32768, 2, IncrementType::Mul, TimeFormat::DivByNCubed, 2,
+        CsvBenchmarkNames_3(avxMul, avxParallelMul, blasMul)
+    >("baseMulTestAvxBlasDynamic");
+}
+
+
+/*
+    old ones (not correct)
+*/
 template<typename T> void baseMulTest_all(std::string fileName="baseMulTest") {
     matrixCsvBenchmark<T, 20, 65, 129, 16, CsvBenchmarkBaseMulAll>(fileName);
     matrixCsvBenchmark<T, 10, 129, 257, 32, CsvBenchmarkBaseMulAll>(fileName, true);
