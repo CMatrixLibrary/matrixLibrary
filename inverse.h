@@ -3,8 +3,11 @@
 
 #include <iostream>
 #include <string>
+#include <numeric>
 #include "MatrixInterface.h"
 #include "Matrix.h"
+#include "MatrixExtendedFunctions.h"
+#include "naiveBasicOperations.h"
 #include "avxSimd.h"
 #include "avxMul.h"
 #include "ThreadPool.h"
