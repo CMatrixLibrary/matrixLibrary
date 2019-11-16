@@ -26,7 +26,7 @@ namespace fmm::detail {
 
             operationEff<Assign, Add, Add>(dn, dm, dm, effA, tempA, dA[0][0], dA[1][1]);
             operationEff<Assign, Add, Add>(dm, dp, dp, effB, tempB, dB[0][0], dB[1][1]);
-            nextStep<Method, BaseN, BaseM, BaseP, GenStrassenRecursiveMinSpace>(tempC, tempA, tempB, dn, dm, dp, dp, dm, dm, steps - 1, allocator);
+            nextStep<Method, BaseN, BaseM, BaseP, GenStrassenRecursiveMinSpace>(tempC, tempA, tempB, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
             operationsOnFirstArg<Assign, Assign>(dn, dp, dp, effC, tempC, dC[0][0], dC[1][1]);
 
             operationEff<Assign, Add, Add>(dn, dm, dm, effA, tempA, dA[1][0], dA[1][1]);
@@ -34,11 +34,11 @@ namespace fmm::detail {
             operationsOnFirstArg<Assign, SubAssign>(dn, dp, dp, effC, tempC, dC[1][0], dC[1][1]);
 
             operationEff<Assign, Add, Sub>(dm, dp, dp, effB, tempB, dB[0][1], dB[1][1]);
-            nextStep<Method, BaseN, BaseM, BaseP, GenStrassenRecursiveMinSpace>(tempC, dA[0][0], tempB, dn, dm, dp, dp, effA, dm, steps - 1, allocator);
+            nextStep<Method, BaseN, BaseM, BaseP, GenStrassenRecursiveMinSpace>(tempC, dA[0][0], tempB, dn, dm, dp, dp, effA, dp, steps - 1, allocator);
             operationsOnFirstArg<Assign, AddAssign>(dn, dp, dp, effC, tempC, dC[0][1], dC[1][1]);
 
             operationEff<Assign, Sub, Add>(dm, dp, dp, effB, tempB, dB[0][0], dB[1][0]);
-            nextStep<Method, BaseN, BaseM, BaseP, GenStrassenRecursiveMinSpace>(tempC, dA[1][1], tempB, dn, dm, dp, dp, effA, dm, steps - 1, allocator);
+            nextStep<Method, BaseN, BaseM, BaseP, GenStrassenRecursiveMinSpace>(tempC, dA[1][1], tempB, dn, dm, dp, dp, effA, dp, steps - 1, allocator);
             operationsOnFirstArg<AddAssign, AddAssign>(dn, dp, dp, effC, tempC, dC[0][0], dC[1][0]);
 
             operationEff<Assign, Add, Add>(dn, dm, dm, effA, tempA, dA[0][0], dA[0][1]);
@@ -47,12 +47,12 @@ namespace fmm::detail {
 
             operationEff<Assign, Sub, Add>(dn, dm, dm, effA, tempA, dA[0][0], dA[1][0]);
             operationEff<Assign, Add, Add>(dm, dp, dp, effB, tempB, dB[0][0], dB[0][1]);
-            nextStep<Method, BaseN, BaseM, BaseP, GenStrassenRecursiveMinSpace>(tempC, tempA, tempB, dn, dm, dp, dp, dm, dm, steps - 1, allocator);
+            nextStep<Method, BaseN, BaseM, BaseP, GenStrassenRecursiveMinSpace>(tempC, tempA, tempB, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
             operationsOnFirstArg<AddAssign>(dn, dp, dp, effC, tempC, dC[1][1]);
 
             operationEff<Assign, Add, Sub>(dn, dm, dm, effA, tempA, dA[0][1], dA[1][1]);
             operationEff<Assign, Add, Add>(dm, dp, dp, effB, tempB, dB[1][0], dB[1][1]);
-            nextStep<Method, BaseN, BaseM, BaseP, GenStrassenRecursiveMinSpace>(tempC, tempA, tempB, dn, dm, dp, dp, dm, dm, steps - 1, allocator);
+            nextStep<Method, BaseN, BaseM, BaseP, GenStrassenRecursiveMinSpace>(tempC, tempA, tempB, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
             operationsOnFirstArg<AddAssign>(dn, dp, dp, effC, tempC, dC[0][0]);
 
             allocator.dealloc(tempC, dn*dp);
@@ -83,7 +83,7 @@ namespace fmm::detail {
             auto m1B = allocator.alloc(dm*dp);
             operationEff<Assign, Add, Add>(dn, dm, dm, effA, m1A, dA[0][0], dA[1][1]);
             operationEff<Assign, Add, Add>(dm, dp, dp, effB, m1B, dB[0][0], dB[1][1]);
-            nextStep<Method, BaseN, BaseM, BaseP, GenStrassenRecursiveLowLevel>(m1, m1A, m1B, dn, dm, dp, dp, dm, dm, steps - 1, allocator);
+            nextStep<Method, BaseN, BaseM, BaseP, GenStrassenRecursiveLowLevel>(m1, m1A, m1B, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
             allocator.dealloc(m1B, dm*dp);
             allocator.dealloc(m1A, dn*dm);
 
@@ -96,13 +96,13 @@ namespace fmm::detail {
             auto m3 = allocator.alloc(dn * dp);
             auto m3B = allocator.alloc(dm*dp);
             operationEff<Assign, Add, Sub>(dm, dp, dp, effB, m3B, dB[0][1], dB[1][1]);
-            nextStep<Method, BaseN, BaseM, BaseP, GenStrassenRecursiveLowLevel>(m3, dA[0][0], m3B, dn, dm, dp, dp, effA, dm, steps - 1, allocator);
+            nextStep<Method, BaseN, BaseM, BaseP, GenStrassenRecursiveLowLevel>(m3, dA[0][0], m3B, dn, dm, dp, dp, effA, dp, steps - 1, allocator);
             allocator.dealloc(m3B, dm*dp);
 
             auto m4 = allocator.alloc(dn * dp);
             auto m4B = allocator.alloc(dm*dp);
             operationEff<Assign, Sub, Add>(dm, dp, dp, effB, m4B, dB[0][0], dB[1][0]);
-            nextStep<Method, BaseN, BaseM, BaseP, GenStrassenRecursiveLowLevel>(m4, dA[1][1], m4B, dn, dm, dp, dp, effA, dm, steps - 1, allocator);
+            nextStep<Method, BaseN, BaseM, BaseP, GenStrassenRecursiveLowLevel>(m4, dA[1][1], m4B, dn, dm, dp, dp, effA, dp, steps - 1, allocator);
             allocator.dealloc(m4B, dm*dp);
 
             auto m5 = allocator.alloc(dn * dp);
@@ -116,7 +116,7 @@ namespace fmm::detail {
             auto m6B = allocator.alloc(dm*dp);
             operationEff<Assign, Sub, Add>(dn, dm, dm, effA, m6A, dA[0][0], dA[1][0]);
             operationEff<Assign, Add, Add>(dm, dp, dp, effB, m6B, dB[0][0], dB[0][1]);
-            nextStep<Method, BaseN, BaseM, BaseP, GenStrassenRecursiveLowLevel>(m6, m6A, m6B, dn, dm, dp, dp, dm, dm, steps - 1, allocator);
+            nextStep<Method, BaseN, BaseM, BaseP, GenStrassenRecursiveLowLevel>(m6, m6A, m6B, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
             allocator.dealloc(m6B, dm*dp);
             allocator.dealloc(m6A, dn*dm);
 
@@ -125,7 +125,7 @@ namespace fmm::detail {
             auto m7B = allocator.alloc(dm*dp);
             operationEff<Assign, Add, Sub>(dn, dm, dm, effA, m7A, dA[0][1], dA[1][1]);
             operationEff<Assign, Add, Add>(dm, dp, dp, effB, m7B, dB[1][0], dB[1][1]);
-            nextStep<Method, BaseN, BaseM, BaseP, GenStrassenRecursiveLowLevel>(m7, m7A, m7B, dn, dm, dp, dp, dm, dm, steps - 1, allocator);
+            nextStep<Method, BaseN, BaseM, BaseP, GenStrassenRecursiveLowLevel>(m7, m7A, m7B, dn, dm, dp, dp, dm, dp, steps - 1, allocator);
             allocator.dealloc(m7B, dm*dp);
             allocator.dealloc(m7A, dn*dm);
 
@@ -184,7 +184,7 @@ namespace fmm::detail {
             pool.addTask([=, dn = dn, dm = dm, dp = dp]() {
                 operationEff<Assign, Add, Add>(dn, dm, dm, effA, m1A, dA[0][0], dA[1][1]);
                 operationEff<Assign, Add, Add>(dm, dp, dp, effB, m1B, dB[0][0], dB[1][1]);
-                minSpaceRun<Method, 2, 2, 2, 7, GenStrassenRecursiveMinSpace>(m1, m1A, m1B, dn, dm, dp, dp, dm, dm, steps - 1);
+                minSpaceRun<Method, 2, 2, 2, 7, GenStrassenRecursiveMinSpace>(m1, m1A, m1B, dn, dm, dp, dp, dm, dp, steps - 1);
             });
             pool.addTask([=, dn = dn, dm = dm, dp = dp]() {
                 operationEff<Assign, Add, Add>(dn, dm, dm, effA, m2A, dA[1][0], dA[1][1]);
@@ -192,11 +192,11 @@ namespace fmm::detail {
             });
             pool.addTask([=, dn = dn, dm = dm, dp = dp]() {
                 operationEff<Assign, Add, Sub>(dm, dp, dp, effB, m3B, dB[0][1], dB[1][1]);
-                minSpaceRun<Method, 2, 2, 2, 7, GenStrassenRecursiveMinSpace>(m3, dA[0][0], m3B, dn, dm, dp, dp, effA, dm, steps - 1);
+                minSpaceRun<Method, 2, 2, 2, 7, GenStrassenRecursiveMinSpace>(m3, dA[0][0], m3B, dn, dm, dp, dp, effA, dp, steps - 1);
             });
             pool.addTask([=, dn = dn, dm = dm, dp = dp]() {
                 operationEff<Assign, Sub, Add>(dm, dp, dp, effB, m4B, dB[0][0], dB[1][0]);
-                minSpaceRun<Method, 2, 2, 2, 7, GenStrassenRecursiveMinSpace>(m4, dA[1][1], m4B, dn, dm, dp, dp, effA, dm, steps - 1);
+                minSpaceRun<Method, 2, 2, 2, 7, GenStrassenRecursiveMinSpace>(m4, dA[1][1], m4B, dn, dm, dp, dp, effA, dp, steps - 1);
             });
             pool.addTask([=, dn = dn, dm = dm, dp = dp]() {
                 operationEff<Assign, Add, Add>(dn, dm, dm, effA, m5A, dA[0][0], dA[0][1]);
@@ -205,12 +205,12 @@ namespace fmm::detail {
             pool.addTask([=, dn = dn, dm = dm, dp = dp]() {
                 operationEff<Assign, Sub, Add>(dn, dm, dm, effA, m6A, dA[0][0], dA[1][0]);
                 operationEff<Assign, Add, Add>(dm, dp, dp, effB, m6B, dB[0][0], dB[0][1]);
-                minSpaceRun<Method, 2, 2, 2, 7, GenStrassenRecursiveMinSpace>(m6, m6A, m6B, dn, dm, dp, dp, dm, dm, steps - 1);
+                minSpaceRun<Method, 2, 2, 2, 7, GenStrassenRecursiveMinSpace>(m6, m6A, m6B, dn, dm, dp, dp, dm, dp, steps - 1);
             });
             pool.addTask([=, dn = dn, dm = dm, dp = dp]() {
                 operationEff<Assign, Add, Sub>(dn, dm, dm, effA, m7A, dA[0][1], dA[1][1]);
                 operationEff<Assign, Add, Add>(dm, dp, dp, effB, m7B, dB[1][0], dB[1][1]);
-                minSpaceRun<Method, 2, 2, 2, 7, GenStrassenRecursiveMinSpace>(m7, m7A, m7B, dn, dm, dp, dp, dm, dm, steps - 1);
+                minSpaceRun<Method, 2, 2, 2, 7, GenStrassenRecursiveMinSpace>(m7, m7A, m7B, dn, dm, dp, dp, dm, dp, steps - 1);
             });
 
             pool.completeTasksAndStop();

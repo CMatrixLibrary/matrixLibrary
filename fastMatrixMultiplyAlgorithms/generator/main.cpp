@@ -159,7 +159,7 @@ struct TempMatrix {
     }
     std::string eff() const {
         if (isView()) return "eff" + letter;
-        else          return "dm";
+        else          return (letter == "A") ? "dm" : "dp";
     }
     std::string name() const {
         if (isView())                  return opMatrices[0].name();

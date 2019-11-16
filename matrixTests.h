@@ -9,28 +9,27 @@ CreateCsvBenchmarkFullFunction(naiveMulNoCache, naiveMul(args...), false, true, 
 
 void heapMatrixVsCachePaddedMatrix() {
     matrixCsvBenchmark<
-        double, // matrix element type
+        float,  // matrix element type
         3,      // number of executed runs to take median from (repetitions)
-        8,      // starting N (matrix of size NxN)
-        4096,   // ending N (not included, so up to 2048)
-        2,      // increment value
-        IncrementType::Mul, // increment type: Mul means increase N by multiplying it with increment value
-        TimeFormat::Absolute, // Absolute -> show time in seconds
+        64,     // starting N (matrix of size NxN)
+        2048+64,// ending N (not included, so up to 2048)
+        64,     // increment value
+        IncrementType::Add, // increment type: Add means increase N by adding it with increment value
         2,      // number of matrix arguments. multiplication function requires 2 matricies
         CsvBenchmarkNames_2(naiveMulCache, naiveMulNoCache) // tested functions
     >("HeapMatrixVsCachePaddedHeapMatrix");
 }
 
 template<typename T> void baseMulTestAllDynamic() {
-    matrixCsvBenchmark<T, 3, 64, 4096, 2, IncrementType::Mul, TimeFormat::DivByNCubed, 2,
-        CsvBenchmarkBaseMulAll
-    >("baseMulTestAllDynamic");
+    matrixCsvBenchmark<T, 3, 256, 2048+256, 256, IncrementType::Add, 2,
+        CsvBenchmarkBaseMulNoBlas
+    >("baseMulTestAllDynamic" + std::string(typeid(T).name()));
 }
 
-template<typename T> void baseMulTestAvxBlasDynamic() {
-    matrixCsvBenchmark<T, 3, 256, 32768, 2, IncrementType::Mul, TimeFormat::DivByNCubed, 2,
-        CsvBenchmarkNames_3(avxMul, avxParallelMul, blasMul)
-    >("baseMulTestAvxBlasDynamic");
+template<typename T> void baseMulTestAvxDynamic() {
+    matrixCsvBenchmark<T, 3, 1024, 8192+1024, 1024, IncrementType::Add, 2,
+        CsvBenchmarkNames_2(avxMul, avxParallelMul)
+    >("baseMulTestAvxBlasDynamic" + std::string(typeid(T).name()));
 }
 
 
