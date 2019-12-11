@@ -1,6 +1,39 @@
 #ifndef STRASSEN_H
 #define STRASSEN_H
 #include "fmmUtility.h"
+#include "MatrixExtendedFunctions.h"
+
+namespace fmm::detail {
+    struct StrassenHighLevelRecursive {
+        template<int Method, typename MC, typename MA, typename MB>
+        static void Run(MatrixInterface<MC>& c, const MatrixInterface<MA>& a, const MatrixInterface<MB>& b, int steps, StackAllocator<typename MC::ValueType>& allocator) {
+            auto C = matrixDivideView<2, 2>(c);
+            auto A = matrixDivideView<2, 2>(a);
+            auto B = matrixDivideView<2, 2>(b);
+
+            auto m1 = C[0][0].createNew();
+            auto m2 = C[0][0].createNew();
+            auto m3 = C[0][0].createNew();
+            auto m4 = C[0][0].createNew();
+            auto m5 = C[0][0].createNew();
+            auto m6 = C[0][0].createNew();
+            auto m7 = C[0][0].createNew();
+
+            nextStepHighLevel<Method, 2, 2, 2, StrassenHighLevelRecursive>(m1, A[0][0] + A[1][1], B[0][0] + B[1][1], steps - 1, allocator);
+            nextStepHighLevel<Method, 2, 2, 2, StrassenHighLevelRecursive>(m2, A[1][0] + A[1][1], B[0][0], steps - 1, allocator);
+            nextStepHighLevel<Method, 2, 2, 2, StrassenHighLevelRecursive>(m3, A[0][0], B[0][1] - B[1][1], steps - 1, allocator);
+            nextStepHighLevel<Method, 2, 2, 2, StrassenHighLevelRecursive>(m4, A[1][1], B[1][0] - B[0][0], steps - 1, allocator);
+            nextStepHighLevel<Method, 2, 2, 2, StrassenHighLevelRecursive>(m5, A[0][0] + A[0][1], B[1][1], steps - 1, allocator);
+            nextStepHighLevel<Method, 2, 2, 2, StrassenHighLevelRecursive>(m6, A[1][0] - A[0][0], B[0][0] + B[0][1], steps - 1, allocator);
+            nextStepHighLevel<Method, 2, 2, 2, StrassenHighLevelRecursive>(m7, A[0][1] - A[1][1], B[1][0] + B[1][1], steps - 1, allocator);
+
+            C[0][0].copy(m1 + m4 - m5 + m7);
+            C[0][1].copy(m3 + m5);
+            C[1][0].copy(m2 + m4);
+            C[1][1].copy(m1 + m3 - m2 + m6);
+        }
+    };
+}
 
 // Min-Space
 namespace fmm::detail {
@@ -135,10 +168,106 @@ namespace fmm::detail {
     };
 }
 
-
 // Parallel Low-Level
 namespace fmm::detail {
     struct StrassenLowLevelParallelRecursive {
+        template<int Method, typename T>
+        static void Run(T* c, T* a, T* b, int n, int m, int p, int effC, int effA, int effB, int steps, StackAllocator<T>& allocator) {
+            using namespace ArithmeticOperation;
+
+            constexpr int BaseN = 2;
+            constexpr int BaseM = 2;
+            constexpr int BaseP = 2;
+
+            auto[dn, dm, dp] = divideSizes<BaseN, BaseM, BaseP>(n, m, p);
+
+            auto dA = divideView<BaseN, BaseM>(a, n, m, effA);
+            auto dB = divideView<BaseM, BaseP>(b, m, p, effB);
+            auto dC = divideView<BaseN, BaseP>(c, n, p, effC);
+
+            auto m1 = allocator.alloc(dn * dp);
+            auto m2 = allocator.alloc(dn * dp);
+            auto m3 = allocator.alloc(dn * dp);
+            auto m4 = allocator.alloc(dn * dp);
+            auto m5 = allocator.alloc(dn * dp);
+            auto m6 = allocator.alloc(dn * dp);
+            auto m7 = allocator.alloc(dn * dp);
+            auto m1_a = allocator.alloc(dn*dm);
+            auto m1_b = allocator.alloc(dm*dp);
+            auto m2_a = allocator.alloc(dn*dm);
+            auto m3_b = allocator.alloc(dm*dp);
+            auto m4_b = allocator.alloc(dm*dp);
+            auto m5_a = allocator.alloc(dn*dm);
+            auto m6_a = allocator.alloc(dn*dm);
+            auto m6_b = allocator.alloc(dm*dp);
+            auto m7_a = allocator.alloc(dn*dm);
+            auto m7_b = allocator.alloc(dm*dp);
+
+            ThreadPool pool;
+
+            pool.addTask([=, dn = dn, dm = dm, dp = dp]() {
+                operationEff<Add>(dn, dm, dm, effA, m1_a, dA[0][0], dA[1][1]);
+                operationEff<Add>(dm, dp, dp, effB, m1_b, dB[0][0], dB[1][1]);
+                minSpaceRun<Method, 2, 2, 2, 7, StrassenLowLevelRecursive>(m1, m1_a, m1_b, dn, dm, dp, dp, dm, dp, steps - 1);
+            });
+            pool.addTask([=, dn = dn, dm = dm, dp = dp]() {
+                operationEff<Add>(dn, dm, dm, effA, m2_a, dA[1][0], dA[1][1]);
+                minSpaceRun<Method, 2, 2, 2, 7, StrassenLowLevelRecursive>(m2, m2_a, dB[0][0], dn, dm, dp, dp, dm, effB, steps - 1);
+            });
+            pool.addTask([=, dn = dn, dm = dm, dp = dp]() {
+                operationEff<Sub>(dm, dp, dp, effB, m3_b, dB[0][1], dB[1][1]);
+                minSpaceRun<Method, 2, 2, 2, 7, StrassenLowLevelRecursive>(m3, dA[0][0], m3_b, dn, dm, dp, dp, effA, dp, steps - 1);
+            });
+            pool.addTask([=, dn = dn, dm = dm, dp = dp]() {
+                operationEff<Sub>(dm, dp, dp, effB, m4_b, dB[1][0], dB[0][0]);
+                minSpaceRun<Method, 2, 2, 2, 7, StrassenLowLevelRecursive>(m4, dA[1][1], m4_b, dn, dm, dp, dp, effA, dp, steps - 1);
+            });
+            pool.addTask([=, dn = dn, dm = dm, dp = dp]() {
+                operationEff<Add>(dn, dm, dm, effA, m5_a, dA[0][0], dA[0][1]);
+                minSpaceRun<Method, 2, 2, 2, 7, StrassenLowLevelRecursive>(m5, m5_a, dB[1][1], dn, dm, dp, dp, dm, effB, steps - 1);
+            });
+            pool.addTask([=, dn = dn, dm = dm, dp = dp]() {
+                operationEff<Sub>(dn, dm, dm, effA, m6_a, dA[1][0], dA[0][0]);
+                operationEff<Add>(dm, dp, dp, effB, m6_b, dB[0][0], dB[0][1]);
+                minSpaceRun<Method, 2, 2, 2, 7, StrassenLowLevelRecursive>(m6, m6_a, m6_b, dn, dm, dp, dp, dm, dp, steps - 1);
+            });
+            pool.addTask([=, dn = dn, dm = dm, dp = dp]() {
+                operationEff<Sub>(dn, dm, dm, effA, m7_a, dA[0][1], dA[1][1]);
+                operationEff<Add>(dm, dp, dp, effB, m7_b, dB[1][0], dB[1][1]);
+                minSpaceRun<Method, 2, 2, 2, 7, StrassenLowLevelRecursive>(m7, m7_a, m7_b, dn, dm, dp, dp, dm, dp, steps - 1);
+            });
+
+            pool.completeTasksAndStop();
+
+            operationEff<Assign, Add, Sub, Add>(dn, dp, effC, dp, dC[0][0], m1, m4, m5, m7);
+            operationEff<Assign, Add>(dn, dp, effC, dp, dC[0][1], m3, m5);
+            operationEff<Assign, Add>(dn, dp, effC, dp, dC[1][0], m2, m4);
+            operationEff<Assign, Add, Sub, Add>(dn, dp, effC, dp, dC[1][1], m1, m3, m2, m6);
+
+            allocator.dealloc(m7_b, dm*dp);
+            allocator.dealloc(m7_a, dn*dm);
+            allocator.dealloc(m6_b, dm*dp);
+            allocator.dealloc(m6_a, dn*dm);
+            allocator.dealloc(m5_a, dn*dm);
+            allocator.dealloc(m4_b, dm*dp);
+            allocator.dealloc(m3_b, dm*dp);
+            allocator.dealloc(m2_a, dn*dm);
+            allocator.dealloc(m1_b, dm*dp);
+            allocator.dealloc(m1_a, dn*dm);
+            allocator.dealloc(m7, dn*dp);
+            allocator.dealloc(m6, dn*dp);
+            allocator.dealloc(m5, dn*dp);
+            allocator.dealloc(m4, dn*dp);
+            allocator.dealloc(m3, dn*dp);
+            allocator.dealloc(m2, dn*dp);
+            allocator.dealloc(m1, dn*dp);
+        }
+    };
+}
+
+// Parallel Min-Space
+namespace fmm::detail {
+    struct StrassenMinSpaceParallelRecursive {
         template<int Method, typename T>
         static void Run(T* c, T* a, T* b, int n, int m, int p, int effC, int effA, int effB, int steps, StackAllocator<T>& allocator) {
             using namespace ArithmeticOperation;
@@ -493,8 +622,13 @@ namespace fmm {
     }
 
     template<int Method=0, typename M1, typename M2>
+    auto strassenHighLevel(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
+        return detail::runAlgorithm<getNewWithAlgorithm<Method, Algorithm::HighLevel>, 2, 2, 2, 7, detail::StrassenHighLevelRecursive>(a, b, steps);
+    }
+
+    template<int Method=0, typename M1, typename M2>
     auto strassenParallelLowLevel(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b, int steps) {
-        return detail::runAlgorithm<getNewWithAlgorithm<Method, Algorithm::LowLevelParallel>, 2, 2, 2, 7, detail::StrassenLowLevelParallelRecursive>(a, b, steps, 5, 5);
+        return detail::runAlgorithm<getNewWithAlgorithm<Method, Algorithm::LowLevelParallel>, 2, 2, 2, 7, detail::StrassenMinSpaceParallelRecursive>(a, b, steps, 5, 5);
     }
 
     template<int steps, int Method=0, typename M1, typename M2>

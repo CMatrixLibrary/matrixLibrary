@@ -218,9 +218,6 @@ template<typename T> AvxType<T> operator-(AvxType<T> a, AvxType<T> b) {
 template<typename T> AvxType<T> operator*(AvxType<T> a, AvxType<T> b) {
     return avx::mul(a, b);
 }
-template<typename T> AvxType<T> operator/(AvxType<T> a, AvxType<T> b) {
-    return avx::div(a, b);
-}
 template<typename T> AvxType<T> operator+=(AvxType<T>& a, AvxType<T> b) {
     return a = a + b;
 }
@@ -229,9 +226,6 @@ template<typename T> AvxType<T> operator-=(AvxType<T>& a, AvxType<T> b) {
 }
 template<typename T> AvxType<T> operator*=(AvxType<T>& a, AvxType<T> b) {
     return a = a * b;
-}
-template<typename T> AvxType<T> operator/=(AvxType<T>& a, AvxType<T> b) {
-    return a = a / b;
 }
 
 #endif
