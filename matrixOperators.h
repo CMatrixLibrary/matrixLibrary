@@ -1,6 +1,9 @@
 #ifndef MATRIX_OPERATORS_H
 #define MATRIX_OPERATORS_H
 #include "naiveBasicOperations.h"
+#include "avxMul.h"
+#include "blasMul.h"
+#include "parallelBlockMul.h"
 #include <iostream>
 #include <iomanip>
 
@@ -21,7 +24,11 @@ template<typename M> auto operator-(const MatrixInterface<M>& m) {
 }
 
 template<typename M1, typename M2> auto operator*(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
-    return naiveMul(a, b);
+    if constexpr (blas::IsAvailable && blas::IsCompatible<typename M1::ValueType> && blas::IsCompatible<typename M2::ValueType>)
+        return blas::mul(a, b);
+    if constexpr (avx::IsAvailable && avx::IsCompatible<typename M1::ValueType> && avx::IsCompatible<typename M2::ValueType>)
+        return avx::parallelMul(a, b);
+    return parallelBlockMul(a, b);
 }
 template<typename M> auto operator*(const MatrixInterface<M>& m, const typename M::ValueType& scalar) {
     return naiveScalarMul(m, scalar);

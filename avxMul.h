@@ -2116,10 +2116,6 @@ namespace avx::detail {
 
     template<mtl::size_t ib, mtl::size_t jb, mtl::size_t kb, typename T>
     void mulTest16(T* c, const T* a, const T* b, int n, int m, int p, int effC, int effA, int effB) {
-        //static constexpr mtl::size_t ib = 128;
-        //static constexpr mtl::size_t jb = 128;
-        //static constexpr mtl::size_t kb = 128;
-
         for (mtl::size_t i = 0; i < n; ++i) {
             for (mtl::size_t j = 0; j < p; ++j) {
                 c[j + i * effC] = T{};
@@ -2140,10 +2136,6 @@ namespace avx::detail {
 
     template<mtl::size_t ib, mtl::size_t jb, mtl::size_t kb, typename T>
     void mulTest14(T* c, const T* a, const T* b, int n, int m, int p, int effC, int effA, int effB) {
-        //static constexpr mtl::size_t ib = 128;
-        //static constexpr mtl::size_t jb = 128;
-        //static constexpr mtl::size_t kb = 128;
-
         for (mtl::size_t i = 0; i < n; ++i) {
             for (mtl::size_t j = 0; j < p; ++j) {
                 c[j + i * effC] = T{};
@@ -2163,10 +2155,6 @@ namespace avx::detail {
 
     template<mtl::size_t ib, mtl::size_t jb, mtl::size_t kb, typename T>
     void mulTest12(T* c, const T* a, const T* b, int n, int m, int p, int effC, int effA, int effB) {
-        //static constexpr mtl::size_t ib = 128;
-        //static constexpr mtl::size_t jb = 128;
-        //static constexpr mtl::size_t kb = 128;
-
         for (mtl::size_t i = 0; i < n; ++i) {
             for (mtl::size_t j = 0; j < p; ++j) {
                 c[j + i * effC] = T{};
@@ -2182,27 +2170,6 @@ namespace avx::detail {
 
         delete[] newB;
     }
-    /*template<mtl::size_t ib, mtl::size_t jb, mtl::size_t kb, typename T>
-    void mulTest14(T* c, const T* a, const T* b, int n, int m, int p, int effC, int effA, int effB) {
-        //static constexpr mtl::size_t ib = 128;
-        //static constexpr mtl::size_t jb = 128;
-        //static constexpr mtl::size_t kb = 128;
-
-        for (mtl::size_t i = 0; i < n; ++i) {
-            for (mtl::size_t j = 0; j < p; ++j) {
-                c[j + i * effC] = T{};
-            }
-        }
-
-        auto newB = getNewB<ib, jb, kb>(b, n, m, p, effB);
-
-        for (mtl::size_t ii = 0; ii < n; ii += ib) {
-            mtl::size_t iEnd = std::min(ii + ib, n);
-            mul14Task<jb, kb>(c, a, b, newB, ii, iEnd, n, m, p, effC, effA, effB);
-        }
-
-        delete[] newB;
-    }*/
 }
 
 namespace avx {
@@ -2244,12 +2211,10 @@ namespace avx {
             if constexpr (M1::HasConstexprSizes() && M2::HasConstexprSizes()) {
                 auto result = a.template createNew<M1::CRow(), M2::CCol()>();
                 avx::parallelMul(result, a, b);
-                //parallelMul<M1::CRow(), M1::CCol(), M2::CCol(), result.CEffCol(), M1::CEffCol(), M2::CEffCol()>(result.data(), a.data(), b.data());
                 return result;
             } else {
                 auto result = a.createNew(a.rowCount(), b.columnCount());
                 avx::parallelMul(result, a, b);
-                //parallelMul(result.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(), result.effectiveColumnCount(), a.effectiveColumnCount(), b.effectiveColumnCount());
                 return result;
             }
         } else {
@@ -2276,12 +2241,10 @@ namespace avx {
             if constexpr (M1::HasConstexprSizes() && M2::HasConstexprSizes()) {
                 auto result = a.template createNew<M1::CRow(), M2::CCol()>();
                 avx::mul(result, a, b);
-                //mul<M1::CRow(), M1::CCol(), M2::CCol(), result.CEffCol(), M1::CEffCol(), M2::CEffCol()>(result.data(), a.data(), b.data());
                 return result;
             } else {
                 auto result = a.createNew(a.rowCount(), b.columnCount());
                 avx::mul(result, a, b);
-                //mul(result.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(), result.effectiveColumnCount(), a.effectiveColumnCount(), b.effectiveColumnCount());
                 return result;
             }
         } else {

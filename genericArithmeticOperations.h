@@ -92,18 +92,20 @@ template<ArithmeticOperation::OpType... ops, typename... Ts> void operation(int 
         calculate<ops...>(args[i]...);
     }
 }
+
+template<ArithmeticOperation::OpType... ops, typename T, typename... Ts> void operationEffRow(int m, T&& arg, Ts&&... args) {
+    for (int j = 0; j < m; ++j) {
+        calculate<ops...>(arg[j], args[j]...);
+    }
+}
 template<ArithmeticOperation::OpType... ops, typename T, typename... Ts> void operationEff(int n, int m, int effFirst, int effRest, T&& arg, Ts&&... args) {
     for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < m; ++j) {
-            calculate<ops...>(arg[j + i * effFirst], args[j + i * effRest]...);
-        }
+        operationEffRow<ops...>(m, &arg[i * effFirst], &args[i * effRest]...);
     }
 }
 template<ArithmeticOperation::OpType... ops, typename... Ts> void operationEff(int n, int m, Ts&&... args) {
     for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < m; ++j) {
-            calculate<ops...>(args.first[j + i * args.second]...);
-        }
+        operationEffRow<ops...>(m, &args.first[i * args.second]...);
     }
 }
 template<int n, int m, ArithmeticOperation::OpType... ops, typename... Ts> void operation(Ts&&... args) {

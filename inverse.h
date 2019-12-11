@@ -210,6 +210,7 @@ namespace detail {
         pool.completeTasksAndStop();
         delete[] newB;
     }
+
     template<typename MR, typename M1, typename M2>
     void InPlaceMultiplySubstractForLU(MatrixInterface<MR>& r, const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
         avxInPlaceMultiplySubstractForLU(r.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(), r.effectiveColumnCount(), a.effectiveColumnCount(), b.effectiveColumnCount());
@@ -291,7 +292,7 @@ template<typename M> auto solveUpperTriangularForIdentity(const MatrixInterface<
 /*
     LUP + permutation apply
 */
-template<typename M> void ApplyLUPPermutations(MatrixInterface<M>& A, std::vector<int>& P) {
+template<typename M> void applyLUPPermutations(MatrixInterface<M>& A, std::vector<int>& P) {
     for (int i = 0; i < A.columnCount(); ++i) {
         while (i != P[i]) {
             auto p = P[i];
@@ -312,7 +313,7 @@ template<typename M> auto LUP(const MatrixInterface<M>& A) {
     return std::pair(LU, P);
 }
 
-template<typename M> auto BlockLUP(const MatrixInterface<M>& A, int cutOff) {
+template<typename M> auto blockLUP(const MatrixInterface<M>& A, int cutOff=16) {
     auto LU = A.createNew();
     LU.copy(A);
     std::vector<int> P(LU.rowCount());
@@ -326,21 +327,21 @@ template<typename M> auto BlockLUP(const MatrixInterface<M>& A, int cutOff) {
     Inverse Algorithms
 */
 
-template<typename M> auto inverse(const MatrixInterface<M>& A, int cutOff=64) {
+template<typename M> auto inverse(const MatrixInterface<M>& A) {
     auto[LU, P] = LUP(A);
     auto LInverse = solveLowerUnitTriangularForIdentity(LU);
     auto UInverse = solveUpperTriangularForIdentity(LU);
     auto result = avx::parallelMul(UInverse, LInverse);
-    ApplyLUPPermutations(result, P);
+    applyLUPPermutations(result, P);
     return result;
 }
 
-template<typename M> auto blockInverse(const MatrixInterface<M>& A, int cutOff=64) {
-    auto[LU, P] = BlockLUP(A, cutOff);
+template<typename M> auto blockInverse(const MatrixInterface<M>& A, int cutOff=16) {
+    auto[LU, P] = blockLUP(A, cutOff);
     auto LInverse = solveLowerUnitTriangularForIdentity(LU);
     auto UInverse = solveUpperTriangularForIdentity(LU);
     auto result = avx::parallelMul(UInverse, LInverse);
-    ApplyLUPPermutations(result, P);
+    applyLUPPermutations(result, P);
     return result;
 }
 
@@ -366,5 +367,37 @@ template<typename M> auto fastUnstableBlockInverse(const MatrixInterface<M>& AMa
 
     return Cmatrix;
 }
+
+#ifdef USE_BLAS
+namespace lapack {
+    namespace detail {
+        void LUP(float* LU, int* P, int n, int effLU) {
+            LAPACKE_sgetrf(LAPACK_ROW_MAJOR, n, n, LU, effLU, P);
+        }
+
+        void inverse(float* Result, int n, int effR) {
+            auto P = new int[n];
+            LAPACKE_sgetrf(LAPACK_ROW_MAJOR, n, n, Result, effR, P);
+            LAPACKE_sgetri(LAPACK_ROW_MAJOR, n, Result, effR, P);
+            delete[] P;
+        }
+    }
+    
+    template<typename M> auto inverse(const MatrixInterface<M>& A) {
+        auto Result = A.createNew();
+        Result.copy(A);
+        detail::inverse(Result.data(), Result.rowCount(), Result.effectiveColumnCount());
+        return Result;
+    }
+
+    template<typename M> auto LUP(const MatrixInterface<M>& A) {
+        auto LU = A.createNew();
+        LU.copy(A);
+        std::vector<int> P(LU.rowCount());
+        detail::LUP(LU.data(), P.data(), P.size(), LU.effectiveColumnCount());
+        return std::pair(LU, P);
+    }
+}
+#endif
 
 #endif

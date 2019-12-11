@@ -13,28 +13,32 @@ enum class IncrementType {
 };
 
 namespace detail {
-    template<typename T, int Reps, int N, int NEnd, int Inc, IncrementType incType, int InputMatrixCount, typename... BenchmarkFunctions>
+    template<typename T, int Reps, int N, int NInc, int M, int MInc, int P, int PInc, int step, int endStep, IncrementType incType, int InputMatrixCount, bool onlyDynamic, typename... BenchmarkFunctions>
     void matrixBenchmark(std::ostream& out);
 
-    template<typename T, int Reps, int N, int NEnd, int Inc, IncrementType incType, int InputMatrixCount, typename... BenchmarkFunctions>
+    template<typename T, int Reps, int N, int NInc, int M, int MInc, int P, int PInc, int step, int endStep, IncrementType incType, int InputMatrixCount, bool onlyDynamic, typename... BenchmarkFunctions>
     struct MatrixBenchmarkImpl {
-        HeapMatrix<T> D[InputMatrixCount];
-        StaticHeapMatrix<T, N, N> S[InputMatrixCount];
-        CachePaddedHeapMatrix<T> DC[InputMatrixCount];
-        CachePaddedStaticHeapMatrix<T, N, N> SC[InputMatrixCount];
+        HeapMatrix<T> D1;
+        HeapMatrix<T> D2;
+        StaticHeapMatrix<T, onlyDynamic ? 1 : N, onlyDynamic ? 1 : M> S1;
+        StaticHeapMatrix<T, onlyDynamic ? 1 : M, onlyDynamic ? 1 : P> S2;
+        StackMatrix<T, onlyDynamic ? 1 : N, onlyDynamic ? 1 : M> M1;
+        StackMatrix<T, onlyDynamic ? 1 : M, onlyDynamic ? 1 : P> M2;
+        CachePaddedHeapMatrix<T> DC1;
+        CachePaddedHeapMatrix<T> DC2;
+        CachePaddedStaticHeapMatrix<T, onlyDynamic ? 1 : N, onlyDynamic ? 1 : M> SC1;
+        CachePaddedStaticHeapMatrix<T, onlyDynamic ? 1 : M, onlyDynamic ? 1 : P> SC2;
         int functionCount;
 
         MatrixBenchmarkImpl() : functionCount(CalculateFunctionCount<BenchmarkFunctions...>()) {
-            for (int i = 0; i < InputMatrixCount; ++i) {
-                D[i] = HeapMatrix<T>(N, N);
-                DC[i] = CachePaddedHeapMatrix<T>(N, N);
-            }
+            if constexpr(!onlyDynamic) D1 = HeapMatrix<T>(N, M);
+            if constexpr(!onlyDynamic) D2 = HeapMatrix<T>(M, P);
+            DC1 = CachePaddedHeapMatrix<T>(N, M);
+            DC2 = CachePaddedHeapMatrix<T>(M, P);
         }
 
         template<typename Fun> static int CalculateFunctionCount() {
-            if constexpr (Fun::RunStatic && Fun::RunDynamic) return 2;
-            if constexpr (Fun::RunStatic || Fun::RunDynamic) return 1;
-            return 0;
+            return Fun::RunDynamic + Fun::RunStatic + Fun::RunStack;
         }
         template<typename Fun, typename Fun2, typename... Rest> static int CalculateFunctionCount() {
             return CalculateFunctionCount<Fun>() + CalculateFunctionCount<Fun2, Rest...>();
@@ -45,32 +49,38 @@ namespace detail {
                 out << ',';
             }
             int benchmarksRunCount = 0;
-            std::cout << "\rN = (" << std::setw(5) << N << "/" << std::setw(5) << (incType == IncrementType::Add ? (NEnd - Inc) : (NEnd / Inc)) << ") [" << std::setw(2) << index << "/" << functionCount << "]";
+            std::cout << "\rStep = (" << std::setw(2) << step << "/" << std::setw(2) << endStep << ") [" << std::setw(2) << index << "/" << functionCount << "]";
             if constexpr (Fun::RunDynamic) {
                 benchmarksRunCount += 1;
                 if constexpr (Fun::UseCache) {
-                    if constexpr (InputMatrixCount == 1) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(DC[0]); });
-                    if constexpr (InputMatrixCount == 2) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(DC[0], DC[1]); });
-                    if constexpr (InputMatrixCount == 3) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(DC[0], DC[1], DC[2]); });
+                    if constexpr (InputMatrixCount == 1) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(DC1); });
+                    if constexpr (InputMatrixCount == 2) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(DC1, DC2); });
+                    if constexpr (InputMatrixCount == 3) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(DC1, DC2, step); });
                 } else {
-                    if constexpr (InputMatrixCount == 1) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(D[0]); });
-                    if constexpr (InputMatrixCount == 2) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(D[0], D[1]); });
-                    if constexpr (InputMatrixCount == 3) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(D[0], D[1], D[2]); });
+                    if constexpr (InputMatrixCount == 1) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(D1); });
+                    if constexpr (InputMatrixCount == 2) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(D1, D2); });
+                    if constexpr (InputMatrixCount == 3) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(D1, D2, step); });
                 }
-                std::cout << "\rN = (" << std::setw(5) << N << "/" << std::setw(5) << (incType == IncrementType::Add ? (NEnd - Inc) : (NEnd / Inc)) << ") [" << std::setw(2) << index + benchmarksRunCount << "/" << functionCount << "]";
+                std::cout << "\rStep = (" << std::setw(2) << step << "/" << std::setw(2) << endStep << ") [" << std::setw(2) << index + benchmarksRunCount << "/" << functionCount << "]";
             }
             if constexpr (Fun::RunStatic) {
                 benchmarksRunCount += 1;
                 if constexpr (Fun::UseCache) {
-                    if constexpr (InputMatrixCount == 1) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(SC[0]); });
-                    if constexpr (InputMatrixCount == 2) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(SC[0], SC[1]); });
-                    if constexpr (InputMatrixCount == 3) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(SC[0], SC[1], SC[2]); });
+                    if constexpr (InputMatrixCount == 1) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(SC1); });
+                    if constexpr (InputMatrixCount == 2) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(SC1, SC2); });
+                    if constexpr (InputMatrixCount == 3) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(SC1, SC2, step); });
                 } else {
-                    if constexpr (InputMatrixCount == 1) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(S[0]); });
-                    if constexpr (InputMatrixCount == 2) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(S[0], S[1]); });
-                    if constexpr (InputMatrixCount == 3) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(S[0], S[1], S[2]); });
+                    if constexpr (InputMatrixCount == 1) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(S1); });
+                    if constexpr (InputMatrixCount == 2) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(S1, S2); });
+                    if constexpr (InputMatrixCount == 3) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(S1, S2, step); });
                 }
-                std::cout << "\rN = (" << std::setw(5) << N << "/" << std::setw(5) << (incType == IncrementType::Add ? (NEnd - Inc) : (NEnd / Inc)) << ") [" << std::setw(2) << index + benchmarksRunCount << "/" << functionCount << "]";
+                std::cout << "\rStep = (" << std::setw(2) << step << "/" << std::setw(2) << endStep << ") [" << std::setw(2) << index + benchmarksRunCount << "/" << functionCount << "]";
+            }
+            if constexpr (Fun::RunStack) {
+                benchmarksRunCount += 1;
+                if constexpr (InputMatrixCount == 1) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(M1); });
+                if constexpr (InputMatrixCount == 2) out << ',' << benchmarkMedian(Reps, [&]() { Fun::Run(M1, M2); });
+                std::cout << "\rStep = (" << std::setw(2) << step << "/" << std::setw(2) << endStep << ") [" << std::setw(2) << index + benchmarksRunCount << "/" << functionCount << "]";
             }
             return benchmarksRunCount;
         }
@@ -80,26 +90,34 @@ namespace detail {
         }
 
         void run(std::ostream& out) {
-            out << N;
+            InputMatrixCount == 3 ? (out << step) : (NInc > 0 ? (out << N) : (out << M));
             runBenchmarks<BenchmarkFunctions...>(out);
             out << std::endl;
-            matrixBenchmark<T, Reps, (incType == IncrementType::Add ? (N + Inc) : (N * Inc)), NEnd, Inc, incType, InputMatrixCount, BenchmarkFunctions...>(out);
+            matrixBenchmark<T, Reps, 
+                (incType == IncrementType::Add ? (N + NInc) : (N * NInc)), NInc, 
+                (incType == IncrementType::Add ? (M + MInc) : (M * MInc)), MInc,
+                (incType == IncrementType::Add ? (P + PInc) : (P * PInc)), PInc,
+                step + 1, endStep, 
+                incType, 
+                InputMatrixCount, onlyDynamic, BenchmarkFunctions...
+            >(out);
         }
     };
 
-    template<typename T, int Reps, int N, int Inc, IncrementType incType, int InputMatrixCount, typename... BenchmarkFunctions>
-    struct MatrixBenchmarkImpl<T, Reps, N, N, Inc, incType, InputMatrixCount, BenchmarkFunctions...> {
+    template<typename T, int Reps, int N, int NInc, int M, int MInc, int P, int PInc, int endStep, IncrementType incType, int InputMatrixCount, bool onlyDynamic, typename... BenchmarkFunctions>
+    struct MatrixBenchmarkImpl<T, Reps, N, NInc, M, MInc, P, PInc, endStep, endStep, incType, InputMatrixCount, onlyDynamic, BenchmarkFunctions...> {
         void run(std::ostream& out) {}
     };
 
-    template<typename T, int Reps, int N, int NEnd, int Inc, IncrementType incType, int InputMatrixCount, typename... BenchmarkFunctions>
+    template<typename T, int Reps, int N, int NInc, int M, int MInc, int P, int PInc, int step, int endStep, IncrementType incType, int InputMatrixCount, bool onlyDynamic, typename... BenchmarkFunctions>
     void matrixBenchmark(std::ostream& out) {
-        MatrixBenchmarkImpl<T, Reps, N, NEnd, Inc, incType, InputMatrixCount, BenchmarkFunctions...>{}.run(out);
+        MatrixBenchmarkImpl<T, Reps, N, NInc, M, MInc, P, PInc, step, endStep, incType, InputMatrixCount, onlyDynamic, BenchmarkFunctions...>{}.run(out);
     }
 
     template<typename Fun> void printBenchmarkFunctionNames(std::ostream& outFile) {
         if (Fun::RunDynamic) outFile << "," << Fun::Name;
         if (Fun::RunStatic) outFile << "," << Fun::StaticName;
+        if (Fun::RunStack) outFile << "," << Fun::StackName;
     }
     template<typename Fun, typename Fun2, typename... Rest> void printBenchmarkFunctionNames(std::ostream& outFile) {
         printBenchmarkFunctionNames<Fun>(outFile);
@@ -107,39 +125,43 @@ namespace detail {
     }
 }
 
-template<typename T, int Reps, int N, int NEnd, int Inc, IncrementType incType, int InputMatrixCount, typename... BenchmarkFunctions>
+template<typename T, int Reps, int N, int NInc, int M, int MInc, int P, int PInc, int step, int endStep, IncrementType incType, int InputMatrixCount, bool onlyDynamic, typename... BenchmarkFunctions>
 void matrixCsvBenchmark(std::string fileName, bool append=false) {
     std::ofstream outFile(fileName + ".csv", append ? std::ios_base::app : std::ios_base::out);
     if (!append) {
-        outFile << "N";
+        InputMatrixCount == 3 ? (outFile <<  "Steps") : (outFile << "N");
         detail::printBenchmarkFunctionNames<BenchmarkFunctions...>(outFile);
         outFile << std::endl;
     }
     std::cout << '\n';
-    detail::matrixBenchmark<T, Reps, N, NEnd, Inc, incType, InputMatrixCount, BenchmarkFunctions...>(outFile);
+    detail::matrixBenchmark<T, Reps, N, NInc, M, MInc, P, PInc, step, endStep, incType, InputMatrixCount, onlyDynamic, BenchmarkFunctions...>(outFile);
 }
 
 #define CsvBenchmarkName(name) CSVB_ ## name
 
-#define CreateCsvBenchmark(name, function, useCache, runDynamic, runStatic) \
+#define CreateCsvBenchmark(name, function, useCache, runDynamic, runStatic, runStack) \
 struct CsvBenchmarkName(name) {\
     static constexpr bool RunDynamic = runDynamic;\
     static constexpr bool RunStatic = runStatic;\
+    static constexpr bool RunStack = runStack;\
     static constexpr bool UseCache = useCache;\
     static constexpr auto Name = "D_" #name;\
     static constexpr auto StaticName = "S_" #name;\
+    static constexpr auto StackName = "M_" #name;\
     static constexpr auto SkipCount = 0;\
     template<typename... Args> static void Run(const Args&... args) {\
         function(args...);\
     }\
 };
-#define CreateCsvBenchmarkFullFunction(name, fullFunction, useCache, runDynamic, runStatic) \
+#define CreateCsvBenchmarkFullFunction(name, fullFunction, useCache, runDynamic, runStatic, runStack) \
 struct CsvBenchmarkName(name) {\
     static constexpr bool RunDynamic = runDynamic;\
     static constexpr bool RunStatic = runStatic;\
+    static constexpr bool RunStack = runStack;\
     static constexpr bool UseCache = useCache;\
     static constexpr auto Name = "D_" #name;\
     static constexpr auto StaticName = "S_" #name;\
+    static constexpr auto StackName = "M_" #name;\
     static constexpr auto SkipCount = 0;\
     template<typename... Args> static void Run(const Args&... args) {\
         fullFunction;\
@@ -149,9 +171,11 @@ struct CsvBenchmarkName(name) {\
 template<int Count> struct CsvBenchmarkName(skip) {
     static constexpr bool RunDynamic = false;
     static constexpr bool RunStatic = false;
+    static constexpr bool RunStack = false;
     static constexpr bool UseCache = false;
     static constexpr auto Name = "Skip";
     static constexpr auto StaticName = "Skip";
+    static constexpr auto StackName = "Skip";
     static constexpr auto SkipCount = Count;
     template<typename... Args> static void Run(const Args&... args) {}
 };

@@ -28,6 +28,7 @@ namespace fmm {
         MinSpace                = 0x04,
         HighLevelParallel       = 0x08,
         LowLevelParallel        = 0x10,
+        MinSpaceParallel        = 0x20,
         AlgorithmMASK           = 0xff
     };
     enum BaseMulType {
@@ -39,6 +40,7 @@ namespace fmm {
         Avx                     = 0x10'00,
         ParallelAvx             = 0x20'00,
         Blas                    = 0x40'00,
+        Empty                   = 0x80'00,
         BaseMulTypeMASK         = 0xff'00
     };
     enum ResizeStrategy {
@@ -144,7 +146,7 @@ namespace fmm::detail {
     // static padding
     int staticPaddingNewSize(int size, int base, int steps) {
         if (steps <= 0) return size;
-        int divisor = pow(base, steps);
+        int divisor = static_cast<int>(pow(base, steps));
         auto remainder = size % divisor;
         if (remainder == 0) return size;
         else                return size + divisor - remainder;
@@ -190,7 +192,7 @@ namespace fmm::detail {
     }
 
     // dynamic peeling
-    template<typename T> void peelingMulAdd(T* result, const T* a, const T* b, int n, int m, int q, int effR, int effA, int effB) {
+    template<int m, typename T> void peelingMulAdd(T* result, const T* a, const T* b, int n, int q, int effR, int effA, int effB) {
         for (int i = 0; i < n; ++i) {
             for (int j = 0; j < q; ++j) {
                 T& sum = result[j + i * effR];
@@ -200,6 +202,175 @@ namespace fmm::detail {
             }
         }
     }
+    template<typename T> void peelingMulAdd(T* result, const T* a, const T* b, int n, int m, int q, int effR, int effA, int effB) {
+        switch (m) {
+        case 0: break;
+        case 1:
+            for (int i = 0; i < n; ++i) {
+                auto rPtr = &result[i * effR];
+                auto aVal = a[i * effA];
+                for (int j = 0; j < q; ++j) {
+                    rPtr[j] += aVal * b[j];
+                }
+            }
+            break;
+        case 2: peelingMulAdd<2>(result, a, b, n, q, effR, effA, effB); break;
+        case 3: peelingMulAdd<3>(result, a, b, n, q, effR, effA, effB); break;
+        case 4: peelingMulAdd<4>(result, a, b, n, q, effR, effA, effB); break;
+        case 5: peelingMulAdd<5>(result, a, b, n, q, effR, effA, effB); break;
+        case 6: peelingMulAdd<6>(result, a, b, n, q, effR, effA, effB); break;
+        default:
+            for (int i = 0; i < n; ++i) {
+                for (int j = 0; j < q; ++j) {
+                    T& sum = result[j + i * effR];
+                    for (int k = 0; k < m; ++k) {
+                        sum += a[k + i * effA] * b[j + k * effB];
+                    }
+                }
+            }
+            break;
+        }
+    }
+
+    template<typename T> void peelingMulN(T* r, const T* a, const T* b, int n, int m, int p, int effR, int effA, int effB) {
+        for (int i = 0; i < n; ++i) {
+            auto rPtr = &r[i * effR];
+            int j = 0;
+            if constexpr (avx::IsAvailable && avx::IsCompatible<T>) {
+                for (; j <= p - 4*avx::packedCount<T>(); j += 4*avx::packedCount<T>()) {
+                    auto sum1 = avx::zero<T>();
+                    auto sum2 = avx::zero<T>();
+                    auto sum3 = avx::zero<T>();
+                    auto sum4 = avx::zero<T>();
+                    for (int k = 0; k < m; ++k) {
+                        auto aVec = avx::setAllElements(a[k + i * effA]);
+                        sum1 = avx::fma(aVec, avx::loadUnaligned(&b[j + k*effB]), sum1);
+                        sum2 = avx::fma(aVec, avx::loadUnaligned(&b[j + avx::packedCount<T>() + k*effB]), sum2);
+                        sum3 = avx::fma(aVec, avx::loadUnaligned(&b[j + 2*avx::packedCount<T>() + k*effB]), sum3);
+                        sum4 = avx::fma(aVec, avx::loadUnaligned(&b[j + 3*avx::packedCount<T>() + k*effB]), sum4);
+                    }
+                    avx::storeUnaligned(&rPtr[j], sum1);
+                    avx::storeUnaligned(&rPtr[j + avx::packedCount<T>()], sum2);
+                    avx::storeUnaligned(&rPtr[j + 2*avx::packedCount<T>()], sum3);
+                    avx::storeUnaligned(&rPtr[j + 3*avx::packedCount<T>()], sum4);
+                }
+            }
+            for (; j < p; ++j) {
+                T sum{};
+                for (int k = 0; k < m; ++k) {
+                    sum += a[k + i * effA] * b[j + k * effB];
+                }
+                rPtr[j] = sum;
+            }
+        }
+    }
+    template<int p, typename T> void peelingMulP(T* r, const T* a, const T* b, int n, int m, int effR, int effA, int effB) {
+        int i = 0;
+        for (; i <= n-4; i += 4) {
+            for (int j = 0; j < p; ++j) {
+                T sum1{};
+                T sum2{};
+                T sum3{};
+                T sum4{};
+                for (int k = 0; k < m; ++k) {
+                    sum1 += a[k + i * effA] * b[j + k * effB];
+                    sum2 += a[k + (i+1) * effA] * b[j + k * effB];
+                    sum3 += a[k + (i+2) * effA] * b[j + k * effB];
+                    sum4 += a[k + (i+3) * effA] * b[j + k * effB];
+                }
+                r[j + i * effR] = sum1;
+                r[j + (i+1) * effR] = sum2;
+                r[j + (i+2) * effR] = sum3;
+                r[j + (i+3) * effR] = sum4;
+            }
+        }
+        for (; i < n; ++i) {
+            for (int j = 0; j < p; ++j) {
+                T sum{};
+                for (int k = 0; k < m; ++k) {
+                    sum += a[k + i * effA] * b[j + k * effB];
+                }
+                r[j + i * effR] = sum;
+            }
+        }
+    }
+    template<typename T> void peelingMulP(T* r, const T* a, const T* b, int n, int m, int p, int effR, int effA, int effB) {
+        switch (p) {
+        case 0: break;
+        case 1: peelingMulP<1>(r, a, b, n, m, effR, effA, effB); break;
+        case 2: peelingMulP<2>(r, a, b, n, m, effR, effA, effB); break;
+        case 3: peelingMulP<3>(r, a, b, n, m, effR, effA, effB); break;
+        case 4: peelingMulP<4>(r, a, b, n, m, effR, effA, effB); break;
+        case 5: peelingMulP<5>(r, a, b, n, m, effR, effA, effB); break;
+        case 6: peelingMulP<6>(r, a, b, n, m, effR, effA, effB); break;
+        default: blockMul(r, a, b, n, m, p, effR, effA, effB); break;
+        }
+    }
+    template<int n, int p, typename T> void peelingMulNP(T* r, const T* a, const T* b, int m, int effR, int effA, int effB) {
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < p; ++j) {
+                T sum{};
+                for (int k = 0; k < m; ++k) {
+                    sum += a[k + i * effA] * b[j + k * effB];
+                }
+                r[j + i * effR] = sum;
+            }
+        }
+    }
+    template<typename T> void peelingMulNP(T* r, const T* a, const T* b, int n, int m, int p, int effR, int effA, int effB) {
+        if (n == 0 || p == 0) return;
+        switch (n) {
+        case 1: switch (p) {
+            case 1: peelingMulNP<1, 1>(r, a, b, m, effR, effA, effB); break;
+            case 2: peelingMulNP<1, 2>(r, a, b, m, effR, effA, effB); break;
+            case 3: peelingMulNP<1, 3>(r, a, b, m, effR, effA, effB); break;
+            case 4: peelingMulNP<1, 4>(r, a, b, m, effR, effA, effB); break;
+            case 5: peelingMulNP<1, 5>(r, a, b, m, effR, effA, effB); break;
+            case 6: peelingMulNP<1, 6>(r, a, b, m, effR, effA, effB); break;
+            } break;
+        case 2: switch (p) {
+            case 1: peelingMulNP<2, 1>(r, a, b, m, effR, effA, effB); break;
+            case 2: peelingMulNP<2, 2>(r, a, b, m, effR, effA, effB); break;
+            case 3: peelingMulNP<2, 3>(r, a, b, m, effR, effA, effB); break;
+            case 4: peelingMulNP<2, 4>(r, a, b, m, effR, effA, effB); break;
+            case 5: peelingMulNP<2, 5>(r, a, b, m, effR, effA, effB); break;
+            case 6: peelingMulNP<2, 6>(r, a, b, m, effR, effA, effB); break;
+            } break;
+        case 3: switch (p) {
+            case 1: peelingMulNP<3, 1>(r, a, b, m, effR, effA, effB); break;
+            case 2: peelingMulNP<3, 2>(r, a, b, m, effR, effA, effB); break;
+            case 3: peelingMulNP<3, 3>(r, a, b, m, effR, effA, effB); break;
+            case 4: peelingMulNP<3, 4>(r, a, b, m, effR, effA, effB); break;
+            case 5: peelingMulNP<3, 5>(r, a, b, m, effR, effA, effB); break;
+            case 6: peelingMulNP<3, 6>(r, a, b, m, effR, effA, effB); break;
+            } break;
+        case 4: switch (p) {
+            case 1: peelingMulNP<4, 1>(r, a, b, m, effR, effA, effB); break;
+            case 2: peelingMulNP<4, 2>(r, a, b, m, effR, effA, effB); break;
+            case 3: peelingMulNP<4, 3>(r, a, b, m, effR, effA, effB); break;
+            case 4: peelingMulNP<4, 4>(r, a, b, m, effR, effA, effB); break;
+            case 5: peelingMulNP<4, 5>(r, a, b, m, effR, effA, effB); break;
+            case 6: peelingMulNP<4, 6>(r, a, b, m, effR, effA, effB); break;
+            } break;
+        case 5: switch (p) {
+            case 1: peelingMulNP<5, 1>(r, a, b, m, effR, effA, effB); break;
+            case 2: peelingMulNP<5, 2>(r, a, b, m, effR, effA, effB); break;
+            case 3: peelingMulNP<5, 3>(r, a, b, m, effR, effA, effB); break;
+            case 4: peelingMulNP<5, 4>(r, a, b, m, effR, effA, effB); break;
+            case 5: peelingMulNP<5, 5>(r, a, b, m, effR, effA, effB); break;
+            case 6: peelingMulNP<5, 6>(r, a, b, m, effR, effA, effB); break;
+            } break;
+        case 6: switch (p) {
+            case 1: peelingMulNP<6, 1>(r, a, b, m, effR, effA, effB); break;
+            case 2: peelingMulNP<6, 2>(r, a, b, m, effR, effA, effB); break;
+            case 3: peelingMulNP<6, 3>(r, a, b, m, effR, effA, effB); break;
+            case 4: peelingMulNP<6, 4>(r, a, b, m, effR, effA, effB); break;
+            case 5: peelingMulNP<6, 5>(r, a, b, m, effR, effA, effB); break;
+            case 6: peelingMulNP<6, 6>(r, a, b, m, effR, effA, effB); break;
+            } break;
+        default: blockMul(r, a, b, n, m, p, effR, effA, effB); break;
+        }
+    }
 
     template<int BaseN, int BaseM, int BaseP> 
     std::tuple<int, int, int> peelingSizes(int n, int m, int p) {
@@ -207,12 +378,12 @@ namespace fmm::detail {
     }
 
     template<int BaseN, int BaseM, int BaseP, typename T> 
-    void peelingMul(T* c, T* a, T* b, int n, int m, int p, int effC, int effA, int effB) {
+    void peelingMul(T* c, const T* a, const T* b, int n, int m, int p, int effC, int effA, int effB) {
         auto[nPeeled, mPeeled, pPeeled] = peelingSizes<BaseN, BaseM, BaseP>(n, m, p);
         peelingMulAdd(c, a + mPeeled, b + effB * mPeeled, nPeeled, m % BaseM, pPeeled, effC, effA, effB);
-        naiveMul(c + pPeeled, a, b + pPeeled, nPeeled, m, p % BaseP, effC, effA, effB);
-        naiveMul(c + effC * nPeeled, a + effA * nPeeled, b, n % BaseN, m, pPeeled, effC, effA, effB);
-        naiveMul(c + effC * nPeeled + pPeeled, a + effA * nPeeled, b + pPeeled, n % BaseN, m, p % BaseP, effC, effA, effB);
+        peelingMulP(c + pPeeled, a, b + pPeeled, nPeeled, m, p % BaseP, effC, effA, effB);
+        peelingMulN(c + effC * nPeeled, a + effA * nPeeled, b, n % BaseN, m, pPeeled, effC, effA, effB);
+        peelingMulNP(c + effC * nPeeled + pPeeled, a + effA * nPeeled, b + pPeeled, n % BaseN, m, p % BaseP, effC, effA, effB);
     }
 
     // calculating space needed
@@ -317,6 +488,53 @@ namespace fmm::detail {
         }
     }
 
+    // High-level
+    template<int Method, int BaseN, int BaseM, int BaseP, typename FunctionImpl, typename MC, typename MA, typename MB>
+    void nextStepHighLevel(MatrixInterface<MC>& c, const MatrixInterface<MA>& a, const MatrixInterface<MB>& b, int steps, StackAllocator<typename MC::ValueType>& allocator) {
+        auto n = a.rowCount();
+        auto m = a.columnCount();
+        auto p = b.columnCount();
+        auto effC = c.effectiveColumnCount();
+        auto effA = a.effectiveColumnCount();
+        auto effB = b.effectiveColumnCount();
+        if (steps <= 0) {
+            baseMul<Method>(c.data(), a.data(), b.data(), n, m, p, effC, effA, effB, allocator);
+            return;
+        }
+        if constexpr (contains<Method, ResizeStrategy::DynamicPeeling>) {
+            auto[nPeeled, mPeeled, pPeeled] = peelingSizes<BaseN, BaseM, BaseP>(n, m, p);
+            auto cView = c.subMatrixView(0, 0, nPeeled, pPeeled);
+            auto aView = a.subMatrixView(0, 0, nPeeled, mPeeled);
+            auto bView = b.subMatrixView(0, 0, mPeeled, pPeeled);
+            FunctionImpl::template Run<Method>(cView, aView, bView, steps, allocator);
+            peelingMul<BaseN, BaseM, BaseP>(c.data(), a.data(), b.data(), n, m, p, effC, effA, effB);
+        } else {
+            auto cView = c.subMatrixView(0, 0, n, p);
+            auto aView = a.subMatrixView(0, 0, n, m);
+            auto bView = b.subMatrixView(0, 0, m, p);
+            FunctionImpl::template Run<Method>(cView, aView, bView, steps, allocator);
+            //FunctionImpl::template Run<Method>(c, a, b, steps, allocator);
+        }
+    }
+
+    template<int Method, int BaseN, int BaseM, int BaseP, int MulCount, typename FunctionImpl, typename MC, typename MA, typename MB>
+    void highLevelRun(MatrixInterface<MC>& c, const MatrixInterface<MA>& a, const MatrixInterface<MB>& b, int steps) {
+        StackAllocator<typename MC::ValueType> allocator(1);
+        auto paddingSizesOpt = staticPaddingNewSizes(a.rowCount(), a.columnCount(), b.columnCount(), BaseN, BaseM, BaseP, steps);
+        if (contains<Method, ResizeStrategy::StaticPadding> && paddingSizesOpt) {
+            auto [nPadded, mPadded, pPadded] = *paddingSizesOpt;
+
+            auto cPadded = c.createNew(nPadded, pPadded); cPadded.copy(c);
+            auto aPadded = a.createNew(nPadded, mPadded); aPadded.copy(a);
+            auto bPadded = b.createNew(mPadded, pPadded); bPadded.copy(b);
+            
+            nextStepHighLevel<Method, BaseN, BaseM, BaseP, FunctionImpl>(cPadded, aPadded, bPadded, steps, allocator);
+
+            operationEff<ArithmeticOperation::Assign>(a.rowCount(), b.columnCount(), c.effectiveColumnCount(), cPadded.effectiveColumnCount(), c.data(), cPadded.data());
+        } else {
+            nextStepHighLevel<Method, BaseN, BaseM, BaseP, FunctionImpl>(c, a, b, steps, allocator);
+        }
+    }
     
     // Min-Space
     template<int Method, int BaseN, int BaseM, int BaseP, int MulCount, typename FunctionImpl, typename T>
@@ -443,6 +661,16 @@ namespace fmm::detail {
                 c.effectiveColumnCount(), a.effectiveColumnCount(), b.effectiveColumnCount(), steps,
                 tempACount, tempBCount
             );
+        }
+        else if constexpr (contains<FilledMethod, Algorithm::MinSpaceParallel>) {
+            lowLevelParallelRun<FilledMethod, BaseN, BaseM, BaseP, MulCount, FunctionImpl>(
+                c.data(), a.data(), b.data(), a.rowCount(), a.columnCount(), b.columnCount(),
+                c.effectiveColumnCount(), a.effectiveColumnCount(), b.effectiveColumnCount(), steps,
+                tempACount, tempBCount
+            );
+        }
+        else if constexpr (contains<FilledMethod, Algorithm::HighLevel>) {
+            highLevelRun<FilledMethod, BaseN, BaseM, BaseP, MulCount, FunctionImpl>(c, a, b, steps);
         }
         
         return c;

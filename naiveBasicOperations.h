@@ -16,8 +16,11 @@ template<typename M> auto transpose(const MatrixInterface<M>& matrix) {
 template<typename M, typename M1, typename M2> 
 void naiveAdd(MatrixInterface<M>& result, const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
     for (mtl::size_t i = 0; i < result.rowCount(); ++i) {
+        auto rowR = result[i];
+        auto rowA = a[i];
+        auto rowB = b[i];
         for (mtl::size_t j = 0; j < result.columnCount(); ++j) {
-            result.at(i, j) = a.at(i, j) + b.at(i, j);
+            rowR[j] = rowA[j] + rowB[j];
         }
     }
 }
@@ -31,8 +34,10 @@ auto naiveAdd(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
 template<typename M1, typename M2>
 auto& naiveAddAssign(MatrixInterface<M1>& result, const MatrixInterface<M2>& m) {
     for (mtl::size_t i = 0; i < result.rowCount(); ++i) {
+        auto rowR = result[i];
+        auto rowM = m[i];
         for (mtl::size_t j = 0; j < result.columnCount(); ++j) {
-            result.at(i, j) += m.at(i, j);
+            rowR[j] += rowM[j];
         }
     }
     return result;
@@ -42,8 +47,11 @@ template<typename M1, typename M2>
 auto naiveSub(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
     auto result = a.createNew();
     for (mtl::size_t i = 0; i < result.rowCount(); ++i) {
+        auto rowR = result[i];
+        auto rowA = a[i];
+        auto rowB = b[i];
         for (mtl::size_t j = 0; j < result.columnCount(); ++j) {
-            result.at(i, j) = a.at(i, j) - b.at(i, j);
+            rowR[j] = rowA[j] - rowB[j];
         }
     }
     return result;
@@ -52,8 +60,10 @@ auto naiveSub(const MatrixInterface<M1>& a, const MatrixInterface<M2>& b) {
 template<typename M1, typename M2>
 auto& naiveSubAssign(MatrixInterface<M1>& result, const MatrixInterface<M2>& m) {
     for (mtl::size_t i = 0; i < result.rowCount(); ++i) {
+        auto rowR = result[i];
+        auto rowM = m[i];
         for (mtl::size_t j = 0; j < result.columnCount(); ++j) {
-            result.at(i, j) -= m.at(i, j);
+            rowR[j] -= rowM[j];
         }
     }
     return result;
@@ -62,8 +72,10 @@ auto& naiveSubAssign(MatrixInterface<M1>& result, const MatrixInterface<M2>& m) 
 template<typename M1, typename M2>
 void naiveNeg(MatrixInterface<M1>& result, const MatrixInterface<M2>& m) {
     for (mtl::size_t i = 0; i < result.rowCount(); ++i) {
+        auto rowR = result[i];
+        auto rowM = m[i];
         for (mtl::size_t j = 0; j < result.columnCount(); ++j) {
-            result.at(i, j) = -m.at(i, j);
+            rowR[j] = -rowM[j];
         }
     }
 }
@@ -78,8 +90,10 @@ template<typename M>
 auto naiveScalarMul(const MatrixInterface<M>& m, const typename M::ValueType& scalar) {
     auto result = m.createNew();
     for (mtl::size_t i = 0; i < result.rowCount(); ++i) {
+        auto rowR = result[i];
+        auto rowM = m[i];
         for (mtl::size_t j = 0; j < result.columnCount(); ++j) {
-            result.at(i, j) = m.at(i, j) * scalar;
+            rowR[j] = rowM[j] * scalar;
         }
     }
     return result;
@@ -87,8 +101,9 @@ auto naiveScalarMul(const MatrixInterface<M>& m, const typename M::ValueType& sc
 template<typename M>
 auto& naiveScalarMulAssign(MatrixInterface<M>& result, const typename M::ValueType& scalar) {
     for (mtl::size_t i = 0; i < result.rowCount(); ++i) {
+        auto rowR = result[i];
         for (mtl::size_t j = 0; j < result.columnCount(); ++j) {
-            result.at(i, j) *= scalar;
+            rowR[j] *= scalar;
         }
     }
     return result;
